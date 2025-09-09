@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import '../styles/globals.css';
+
 
 /**
  * Tools page for Menelek Makonnen.
