@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Set a dark navy background and white text by default */
+html,
+body {
+  background-color: #090f1b;
+  color: #ffffff;
+  font-family: system-ui, sans-serif;
+}
