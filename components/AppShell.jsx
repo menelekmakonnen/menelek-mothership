@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, Phone, Mail, ExternalLink, CheckCircle2, Youtube, Instagram, Linkedin, ShieldCheck, Sparkles, X, Camera, Shuffle, Bug } from "lucide-react";
 
 /**
- * Menelek Makonnen — £100k Mothership (v6.1)
+ * Menelek Makonnen — Mothership (v6.1)
  * Fix: Define <Blog /> to resolve ReferenceError. Add Dev self-tests.
  * Context kept from v6:
  * - Darker background; ultra‑tiny dull diamonds that brighten only on hover
@@ -18,10 +18,9 @@ import { Play, Phone, Mail, ExternalLink, CheckCircle2, Youtube, Instagram, Link
 // ========= FACTUAL LINKS ========= //
 const SOCIALS = {
   instagram: "https://instagram.com/menelek.makonnen",
-  youtube: "https://youtube.com/@LoremakerUniverse",
+  youtube: "https://youtube.com/@director_menelek",
   linkedin: "https://linkedin.com/in/menelekmakonnen",
-  email: "mailto:hello@menelekmakonnen.com",
-  phone: "tel:+447000000000",
+  email: "mailto:admin@menelekmakonnen.com",,
 };
 
 // ========= UTIL ========= //
@@ -221,12 +220,12 @@ const SERVICE_PRICING = {
 };
 
 const PROJECTS = [
-  { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: SOCIALS.youtube },
-  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: SOCIALS.youtube },
-  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: SOCIALS.youtube },
-  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Director, Cinematographer, Editor", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: SOCIALS.youtube },
-  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: SOCIALS.youtube },
-  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: SOCIALS.youtube },
+  { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE" },
+  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ" },
+  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0" },
+  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Director, Cinematographer, Editor", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: "https://www.youtube.com/watch?v=4q6X6prhVOE" },
+  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://youtu.be/BHPaJieCAXY" },
+  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
 ];
 
 const FEATURED_CHARACTERS = [
