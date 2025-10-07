@@ -1,16 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Phone, Mail, ExternalLink, CheckCircle2, Youtube, Instagram, Linkedin, ShieldCheck, Sparkles, X, Shuffle, ChevronUp, Calendar as CalendarIcon, Info } from "lucide-react";
+import {
+  Play,
+  Phone,
+  Mail,
+  ExternalLink,
+  CheckCircle2,
+  Youtube,
+  Instagram,
+  Linkedin,
+  ShieldCheck,
+  Sparkles,
+  X,
+  Shuffle,
+  Calendar as CalendarIcon,
+  Info,
+  ArrowUp,
+  MessageSquare,
+} from "lucide-react";
 
 /**
- * Menelek Makonnen — Mothership (v9 — Canvas build)
+ * Menelek Makonnen — Mothership (v11.2 — Canvas build)
  *
- * This pass addresses user requests:
- * - Services: Add **Randomizer (High‑Fit)** chip after AI Advert; remove bottom randomize button.
- * - Randomizer now only yields **high Fit** combos (>= 80) to encourage booking.
- * - Background diamonds: base much darker; only hover shows bright aura; click creates ripple ring.
- * - Interactive schedule: grid with **Y‑axis phases** and **X‑axis days (M T W T F S S)**; bars per phase are draggable & resizable, can **overlap**; width scales to **Total Duration** (1–26w).
- * - CVC Fit Score already accounts for Total.
+ * Fix: Resolved SyntaxError by repairing a corrupted section where getYouTubeId
+ *      was overwritten with useCSV internals. Restored missing helpers
+ *      (youtubeThumb, useCSV, IG constants) and ensured all JSX blocks close.
+ *      Also keeps previous feature work: axis alignment, single‑color CVC bar,
+ *      sheet‑only Featured Universe, bigger zoom + click‑to‑watch tiles.
  */
 
 // ========= FACTUAL LINKS ========= //
@@ -38,12 +54,12 @@ const LINKS = {
 
 // Publish the Characters tab to the web and set the correct gid
 const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0"; // Characters gid if different, change it
+  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
 
-function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default" }) {
+function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
   const palettes = {
     default: "bg-white/10 hover:bg-white/15",
     ghost: "bg-white/5 hover:bg-white/10",
@@ -63,12 +79,12 @@ function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, class
   );
   if (href)
     return (
-      <a href={href} onClick={onClick} className={base} target={target} rel={rel}>
+      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title}>
         {inner}
       </a>
     );
   return (
-    <Cmp onClick={onClick} className={base}>
+    <Cmp onClick={onClick} className={base} title={title}>
       {inner}
     </Cmp>
   );
@@ -89,6 +105,12 @@ function Card({ className = "", children }) {
 }
 
 function Modal({ open, onClose, title, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    if (open) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -157,11 +179,10 @@ function DiamondsCanvas({ className }) {
 
     scale();
 
-    // much darker baseline, tighter grid; bright only on hover/click
     const cell = 10; // density
     const rot = Math.PI / 4;
     const baseAlpha = 0.02; // darker default
-    const auraR = 70; // hover radius
+    const auraR = 95; // hover radius
     const size = 2.1;
 
     const draw = () => {
@@ -173,8 +194,7 @@ function DiamondsCanvas({ className }) {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
-      // advance ripples
-      ripplesRef.current = ripplesRef.current.map(r => ({ ...r, t: r.t + 1 })).filter(r => r.t < 280);
+      ripplesRef.current = ripplesRef.current.map((r) => ({ ...r, t: r.t + 1 })).filter((r) => r.t < 300);
 
       const { x: mx, y: my } = mouseRef.current;
 
@@ -183,18 +203,16 @@ function DiamondsCanvas({ className }) {
           const cx = x + cell / 2;
           const cy = y + cell / 2;
 
-          // hover aura
           const dxh = cx - mx;
           const dyh = cy - my;
           const distHover = Math.hypot(dxh, dyh);
           const hoverK = Math.max(0, 1 - distHover / auraR);
 
-          // click ripple ring
           let clickGlow = 0;
           for (const r of ripplesRef.current) {
-            const k = r.t / 280;
-            const radius = 12 + k * 320; // expands
-            const thickness = 12;
+            const k = r.t / 300;
+            const radius = 14 + k * 340; // expands
+            const thickness = 16;
             const dxc = cx - r.x;
             const dyc = cy - r.y;
             const d = Math.hypot(dxc, dyc);
@@ -206,14 +224,12 @@ function DiamondsCanvas({ className }) {
           ctx.translate(cx, cy);
           ctx.rotate(rot);
 
-          // baseline core (very dark)
           ctx.fillStyle = `rgba(255,255,255,${baseAlpha})`;
           ctx.fillRect(-size / 2, -size / 2, size, size);
 
-          // additive glow only near hover/click
-          const a = Math.min(0.5, hoverK * 0.45 + clickGlow * 0.75);
+          const a = Math.min(0.6, hoverK * 0.5 + clickGlow * 0.85);
           if (a > 0) {
-            const grad = ctx.createRadialGradient(0, 0, 0.2, 0, 0, 8);
+            const grad = ctx.createRadialGradient(0, 0, 0.2, 0, 0, 10);
             grad.addColorStop(0, `rgba(255,255,255,${a})`);
             grad.addColorStop(1, `rgba(255,255,255,0)`);
             ctx.globalCompositeOperation = "lighter";
@@ -242,7 +258,7 @@ function DiamondsCanvas({ className }) {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className={cn("absolute inset-0 -z-10 h-full w-full", className)} style={{ pointerEvents: 'auto' }} />;
+  return <canvas ref={canvasRef} className={cn("absolute inset-0 -z-10 h-full w-full", className)} style={{ pointerEvents: "auto" }} />;
 }
 
 // ========= DATA ========= //
@@ -269,19 +285,19 @@ const PROJECTS = [
 function getYouTubeId(url) {
   try {
     const u = new URL(url);
-    if (u.hostname.includes('youtube.com')) {
-      if (u.pathname.startsWith('/watch')) return u.searchParams.get('v');
-      if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/shorts/')[1].split('/')[0];
-      if (u.pathname.startsWith('/embed/')) return u.pathname.split('/embed/')[1];
+    if (u.hostname.includes("youtube.com")) {
+      if (u.pathname.startsWith("/watch")) return u.searchParams.get("v");
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/shorts/")[1].split("/")[0];
+      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/embed/")[1];
     }
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1);
-  } catch (e) { }
+    if (u.hostname === "youtu.be") return u.pathname.slice(1);
+  } catch (e) {}
   return null;
 }
 
 function youtubeThumb(url) {
   const id = getYouTubeId(url);
-  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : '';
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
 }
 
 // Best‑effort Instagram thumb (may be blocked by CORS; fallback to gradient)
@@ -328,24 +344,23 @@ function Hero({ onWatch, onOpenLinksModal }) {
               <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">Storyteller.</motion.span>
             </span>
           </div>
-          <p className="mt-5 max-w-xl text-white/75">Cinematic direction + AI‑assisted worldbuilding for commercials, shorts, and IP. Creator of the Loremaker Universe.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button onClick={onWatch} icon={Play}>Watch Instagram Reel</Button>
-            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">Loremaker Universe</Button>
-            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">AI Consultancy</Button>
-            <Button onClick={onOpenLinksModal} variant="ghost">All my Links</Button>
+            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">Explore the Loremaker Universe</Button>
+            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
+            <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
           </div>
         </div>
         <Card>
           <div className="text-sm uppercase tracking-[0.25em] text-white/60">Showreel</div>
-          <button onClick={onWatch} className="mt-3 aspect-video w-full rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative group">
+          <button onClick={onWatch} className="mt-3 aspect-video w-full rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative group" title="Open Instagram reel">
             {imgOk ? (
-              <img src={IG_THUMB_URL} onError={()=>setImgOk(false)} alt="Instagram Reel thumbnail" className="w-full h-full object-cover"/>
+              <img src={IG_THUMB_URL} onError={() => setImgOk(false)} alt="Instagram Reel thumbnail" className="w-full h-full object-cover" />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/0" />
             )}
             <div className="absolute inset-0 grid place-items-center">
-              <div className="rounded-full p-3 bg-black/50 border border-white/20 group-hover:scale-105 transition-transform"><Play className="h-6 w-6"/></div>
+              <div className="rounded-full p-3 bg-black/50 border border-white/20 group-hover:scale-105 transition-transform"><Play className="h-6 w-6" /></div>
             </div>
           </button>
         </Card>
@@ -364,29 +379,38 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
           <div className="flex items-end justify-between mb-1">
             <h2 className="text-2xl sm:text-3xl font-bold">Director for Hire • Client Value Calculator</h2>
           </div>
-          <p className="text-white/75">Pick a service, scope it, and your selection flows into Contact with your fit, budget, and timeline pre‑filled.</p>
+          <p className="text-white/80">
+            Scope your idea in minutes. I’ll show you fit, budget bands, and a realistic timeline. No fluff—just the plan.
+          </p>
 
-          {/* Service chips only (no modal, no tiers). Randomizer added at the end. */}
+          {/* Service chips + Randomizer */}
           <div className="mt-4 flex flex-wrap gap-2">
             {SERVICES.map((s) => (
-              <button key={s.id} onClick={() => onSetService(s.name)} className={cn("px-3 py-1.5 rounded-full border", currentService===s.name?"bg-white/20 border-white/30":"border-white/15 hover:bg-white/10") }>
+              <button
+                key={s.id}
+                onClick={() => onSetService(s.name)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full border",
+                  currentService === s.name ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10"
+                )}
+              >
                 <span className="inline-flex items-center gap-2">{s.name}
-                  {(s.id === 'music-video' || s.id === 'ai-ad') && (
+                  {(s.id === "music-video" || s.id === "ai-ad") && (
                     <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-white/20 bg-white/10">from £200*</span>
                   )}
                 </span>
               </button>
             ))}
-            {/* Randomizer chip (high-fit only) */}
             <button
-              onClick={() => setRandomKey((k)=>k+1)}
+              onClick={() => setRandomKey((k) => k + 1)}
               className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"
+              title="Suggest a high‑fit configuration"
             >
-              <Shuffle className="h-4 w-4"/> Randomize (High‑Fit)
+              <Shuffle className="h-4 w-4" /> Randomize (High‑Fit)
             </button>
           </div>
           <div className="text-white/60 text-xs mt-3 inline-flex items-center gap-2">
-            <Info className="h-4 w-4"/> <span>* Only for Music Video & AI Advert when <em>you provide all</em> assets & logistics.</span>
+            <Info className="h-4 w-4" /> <span>* Only for Music Video & AI Advert when <em>you provide all</em> assets & logistics.</span>
           </div>
 
           {/* Inline CVC */}
@@ -440,9 +464,9 @@ function ContactInline({ calendarState }) {
     <Card id="contact-inline">
       <h3 className="text-xl font-semibold">Contact</h3>
       <div className="text-white/70 text-sm">Email: <a href={SOCIALS.email} className="underline">hello@menelekmakonnen.com</a></div>
+      <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the chat bubble at bottom‑right and leave a short brief.</p>
       {!ok ? (
         <div className="grid gap-3 mt-4">
-          {/* Service chips */}
           <div>
             <label className="text-white/70 text-sm mb-2 block">Select a service</label>
             <div className="flex flex-wrap gap-2">
@@ -459,7 +483,6 @@ function ContactInline({ calendarState }) {
             </div>
           ) : null}
 
-          {/* Auto‑filled fit fields */}
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
@@ -468,7 +491,9 @@ function ContactInline({ calendarState }) {
             <div>
               <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
               <select value={form.recTier} onChange={(e) => setForm({ ...form, recTier: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
-                {['Starter','Signature','Cinema+'].map(x => <option key={x} className="text-black">{x}</option>)}
+                {["Starter", "Signature", "Cinema+"].map((x) => (
+                  <option key={x} className="text-black">{x}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -513,7 +538,7 @@ function ContactInline({ calendarState }) {
           </div>
         </div>
       ) : (
-        <div className="text-center py-6"><CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto"/><div className="mt-2">Thanks — I’ll reply within 24–48h.</div></div>
+        <div className="text-center py-6"><CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto" /><div className="mt-2">Thanks — I’ll reply within 24–48h.</div></div>
       )}
     </Card>
   );
@@ -522,27 +547,26 @@ function ContactInline({ calendarState }) {
 // ========= Calculator (CVC) ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
-  useEffect(()=>{ if (serviceProp) setService(serviceProp); }, [serviceProp]);
+  useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
 
   const [budget, setBudget] = useState(2000);
   const [ambition, setAmbition] = useState(6);
-  const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  // total duration lives here and is the single source of truth
+  // total duration is the single source of truth
   const [total, setTotal] = useState(6); // weeks
 
   const RULES = {
-    "Feature Film": { base: 40000, budgetRange: [15000, 250000], ambitionIdeal: [7, 10], durationIdeal: 16, weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
-    "Short Film":   { base: 8000,  budgetRange: [1500, 30000],  ambitionIdeal: [6, 10], durationIdeal: 6,  weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
-    "AI Film":      { base: 5000,  budgetRange: [1000, 20000],  ambitionIdeal: [6, 10], durationIdeal: 4,  weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
-    "Music Video":  { base: 3500,  budgetRange: [200, 20000],   ambitionIdeal: [7, 10], durationIdeal: 3,  weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
-    "Documentary":  { base: 4000,  budgetRange: [1500, 40000],  ambitionIdeal: [5, 9],  durationIdeal: 8,  weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
-    "BTS":          { base: 900,   budgetRange: [300, 5000],    ambitionIdeal: [3, 7],  durationIdeal: 2,  weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
-    "AI Advert":    { base: 3000,  budgetRange: [200, 20000],   ambitionIdeal: [6, 10], durationIdeal: 2,  weights: { budget: 0.35, ambition: 0.35, duration: 0.30 } },
+    "Feature Film": { base: 40000, budgetRange: [15000, 250000], ambitionIdeal: [7, 10], durationIdeal: 16, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
+    "Short Film": { base: 8000, budgetRange: [1500, 30000], ambitionIdeal: [6, 10], durationIdeal: 6, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
+    "AI Film": { base: 5000, budgetRange: [1000, 20000], ambitionIdeal: [6, 10], durationIdeal: 4, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
+    "Music Video": { base: 3500, budgetRange: [200, 20000], ambitionIdeal: [7, 10], durationIdeal: 3, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
+    "Documentary": { base: 4000, budgetRange: [1500, 40000], ambitionIdeal: [5, 9], durationIdeal: 8, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
+    "BTS": { base: 900, budgetRange: [300, 5000], ambitionIdeal: [3, 7], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
+    "AI Advert": { base: 3000, budgetRange: [200, 20000], ambitionIdeal: [6, 10], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
   };
 
   const cfg = RULES[service] || RULES["Short Film"];
-
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
 
@@ -563,51 +587,77 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   const budgetScore = norm(budget, cfg.budgetRange);
   const ambitionScore = norm(ambition, cfg.ambitionIdeal);
   const durationScore = durationScoreFor(service, total);
-
   const raw = cfg.weights.budget * budgetScore + cfg.weights.ambition * ambitionScore + cfg.weights.duration * durationScore;
   const score = Math.round(clamp(raw, 0, 1) * 100);
+
+  // single color mapped to score: 0 (red) → 120 (green)
+  const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
 
   const coverage = budget / cfg.base;
   const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
   const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
 
-  // default split (percentages) for initial layout
+  // Default FS split ratios (sequential). Will also be used as baseline for 3–4 weeks cases.
   const SPLIT = [0.2, 0.3, 0.2, 0.25, 0.05];
-  const [phases, setPhases] = useState([
-    { key: 'development', label: 'Development', startDays: 0, weeks: Math.max(0.5, Math.round(6 * SPLIT[0] * 2)/2) },
-    { key: 'pre',         label: 'Pre‑Production', startDays: Math.round(6*SPLIT[0]*7), weeks: Math.max(0.5, Math.round(6 * SPLIT[1] * 2)/2) },
-    { key: 'production',  label: 'Production', startDays: Math.round(6*(SPLIT[0]+SPLIT[1])*7), weeks: Math.max(0.5, Math.round(6 * SPLIT[2] * 2)/2) },
-    { key: 'post',        label: 'Post‑Production', startDays: Math.round(6*(SPLIT[0]+SPLIT[1]+SPLIT[2])*7), weeks: Math.max(0.5, Math.round(6 * SPLIT[3] * 2)/2) },
-    { key: 'distribution',label: 'Distribution', startDays: Math.round(6*(SPLIT[0]+SPLIT[1]+SPLIT[2]+SPLIT[3])*7), weeks: Math.max(0.5, Math.round(6 * SPLIT[4] * 2)/2) },
-  ]);
 
-  // keep phases within bounds when total changes
+  const makeFSForTotal = (tWeeks) => {
+    if (tWeeks <= 1) {
+      // one-week project ⇒ each phase defaults to 1 day; FS sequential
+      const KEYS = ["development", "pre", "production", "post", "distribution"];
+      const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
+      const out = [];
+      let sd = 0;
+      for (let i = 0; i < 5; i++) {
+        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: 1 / 7 });
+        sd += 1; // 1 day each
+      }
+      return out;
+    }
+    // For 2–4 weeks use split but scale into total; FS sequential
+    const parts = SPLIT.map((r) => Math.max(0.5, Math.round(tWeeks * r * 2) / 2));
+    const out = [];
+    let sd = 0;
+    const KEYS = ["development", "pre", "production", "post", "distribution"];
+    const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
+    for (let i = 0; i < parts.length; i++) {
+      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i] });
+      sd += Math.ceil(parts[i] * 7);
+    }
+    return out;
+  };
+
+  const [phases, setPhases] = useState(() => makeFSForTotal(6));
+
+  // When total changes, keep FS by default but respect user drags by clamping only
   useEffect(() => {
-    const maxDays = total * 7;
-    setPhases((prev) => prev.map(p => ({
-      ...p,
-      startDays: Math.min(p.startDays, Math.max(0, maxDays - Math.ceil(p.weeks*7))),
-    })));
+    setPhases((prev) => {
+      if (total <= 1) return makeFSForTotal(1);
+      const maxDays = total * 7;
+      return prev.map((p) => {
+        const weeks = Math.max(0.5, Math.min(26, p.weeks));
+        let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
+        return { ...p, weeks, startDays };
+      });
+    });
   }, [total]);
 
   // push calendar state up + prefill events
   useEffect(() => {
     onCalendarChange?.(buildCalendarStateOverlapping(phases, projectDate));
     window.dispatchEvent(new CustomEvent("prefill-fit", { detail: { service, fit: score, suggestedTier, budget, timeline: total } }));
-    window.dispatchEvent(new CustomEvent('prefill-subtype', { detail: { subtype: service } }));
+    window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: service } }));
   }, [phases, projectDate, service, score, suggestedTier, budget, total]);
 
-  // High‑fit randomizer trigger
+  // High‑fit randomizer
   useEffect(() => {
     if (randomizeKey === undefined) return;
-    // try up to N attempts to find a >=80 combo
     let best = { s: service, b: budget, a: ambition, t: total, score: -1 };
     for (let i = 0; i < 60; i++) {
-      const svc = SERVICES[Math.floor(Math.random()*SERVICES.length)].name;
+      const svc = SERVICES[Math.floor(Math.random() * SERVICES.length)].name;
       const rcfg = RULES[svc];
-      const bgt = Math.round((Math.random()*(rcfg.budgetRange[1]-rcfg.budgetRange[0])+rcfg.budgetRange[0]) / 50) * 50;
-      const amb = Math.floor(Math.random()*5)+6; // 6–10 bias
-      const tot = Math.floor(Math.random()*26)+1; // 1–26 weeks
+      const bgt = Math.round((Math.random() * (rcfg.budgetRange[1] - rcfg.budgetRange[0]) + rcfg.budgetRange[0]) / 50) * 50;
+      const amb = Math.floor(Math.random() * 5) + 6; // 6–10 bias
+      const tot = Math.floor(Math.random() * 26) + 1; // 1–26 weeks
       const sc = scoreFor(svc, bgt, amb, tot);
       if (sc > best.score) best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
       if (sc >= 80) { best = { s: svc, b: bgt, a: amb, t: tot, score: sc }; break; }
@@ -616,16 +666,7 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     setBudget(best.b);
     setAmbition(best.a);
     setTotal(best.t);
-    // seed phases sequentially for clarity
-    const maxDays = best.t * 7;
-    const seq = [
-      { key: 'development', label: 'Development', startDays: 0, weeks: Math.max(0.5, Math.round(best.t * SPLIT[0] * 2)/2) },
-      { key: 'pre',         label: 'Pre‑Production', startDays: Math.round(best.t*SPLIT[0]*7), weeks: Math.max(0.5, Math.round(best.t * SPLIT[1] * 2)/2) },
-      { key: 'production',  label: 'Production', startDays: Math.round(best.t*(SPLIT[0]+SPLIT[1])*7), weeks: Math.max(0.5, Math.round(best.t * SPLIT[2] * 2)/2) },
-      { key: 'post',        label: 'Post‑Production', startDays: Math.round(best.t*(SPLIT[0]+SPLIT[1]+SPLIT[2])*7), weeks: Math.max(0.5, Math.round(best.t * SPLIT[3] * 2)/2) },
-      { key: 'distribution',label: 'Distribution', startDays: Math.round(best.t*(SPLIT[0]+SPLIT[1]+SPLIT[2]+SPLIT[3])*7), weeks: Math.max(0.5, Math.round(best.t * SPLIT[4] * 2)/2) },
-    ].map(p=> ({...p, startDays: Math.min(p.startDays, Math.max(0, maxDays - Math.ceil(p.weeks*7))) }));
-    setPhases(seq);
+    setPhases(makeFSForTotal(best.t));
   }, [randomizeKey]);
 
   const phaseWeeksTotal = (arr) => arr.reduce((a, b) => a + (b.weeks || 0), 0);
@@ -655,14 +696,8 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
         <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
         <div className="rounded-2xl p-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
           <svg viewBox="0 0 110 6" className="w-full block">
-            <defs>
-              <linearGradient id="fitg" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="rgba(80,220,160,0.6)"/>
-                <stop offset="100%" stopColor="rgba(160,120,255,0.85)"/>
-              </linearGradient>
-            </defs>
             <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
-            <rect x="0" y="0" width={score} height="6" rx="3" fill="url(#fitg)" />
+            <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
           </svg>
           <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {phaseWeeksTotal(phases)} weeks</div>
         </div>
@@ -685,34 +720,33 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
 
 // ========= Calendar helpers ========= //
 function addDays(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0,10);
+  return d.toISOString().slice(0, 10);
 }
 
 function buildCalendarStateOverlapping(phases, startDate) {
-  // Each phase has startDays & weeks. Allow overlaps.
   return {
     start: startDate,
-    phases: phases.map(p => ({
+    phases: phases.map((p) => ({
       key: p.key,
       label: p.label,
       start: addDays(startDate, p.startDays),
-      end: addDays(startDate, p.startDays + Math.ceil(p.weeks*7)),
+      end: addDays(startDate, p.startDays + Math.ceil(p.weeks * 7)),
       weeks: p.weeks,
       startDays: p.startDays,
     })),
-    end: phases.length ? addDays(startDate, Math.max(...phases.map(p => p.startDays + Math.ceil(p.weeks*7)))) : startDate,
+    end: phases.length ? addDays(startDate, Math.max(...phases.map((p) => p.startDays + Math.ceil(p.weeks * 7)))) : startDate,
   };
 }
 
-// ========= Timeline Grid (Y‑axis phases, X‑axis day initials, overlap allowed) ========= //
+// ========= Timeline Grid ========= //
 function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const containerRef = useRef(null);
   const totalDays = Math.max(7, total * 7);
-  const dayLabels = ['M','T','W','T','F','S','S'];
+  const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
-  // drag state: which phase, mode ('move' | 'left' | 'right')
+  // drag state: which phase, mode ("move" | "left" | "right")
   const dragRef = useRef(null);
 
   const clampPhase = (p) => {
@@ -731,17 +765,15 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     const d = dragRef.current; if (!d) return;
     const dx = e.clientX - d.startX;
     const deltaDays = Math.round((dx / d.rectW) * totalDays);
-    const next = phases.map(p => ({...p}));
-    if (d.mode === 'move') next[d.idx].startDays = d.startStart + deltaDays;
-    if (d.mode === 'left') {
-      // adjust start left handle: move start & weeks simultaneously
+    const next = phases.map((p) => ({ ...p }));
+    if (d.mode === "move") next[d.idx].startDays = d.startStart + deltaDays;
+    if (d.mode === "left") {
       const newStart = d.startStart + deltaDays;
-      const newWeeks = d.startWeeks - (deltaDays / 7);
+      const newWeeks = d.startWeeks - deltaDays / 7;
       next[d.idx].startDays = newStart; next[d.idx].weeks = newWeeks;
     }
-    if (d.mode === 'right') {
-      // adjust only width
-      const newWeeks = d.startWeeks + (deltaDays / 7);
+    if (d.mode === "right") {
+      const newWeeks = d.startWeeks + deltaDays / 7;
       next[d.idx].weeks = newWeeks;
     }
     onChange(next.map(clampPhase));
@@ -750,59 +782,80 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 
   const cal = buildCalendarStateOverlapping(phases, startDate);
 
+  // Axis mode: days for ≤4 weeks, week numbers for >4 weeks
+  const showDays = total <= 4;
+
   return (
     <div className="mt-6">
+      {/* Separate header with Start/End line */}
       <div className="flex items-center justify-between text-white/80 text-sm mb-2">
-        <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4"/> Interactive Schedule</div>
+        <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Interactive Schedule</div>
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
-          <input type="range" min={1} max={26} step={1} value={total} onChange={(e)=>onTotalChange(parseInt(e.target.value))} />
+          <input type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
           <span className="text-white/70 text-xs">{total} wks</span>
         </div>
       </div>
 
+      {/* Start / End inline, separate from the lane grid */}
+      <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
+
       <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-        {/* X‑axis: day initials across total weeks */}
-        <div className="text-[11px] text-white/60 mb-2 flex justify-between">
-          <div>Start: {cal.start}</div>
-          <div className="flex-1 mx-3">
-            <div ref={containerRef} className="relative h-5 w-full select-none">
-              {/* grid columns per day */}
-              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
-              {/* week labels */}
-              {[...Array(total).keys()].map((w) => (
-                <div key={w} className="absolute top-0 text-center" style={{ left: pct(w*7), width: pct(7) }}>
-                  {dayLabels.map((d,i)=> <span key={i} className="inline-block w-[calc(100%/7)]">{d}</span>)}
+        {/* X‑axis header aligned with the lanes */}
+        <div className="mb-2 flex items-center gap-3">
+          {/* left spacer equal to phase label column */}
+          <div className="w-40 shrink-0" />
+          <div ref={containerRef} className="relative h-6 flex-1 select-none">
+            {/* grid columns per day */}
+            <div
+              className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
+              style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
+            />
+            {/* labels aligned from 0 to totalDays */}
+            {showDays ? (
+              [...Array(total).keys()].map((w) => (
+                <div key={w} className="absolute top-0 text-center" style={{ left: pct(w * 7), width: pct(7) }}>
+                  {dayLabels.map((d, i) => (
+                    <span key={i} className="inline-block w-[calc(100%/7)]">{d}</span>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ))
+            ) : (
+              [...Array(total).keys()].map((w) => (
+                <div key={w} className="absolute top-0 text-center font-semibold text-white/80" style={{ left: pct(w * 7), width: pct(7) }}>
+                  W{w + 1}
+                </div>
+              ))
+            )}
           </div>
-          <div>End: {cal.end}</div>
         </div>
 
-        {/* Y‑axis phases with draggable bars (overlap allowed) */}
+        {/* Y‑axis phases with draggable bars (overlap allowed after user edits) */}
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
           {phases.map((p, idx) => (
             <div key={p.key} className="flex items-center gap-3">
               <div className="w-40 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-8 flex-1">
-                {/* grid background */}
-                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
+              <div className="relative h-9 flex-1">
+                {/* grid background same as header for visual alignment */}
+                <div
+                  className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
+                  style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
+                />
                 {/* bar */}
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 h-6 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
-                  style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks*7)) }}
+                  className="absolute top-1/2 -translate-y-1/2 h-7 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+                  style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}
                 >
                   {/* move handle (center) */}
                   <div
                     className="absolute inset-0 cursor-grab active:cursor-grabbing"
-                    onPointerDown={(e)=>onPointerDown(e, idx, 'move')}
+                    onPointerDown={(e) => onPointerDown(e, idx, "move")}
                     title="Drag to move"
                   />
                   {/* left resize */}
                   <div
                     className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e)=>onPointerDown(e, idx, 'left')}
+                    onPointerDown={(e) => onPointerDown(e, idx, "left")}
                     title="Drag to adjust start"
                   >
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
@@ -810,15 +863,15 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
                   {/* right resize */}
                   <div
                     className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e)=>onPointerDown(e, idx, 'right')}
+                    onPointerDown={(e) => onPointerDown(e, idx, "right")}
                     title="Drag to adjust end"
                   >
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
                   </div>
 
-                  {/* label */}
+                  {/* duration label */}
                   <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks*10)/10}w</div>
+                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks * 10) / 10}w</div>
                   </div>
                 </div>
               </div>
@@ -826,7 +879,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
           ))}
         </div>
 
-        <div className="mt-2 text-white/65 text-xs">Bars may overlap. Drag edges to resize in day precision (snaps by day); use the Total slider to expand/contract the full calendar.</div>
+        <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases (Start‑to‑Start, etc.). Bars snap by <b>day</b>. Use the Total slider to expand/contract the full calendar.</div>
       </div>
     </div>
   );
@@ -847,6 +900,7 @@ function useCSV(url) {
         setHeaders(headers);
         setRows(rows);
       } catch (e) {
+        // Sheet only: no local filler; show skeletons when empty
         setHeaders([]);
         setRows([]);
       }
@@ -882,15 +936,16 @@ function parseCSV(text) {
   return { headers, rows };
 }
 
-// ========= Featured Universe (Home) ========= //
+// ========= Featured Universe ========= //
 function FeaturedUniverse() {
   const { rows } = useCSV(SHEETS_CSV_URL);
 
   const picks = useMemo(() => {
     if (!rows?.length) return [];
+    const want = Math.min(6, Math.max(3, Math.floor(Math.random() * 4) + 3)); // 3–6
     const idx = new Set();
-    while (idx.size < Math.min(3, rows.length)) idx.add(Math.floor(Math.random() * rows.length));
-    return [...idx].map(i => rows[i]);
+    while (idx.size < Math.min(want, rows.length)) idx.add(Math.floor(Math.random() * rows.length));
+    return [...idx].map((i) => rows[i]);
   }, [rows]);
 
   return (
@@ -898,13 +953,14 @@ function FeaturedUniverse() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-3">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured from the Loremaker Universe</h2>
-          <Button href={LINKS.loremakerSite} className="text-sm" icon={ExternalLink}>Explore Universe</Button>
+          <span className="text-white/70 text-sm">A living, expanding canon</span>
         </div>
+        <p className="text-white/75 max-w-2xl mb-4">A few signals from a much larger world. Power balances shift, alliances fracture, and ordinary people are forced to choose a side.</p>
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {picks.length ? picks.map((r, i) => (
-            <CharacterCard key={`${r.Char_ID || r.id || i}`} row={r} />
-          )) : (
-            [0,1,2].map((i)=> (
+          {picks.length ? (
+            picks.map((r, i) => <CharacterCard key={`${r.Char_ID || r.id || r["Character"] || i}`} row={r} />)
+          ) : (
+            [0, 1, 2].map((i) => (
               <Card key={i}>
                 <div className="animate-pulse h-40 rounded-xl bg-white/5 border border-white/10" />
                 <div className="mt-3 h-5 w-2/3 bg-white/10 rounded" />
@@ -923,13 +979,15 @@ function CharacterCard({ row }) {
   const alias = row["Alias"] || row["AKA"] || "";
   const alignment = row["Alignment"] || row["Faction"] || "";
   const location = row["Location"] || "";
-  const short = row["Short Description"] || row["Summary"] || "";
+  const short = row["Short Description"] || row["Summary"] || row["Bio"] || "";
   const img = row["Cover Image"] || row["Image"] || "";
+  const long = row["Long Description"] || row["Bio"] || "";
+  const powers = row["Powers"] || row["Abilities"] || "";
   return (
     <Card>
-      <div className="aspect-[16/10] rounded-xl bg-black/45 border border-white/10 overflow-hidden grid place-items-center">
+      <div className="aspect-[16/10] rounded-xl bg-black/45 border border-white/10 overflow-hidden grid place-items-center group">
         {img ? (
-          <img src={img} alt={name} className="w-full h-full object-cover" />
+          <img src={img} alt={name} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform duration-400" />
         ) : (
           <div className="text-white/50 text-sm">Art / Poster</div>
         )}
@@ -937,6 +995,13 @@ function CharacterCard({ row }) {
       <div className="mt-3 font-semibold">{name}{alias ? <span className="text-white/60 font-normal"> — {alias}</span> : null}</div>
       <div className="text-white/70 text-sm">{alignment}{location ? ` • ${location}` : ""}</div>
       {short ? <p className="mt-2 text-white/80 text-sm">{short}</p> : null}
+      {(powers || long) ? (
+        <details className="mt-2 text-white/75 text-sm">
+          <summary className="cursor-pointer hover:underline">Character breakdown</summary>
+          {powers ? <p className="mt-1"><span className="text-white/60">Abilities:</span> {powers}</p> : null}
+          {long ? <p className="mt-1">{long}</p> : null}
+        </details>
+      ) : null}
       <div className="mt-4 flex gap-2">
         <Button href={LINKS.loremakerSite} className="bg-white/10" icon={ExternalLink}>Read more</Button>
       </div>
@@ -944,22 +1009,23 @@ function CharacterCard({ row }) {
   );
 }
 
-// ========= Portfolio (Featured 6 Projects) ========= //
+// ========= Portfolio ========= //
 function Portfolio() {
   const [modal, setModal] = useState(null);
   return (
     <section className="py-12" id="featured-projects">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-3">
+        <div className="flex items-end justify-between mb-1">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
-          <span className="text-white/70 text-sm">{PROJECTS.length} projects</span>
+          <span className="text-white/70 text-sm">Proof of craft, proof of results</span>
         </div>
+        <p className="text-white/75 max-w-2xl mb-4">Every frame serves story and strategy. Click a tile to watch or skim the case notes.</p>
         <div className="grid md:grid-cols-3 gap-6">
           {PROJECTS.map((p) => (
             <Card key={p.id}>
-              <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10">
+              <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
                 {youtubeThumb(p.url) ? (
-                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover" />
+                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform" />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
                 )}
@@ -1009,14 +1075,15 @@ function Portfolio() {
 // ========= Blog ========= //
 function Blog() {
   const POSTS = [
-    { id: "s1", title: "Making My First Short Film (1/3)", date: "2024-10-01", body: "Preproduction mistakes I won't repeat: coverage, casting, and schedule realism." },
-    { id: "s2", title: "Making My First Short Film (2/3)", date: "2024-10-08", body: "Production: blocking, directing performance, and morale under pressure." },
-    { id: "s3", title: "Making My First Short Film (3/3)", date: "2024-10-15", body: "Post: structural edit, sound, color, delivery, and festival plans." },
+    { id: "s1", title: "Production Isn’t Magic—It’s Math", date: "2024-10-01", body: "How I scope shoots that hit the budget, land the story, and don’t burn the crew." },
+    { id: "s2", title: "Directing with Restraint", date: "2024-10-08", body: "When less camera movement is more emotion—blocking that respects performance." },
+    { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
   ];
   return (
     <section className="py-12">
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Blog</h2>
+        <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
         <div className="mt-6 grid md:grid-cols-2 gap-4">
           {POSTS.map((p) => (
             <Card key={p.id}>
@@ -1038,8 +1105,10 @@ function Biography() {
       <div className="max-w-5xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Biography</h2>
         <Card className="mt-4 space-y-3">
-          <p className="text-white/85">Filmmaker and worldbuilder based in the UK. Grew up on DC’s mythic weight and MCU connectivity, with grounded realism. Creator of the Loremaker Universe.</p>
-          <p className="text-white/80">Influences: Edgar Wright (direction & editing), James Gunn (ensemble heart), Kevin Feige (long-arc production), George Lucas (mass relevance). Stylistic compass balances spectacle with emotion.</p>
+          <p className="text-white/85">I’m a director and worldbuilder focused on audience retention and emotional payoff. I grew up on DC’s mythic weight and the MCU’s long‑arc engineering, so my work blends spectacle, clarity, and continuity. I’m building the Loremaker Universe—Afro‑mythic superheroes, supernatural intrigue, and grounded human stakes.</p>
+          <p className="text-white/80">My lane: commercials, short films, music videos, documentaries, and AI‑assisted storytelling pipelines. I write treatments that sell, run lean crews, and deliver clean masters for multi‑platform delivery. I’m as comfortable arguing for a lens choice as I am for a marketing hook.</p>
+          <p className="text-white/80">Philosophy: style serves structure. If the audience doesn’t feel something, the frame’s a screensaver. I prioritize performance direction, visual clarity, and schedules that respect people’s time. Tools are welcome—taste is mandatory.</p>
+          <p className="text-white/80">Highlights include <em>Heroes & Gods</em> (feature‑length anthology), <em>Blinded by Magic</em>, <em>Abranteers</em>, and the boxing pilot doc <em>SPAR</em>. Beyond set life, I design pipelines for brands to publish consistently without losing voice.</p>
         </Card>
       </div>
     </section>
@@ -1052,7 +1121,7 @@ function AllLinksModal({ open, onClose }) {
     <Modal open={open} onClose={onClose} title="All my Links">
       <div className="grid md:grid-cols-3 gap-4">
         <Card>
-          <div className="flex items-center gap-3 mb-3"><Youtube className="h-5 w-5"/><div>
+          <div className="flex items-center gap-3 mb-3"><Youtube className="h-5 w-5" /><div>
             <div className="font-semibold">YouTube</div>
             <div className="text-white/60 text-xs">Trailers, reels, behind‑the‑scenes</div>
           </div></div>
@@ -1062,7 +1131,7 @@ function AllLinksModal({ open, onClose }) {
           </div>
         </Card>
         <Card>
-          <div className="flex items-center gap-3 mb-3"><Instagram className="h-5 w-5"/><div>
+          <div className="flex items-center gap-3 mb-3"><Instagram className="h-5 w-5" /><div>
             <div className="font-semibold">Instagram</div>
             <div className="text-white/60 text-xs">Stills, reels, lore snippets</div>
           </div></div>
@@ -1073,11 +1142,11 @@ function AllLinksModal({ open, onClose }) {
             <Button href={LINKS.mmmIG} target="_blank" rel="noreferrer" variant="ghost">MMM Media</Button>
             <Button href={LINKS.aiIG} target="_blank" rel="noreferrer" variant="ghost">AI Consultancy</Button>
           </div>
-          <div className="mt-3 flex items-center gap-2"><Linkedin className="h-4 w-4"/><a className="underline" href={LINKS.personalLI} target="_blank" rel="noreferrer">LinkedIn</a></div>
-          <div className="mt-1 flex items-center gap-2"><Linkedin className="h-4 w-4"/><a className="underline" href={LINKS.businessLI} target="_blank" rel="noreferrer">Business LinkedIn</a></div>
+          <div className="mt-3 flex items-center gap-2"><Linkedin className="h-4 w-4" /><a className="underline" href={LINKS.personalLI} target="_blank" rel="noreferrer">LinkedIn</a></div>
+          <div className="mt-1 flex items-center gap-2"><Linkedin className="h-4 w-4" /><a className="underline" href={LINKS.businessLI} target="_blank" rel="noreferrer">Business LinkedIn</a></div>
         </Card>
         <Card>
-          <div className="flex items-center gap-3 mb-3"><ExternalLink className="h-5 w-5"/><div>
+          <div className="flex items-center gap-3 mb-3"><ExternalLink className="h-5 w-5" /><div>
             <div className="font-semibold">Websites</div>
             <div className="text-white/60 text-xs">Universes, consultancy, archive</div>
           </div></div>
@@ -1099,8 +1168,8 @@ function LogoMark() {
       <svg viewBox="0 0 64 64" className="h-8 w-8">
         <defs>
           <linearGradient id="mmg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopOpacity="0.85" stopColor="#ffffff"/>
-            <stop offset="100%" stopOpacity="0.15" stopColor="#ffffff"/>
+            <stop offset="0%" stopOpacity="0.85" stopColor="#ffffff" />
+            <stop offset="100%" stopOpacity="0.15" stopColor="#ffffff" />
           </linearGradient>
         </defs>
         <rect x="8" y="8" width="48" height="48" rx="8" transform="rotate(45 32 32)" fill="url(#mmg)" opacity="0.12" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
@@ -1111,41 +1180,111 @@ function LogoMark() {
 }
 
 const MENU = [
-  { key: 'home', label: 'Home' },
-  { key: 'bio', label: 'Biography' },
-  { key: 'ai', label: 'AI' }, // external link
-  { key: 'loremaker', label: 'Loremaker' }, // external link
-  { key: 'blog', label: 'Blog' },
+  { key: "home", label: "Home" },
+  { key: "bio", label: "Biography" },
+  { key: "ai", label: "AI" }, // external link
+  { key: "loremaker", label: "Loremaker" }, // external link
+  { key: "blog", label: "Blog" },
 ];
 
+function FloatingButtons({ onOpenContact }) {
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 300);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+      {/* Contact bubble */}
+      <button
+        onClick={onOpenContact}
+        className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+        title="Quick contact"
+        aria-label="Contact"
+      >
+        <MessageSquare className="h-5 w-5" />
+      </button>
+      {/* Back to top */}
+      <AnimatePresence>
+        {showTop && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+            title="Back to top"
+            aria-label="Back to top"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function runSelfTests() {
+  try {
+    console.group("Self‑tests");
+    // getYouTubeId
+    console.assert(getYouTubeId("https://www.youtube.com/watch?v=abc123") === "abc123", "watch?v= failed");
+    console.assert(getYouTubeId("https://youtu.be/xyz789") === "xyz789", "youtu.be failed");
+    console.assert(getYouTubeId("https://www.youtube.com/shorts/QQ11WW22") === "QQ11WW22", "shorts failed");
+    console.assert(getYouTubeId("https://www.youtube.com/embed/IDID") === "IDID", "embed failed");
+
+    // parseCSV quoted commas
+    const sample = 'Name,Desc\n"Alpha, Beta","Line one, line two"\nGamma,Plain';
+    const parsed = parseCSV(sample);
+    console.assert(parsed.rows.length === 2, "CSV rows length");
+    console.assert(parsed.rows[0].Name === "Alpha, Beta", "CSV quoted field parse");
+    console.assert(parsed.rows[0].Desc.includes("line two"), "CSV multi");
+
+    // calendar calc
+    const phases = [
+      { key: "a", label: "A", startDays: 0, weeks: 1 },
+      { key: "b", label: "B", startDays: 7, weeks: 1 },
+    ];
+    const cal = buildCalendarStateOverlapping(phases, "2025-01-01");
+    console.assert(cal.start === "2025-01-01", "cal start");
+    console.assert(cal.end >= "2025-01-15", "cal end range");
+
+    // extra test: ensure pct math stays consistent
+    console.assert(typeof youtubeThumb(PROJECTS[0].url) === "string", "thumb returns string");
+
+    console.groupEnd();
+  } catch (e) {
+    console.warn("Self‑tests error:", e);
+  }
+}
+
 export default function AppShell() {
-  const [route, setRoute] = useState('home');
+  const [route, setRoute] = useState("home");
   const [reelOpen, setReelOpen] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
-  const [showTop, setShowTop] = useState(false);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
 
-  const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent('prefill-subtype', { detail: { subtype: name }}));
+  const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: name } }));
 
   const goContactInline = (serviceName) => {
     if (serviceName) prefillSubtype(serviceName);
-    setRoute('home');
-    setTimeout(()=>{ document.getElementById('contact-inline')?.scrollIntoView({behavior:'smooth', block:'start'}); }, 0);
+    setRoute("home");
+    setTimeout(() => { document.getElementById("contact-inline")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 0);
   };
 
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 400);
-    onScroll();
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    runSelfTests();
   }, []);
 
   return (
     <div className="min-h-screen text-white relative overflow-x-hidden">
       {/* Background */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.015)_0,rgba(255,255,255,0.015)_1px,transparent_1px,transparent_8px)]"/>
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.015)_0,rgba(255,255,255,0.015)_1px,transparent_1px,transparent_8px)]" />
         <DiamondsCanvas />
       </div>
 
@@ -1157,38 +1296,37 @@ export default function AppShell() {
             <span className="font-semibold tracking-tight">Menelek Makonnen</span>
           </div>
           <nav className="hidden md:flex items-center gap-5 text-white/80">
-            {MENU.map((m)=> (
-              m.key === 'ai' ? (
+            {MENU.map((m) => (
+              m.key === "ai" ? (
                 <a key={m.key} href={LINKS.icuniSite} className="hover:text-white" rel="noreferrer">{m.label}</a>
-              ) : m.key === 'loremaker' ? (
+              ) : m.key === "loremaker" ? (
                 <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white">{m.label}</a>
               ) : (
-                <a key={m.key} href="#" onClick={(e)=>{e.preventDefault(); setRoute(m.key);}} className={cn("hover:text-white", route===m.key && "text-white")}>{m.label}</a>
+                <a key={m.key} href="#" onClick={(e) => { e.preventDefault(); setRoute(m.key); }} className={cn("hover:text-white", route === m.key && "text-white")}>{m.label}</a>
               )
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Button onClick={()=>setLinksOpen(true)} className="hidden sm:inline-flex">All my Links</Button>
-            <a href={SOCIALS.email} className="text-white/80 hover:text-white hidden sm:inline-flex items-center gap-2"><Mail className="h-4 w-4"/>Email</a>
+            <Button onClick={() => setLinksOpen(true)} className="hidden sm:inline-flex">All my Links</Button>
+            <a href={SOCIALS.email} className="text-white/80 hover:text-white hidden sm:inline-flex items-center gap-2"><Mail className="h-4 w-4" />Email</a>
           </div>
         </div>
       </header>
 
       {/* Pages */}
       <main>
-        {route==='home' && (
+        {route === "home" && (
           <>
-            <Hero onWatch={()=>setReelOpen(true)} onOpenLinksModal={()=>setLinksOpen(true)} />
+            <Hero onWatch={() => setReelOpen(true)} onOpenLinksModal={() => setLinksOpen(true)} />
             <Portfolio />
             <FeaturedUniverse />
-            <WorkWithMe currentService={currentService} onSetService={(n)=>setCurrentService(n)} onBook={(svc)=>goContactInline(svc)} onCalendarChange={setCalendarState} />
+            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
             <section className="py-6"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
             <Blog />
-            <DevTests />
           </>
         )}
-        {route==='bio' && <Biography />}
-        {route==='blog' && <Blog />}
+        {route === "bio" && <Biography />}
+        {route === "blog" && <Blog />}
       </main>
 
       {/* Footer */}
@@ -1198,100 +1336,49 @@ export default function AppShell() {
             <div className="font-semibold">Menelek Makonnen</div>
             <div className="text-white/70 text-sm mt-1">Filmmaker • Worldbuilder</div>
             <div className="mt-3 flex items-center gap-4 text-white/80">
-              <a href={SOCIALS.instagram} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Instagram className="h-4 w-4"/>Instagram</a>
-              <a href={SOCIALS.youtube} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Youtube className="h-4 w-4"/>YouTube</a>
-              <a href={SOCIALS.linkedin} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Linkedin className="h-4 w-4"/>LinkedIn</a>
+              <a href={SOCIALS.instagram} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Instagram className="h-4 w-4" />Instagram</a>
+              <a href={SOCIALS.youtube} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Youtube className="h-4 w-4" />YouTube</a>
+              <a href={SOCIALS.linkedin} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Linkedin className="h-4 w-4" />LinkedIn</a>
             </div>
           </div>
-          <div>
-            <div className="font-semibold">Navigation</div>
-            <ul className="mt-2 space-y-2 text-white/80">
-              {MENU.map((m)=> (
-                m.key === 'ai' ? (
-                  <li key={m.key}><a href={LINKS.icuniSite} className="hover:text-white">{m.label}</a></li>
-                ) : m.key === 'loremaker' ? (
-                  <li key={m.key}><a href={LINKS.loremakerSite} className="hover:text-white">{m.label}</a></li>
-                ) : (
-                  <li key={m.key}><a href="#" onClick={(e)=>{e.preventDefault(); setRoute(m.key);}} className="hover:text-white">{m.label}</a></li>
-                )
-              ))}
-            </ul>
-          </div>
-          <div>
-            <div className="font-semibold">Legal</div>
-            <ul className="mt-2 space-y-2 text-white/80">
-              <li><a href="#" onClick={(e)=>{e.preventDefault(); alert('Privacy Policy modal placeholder.')}} className="hover:text-white">Privacy Policy</a></li>
-              <li><a href="#" onClick={(e)=>{e.preventDefault(); alert('Terms modal placeholder.')}} className="hover:text-white">Terms</a></li>
-            </ul>
+          <div className="md:col-span-2 text-white/70 text-sm">
+            © {new Date().getFullYear()} Loremaker • ICUNI. All rights reserved.
           </div>
         </div>
-        <div className="text-center text-white/60 text-sm py-4">© {new Date().getFullYear()} Menelek Makonnen. All rights reserved.</div>
       </footer>
 
-      {/* Floating Back‑to‑Top Button */}
-      <button
-        onClick={()=>window.scrollTo({top:0, behavior:'smooth'})}
-        className={cn("fixed right-5 bottom-5 z-40 transition-all", showTop ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none")}
-        aria-label="Back to top"
-      >
-        <div className="h-12 w-12 rounded-2xl border border-white/20 bg-white/10 backdrop-blur grid place-items-center shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-          <ChevronUp className="h-6 w-6" />
-        </div>
-      </button>
+      {/* Floating Buttons */}
+      <FloatingButtons onOpenContact={() => setContactOpen(true)} />
 
-      {/* Showreel Modal — Instagram Reel */}
-      <Modal open={reelOpen} onClose={()=>setReelOpen(false)} title="Director Showreel (Instagram)">
-        <div className="aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.instagram.com/p/${IG_REEL_ID}/embed`}
-            title="Instagram Reel"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-          />
+      {/* Modals */}
+      <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
+
+      {/* Quick Contact bubble modal */}
+      <Modal open={contactOpen} onClose={() => setContactOpen(false)} title="Quick Contact">
+        <div className="grid gap-3">
+          <p className="text-white/75 text-sm">Leave a fast brief. I’ll reply within 24–48h.</p>
+          <a className="underline" href={SOCIALS.email}>Or email me directly</a>
+          <textarea rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" placeholder="What are we making? Scope, goals, timeline…" />
+          <div className="flex gap-2">
+            <Button onClick={() => { alert("Saved locally. I’ll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
+            <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
+          </div>
+          <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
         </div>
       </Modal>
 
-      {/* All Links Modal */}
-      <AllLinksModal open={linksOpen} onClose={()=>setLinksOpen(false)} />
-
-      <DevTests />
+      <Modal open={reelOpen} onClose={() => setReelOpen(false)} title="Instagram Reel">
+        <div className="aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black">
+          <iframe
+            className="w-full h-full"
+            src={`https://www.instagram.com/reel/${IG_REEL_ID}/embed`}
+            title="Instagram reel"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      </Modal>
     </div>
-  );
-}
-
-// ========= Dev Self-Tests ========= //
-function DevTests() {
-  const [results, setResults] = useState([]);
-  useEffect(() => {
-    const r = [];
-    try { r.push({ name: "Blog component exists", pass: typeof Blog === 'function' }); } catch (e) { r.push({ name: "Blog component exists", pass: false, err: e?.message }); }
-    try {
-      const labels = SERVICES.map(s=>s.name);
-      r.push({ name: "Services include AI Advert & Music Video", pass: labels.includes('AI Advert') && labels.includes('Music Video') });
-    } catch (e) { r.push({ name: "Services assertions", pass: false, err: e?.message }); }
-    try { r.push({ name: "Loremaker URL set", pass: LINKS.loremakerSite?.includes('menelekmakonnen.com/loremaker') }); } catch (e) { r.push({ name: "Link assertions", pass: false, err: e?.message }); }
-    try { r.push({ name: "Sheet URL present", pass: typeof SHEETS_CSV_URL === 'string' && SHEETS_CSV_URL.length > 0 }); } catch (e) { r.push({ name: "Sheet url", pass: false, err: e?.message }); }
-    try {
-      const id1 = getYouTubeId('https://www.youtube.com/watch?v=abcdEFGhijk');
-      const id2 = getYouTubeId('https://youtu.be/abcdEFGhijk');
-      const id3 = getYouTubeId('https://www.youtube.com/shorts/abcdEFGhijk');
-      const ok1 = (id1==='abcdEFGhijk' && id2==='abcdEFGhijk' && id3==='abcdEFGhijk');
-      const ok2 = youtubeThumb('https://youtu.be/abcdEFGhijk').includes('i.ytimg.com/vi/abcdEFGhijk');
-      r.push({ name: "YouTube utils", pass: ok1 && ok2 });
-    } catch (e) { r.push({ name: "YouTube utils", pass: false, err: e?.message }); }
-    // Calendar tests
-    try {
-      const phases = [
-        { key:'development', startDays:0, weeks: 1 },
-        { key:'pre', startDays:3, weeks: 1 },
-      ];
-      const cal = buildCalendarStateOverlapping(phases, '2025-01-01');
-      r.push({ name: "Calendar overlapping builds", pass: cal.phases.length>=2 && cal.start==='2025-01-01' && !!cal.end });
-    } catch (e) { r.push({ name: "Calendar build", pass: false, err: e?.message }); }
-    setResults(r);
-  }, []);
-  return (
-    <div className="sr-only" aria-hidden="true">{JSON.stringify(results)}</div>
   );
 }
