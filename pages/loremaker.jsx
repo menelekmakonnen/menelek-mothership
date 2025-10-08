@@ -44,11 +44,18 @@ const GALLERY_ALIASES = Array.from({ length: 15 }, (_, i) => i + 1).map((n) => [
 ]);
 
 /** -------------------- Types -------------------- */
-interface Power { name: string; level: number }
-interface CharacterRow {
-  id: string; name: string; alias: string[]; gender?: string; alignment?: string; locations: string[]; status?: string; era?: string; firstAppearance?: string; powers: Power[]; faction?: string[]; tags?: string[]; shortDesc?: string; longDesc?: string; stories?: string[]; cover?: string; gallery: string[];
-}
-
+-interface Power { name: string; level: number }
+-interface CharacterRow {
+-  id: string; name: string; alias: string[]; gender?: string; alignment?: string; locations: string[]; status?: string; era?: string; firstAppearance?: string; powers: Power[]; faction?: string[]; tags?: string[]; shortDesc?: string; longDesc?: string; stories?: string[]; cover?: string; gallery: string[];
+-}
+/** -------------------- Types (JSDoc only) -------------------- */
+/** @typedef {{name: string, level: number}} Power */
+/** @typedef {{
++ *  id: string, name: string, alias: string[], gender?: string, alignment?: string,
++ *  locations: string[], status?: string, era?: string, firstAppearance?: string,
++ *  powers: Power[], faction?: string[], tags?: string[], shortDesc?: string,
++ *  longDesc?: string, stories?: string[], cover?: string, gallery: string[]
++ * }} CharacterRow */
 // Global cache for Alliances suggestions
 let __ALL_CHARS: CharacterRow[] = [];
 
