@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Search, RefreshCcw, X, ArrowUp, ArrowRight, ChevronLeft, ChevronRight, Filter, Users, MapPin, Layers3, Atom, Clock, LibraryBig, Crown, Swords } from "lucide-react";
+import { Search, RefreshCcw, X, ArrowUp, ArrowRight, ChevronLeft, ChevronRight, Filter, Users, MapPin, Layers3, Atom, Clock, LibraryBig, Crown, Swords, PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,9 @@ import { Switch } from "@/components/ui/switch";
 
 /**
  * LOREMAKER — Ultra build (JS version, no TS in JSX)
- * - No dropdowns, bright text everywhere except Arena
- * - Sidebar filters; floating Clear/Top
- * - Fixed-height manual Hero slider with arrow controls
+ * - Filters & Arena tucked into floating pockets (left/right)
+ * - Clickable power names in Character view to filter by power
+ * - Hero pinned at top on load
  */
 
 /** -------------------- Config -------------------- */
@@ -576,7 +576,7 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
                 {c.powers.map((p) => (
                   <div key={p.name} className="text-sm">
                     <div className="mb-1 flex items-center justify-between font-bold">
-                      <span className="truncate pr-2">{p.name}</span>
+                      <button className="truncate pr-2 underline decoration-dotted" onClick={() => onFacet({ key: "powers", value: p.name })}>{p.name}</button>
                       <span>{p.level}/10</span>
                     </div>
                     <PowerMeter level={p.level} />
@@ -909,8 +909,8 @@ function BattleArena({ data, externalPick }) {
   );
 }
 
-/** -------------------- Sidebar Filters (no dropdowns) -------------------- */
-function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, sidebarRef, onClear }) {
+/** -------------------- Sidebar Filters (reusable content for pocket) -------------------- */
+function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, onClear }) {
   const uniq = (arr) => Array.from(new Set(arr)).filter(Boolean).sort((a, b) => a.localeCompare(b));
   const genders = uniq(data.map((d) => d.gender || ""));
   const alignments = uniq(data.map((d) => d.alignment || ""));
@@ -951,7 +951,7 @@ function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, 
   }
 
   return (
-    <aside ref={sidebarRef} className="sticky top-20 space-y-6 p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-2xl text-white">
+    <div className="space-y-6 p-4 text-white">
       <div className="flex items-center justify-between">
         <div className="text-sm font-extrabold flex items-center gap-2">
           <Filter /> Filters
@@ -959,7 +959,194 @@ function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, 
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold">Mode</span>
           <Badge className="bg-white/10 border-white/10">{combineAND ? "AND" : "Single"}</Badge>
-     </div> </div>
-  </aside>
-);
+          <Switch checked={!!combineAND} onCheckedChange={(v) => setCombineAND(!!v)} />
+        </div>
+      </div>
+      <Section title="Gender" values={genders} keyName="gender" single />
+      <Section title="Alignment" values={alignments} keyName="alignment" single />
+      <Section title="Locations" values={locations} keyName="locations" />
+      <Section title="Factions/Teams" values={factions} keyName="faction" />
+      <Section title="Era" values={eras} keyName="era" />
+      <Section title="Status" values={statuses} keyName="status" />
+      <Section title="Tags" values={tags} keyName="tags" />
+      <Section title="Stories" values={stories} keyName="stories" />
+      <Section title="Powers" values={powers} keyName="powers" />
+      <div className="flex gap-2 pt-2">
+        <Button variant="secondary" className="font-bold" onClick={onClear}>
+          Clear Filters
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** -------------------- Pocket Panels -------------------- */
+function PocketPanel({ side = "left", open, onClose, title, icon, children }) {
+  return (
+    <div className={`fixed top-0 ${side === "left" ? "left-0" : "right-0"} z-50 h-full w-[320px] sm:w-[360px] transition-transform duration-300 ${open ? "translate-x-0" : side === "left" ? "-translate-x-full" : "translate-x-full"}`}>
+      <div className="h-full backdrop-blur-2xl bg-slate-900/85 border border-white/10">
+        <div className="flex items-center justify-between p-3 border-b border-white/10 text-white">
+          <div className="flex items-center gap-2 font-extrabold">{icon}{title}</div>
+          <Button variant="ghost" onClick={onClose} aria-label="Close"><X /></Button>
+        </div>
+        <div className="overflow-y-auto h-[calc(100%-52px)] text-white">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** -------------------- Main App -------------------- */
+export default function LoremakerDirectoryApp() {
+  const { data, loading, error, refetch } = useCharacters();
+  const [filters, setFilters] = useState({});
+  const [query, setQuery] = useState("");
+  const [combineAND, setCombineAND] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [active, setActive] = useState(null);
+  const [arenaPick, setArenaPick] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showArena, setShowArena] = useState(false);
+
+  // Ensure the Hero starts at the very top on first render
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
+  const filtered = useMemo(() => {
+    return data.filter((c) => matchesFilters(c, filters, combineAND, query));
+  }, [data, filters, combineAND, query]);
+
+  const onOpen = (c) => {
+    setActive(c);
+    setModalOpen(true);
+  };
+  const onFacet = ({ key, value }) => {
+    setFilters((f) => {
+      const next = { ...f };
+      if (key === "gender" || key === "alignment") next[key] = value;
+      else {
+        const set = new Set([...(next[key] || [])]);
+        set.has(value) ? set.delete(value) : set.add(value);
+        next[key] = Array.from(set);
+      }
+      return next;
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const onUseInSim = (id) => setArenaPick(id);
+  const clearFilters = () => setFilters({});
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <Aurora />
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/70 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+          <Insignia label="Loremaker" size={36} variant="site" />
+          <div className="font-black tracking-tight text-white text-lg">Loremaker Directory</div>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" className="pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/60 font-semibold" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/70" size={16} />
+            </div>
+            <Button variant="secondary" className="font-bold" onClick={refetch}>
+              <RefreshCcw size={16} className="mr-1" /> Reload
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {error && <div className="text-red-300 font-bold mb-4">{String(error)}</div>}
+
+        {/* Hero at the top */}
+        <HeroSection data={data} onOpen={onOpen} onFacet={onFacet} />
+
+        <div className="mt-6">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-2xl text-white">
+            <CardHeader>
+              <CardTitle className="text-2xl font-extrabold flex items-center gap-2">
+                <LibraryBig /> Explore the Universe
+              </CardTitle>
+              <CardDescription className="text-white/80 font-semibold">Use the left/right pockets for Filters and Arena. Click a card to open a rich profile. Add two to the arena and fight.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-xs uppercase tracking-widest font-extrabold mb-2">Popular Stories</div>
+                <StoryChips data={data} onFacet={onFacet} />
+              </div>
+              {loading ? (
+                <div className="text-white font-bold">Loading characters…</div>
+              ) : (
+                <CharacterGrid data={filtered} onOpen={onOpen} onFacet={onFacet} onUseInSim={onUseInSim} />)
+              }
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+
+      {/* Floating pocket toggles */}
+      <button
+        onClick={() => setShowFilters(true)}
+        className="fixed bottom-4 left-4 p-3 rounded-full bg-white text-slate-900 shadow-[0_8px_40px_rgba(0,0,0,.4)] border border-slate-200 font-extrabold flex items-center gap-2"
+        aria-label="Open Filters"
+      >
+        <PanelLeftOpen />
+        Filters
+      </button>
+
+      <button
+        onClick={() => setShowArena(true)}
+        className="fixed bottom-4 right-4 p-3 rounded-full bg-white text-slate-900 shadow-[0_8px_40px_rgba(0,0,0,.4)] border border-slate-200 font-extrabold flex items-center gap-2"
+        aria-label="Open Arena"
+      >
+        <PanelRightOpen />
+        Arena
+      </button>
+
+      {/* Optional back-to-top sits above pockets */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        className="fixed bottom-20 right-4 p-3 rounded-full bg-white/10 text-white shadow-[0_8px_40px_rgba(0,0,0,.4)] border border-white/20 font-extrabold"
+        aria-label="Back to top"
+      >
+        <ArrowUp />
+      </button>
+
+      {/* Pockets */}
+      <PocketPanel side="left" open={showFilters} onClose={() => setShowFilters(false)} title={<span>Filters</span>} icon={<Filter className="mr-2" size={16} />}>
+        <SidebarFilters
+          data={data}
+          filters={filters}
+          setFilters={setFilters}
+          combineAND={combineAND}
+          setCombineAND={setCombineAND}
+          onClear={clearFilters}
+        />
+      </PocketPanel>
+
+      <PocketPanel side="right" open={showArena} onClose={() => setShowArena(false)} title={<span>Arena</span>} icon={<Swords className="mr-2" size={16} />}>
+        <div className="p-4">
+          <BattleArena data={data} externalPick={arenaPick} />
+        </div>
+      </PocketPanel>
+
+      <CharacterModal open={modalOpen} onClose={() => setModalOpen(false)} c={active} onFacet={onFacet} onUseInSim={onUseInSim} />
+    </div>
+  );
+}
+
+/** -------------------- Lightweight self-tests (non-blocking) -------------------- */
+if (typeof window !== "undefined" && !window.__LOREMAKER_TESTED__) {
+  window.__LOREMAKER_TESTED__ = true;
+  try {
+    console.assert(JSON.stringify(splitList("A, B and C;D|E")) === JSON.stringify(["A","B","C","D","E"]), "splitList failed");
+    const powers = parsePowers("Flight: 7, Fire(9), Ice10");
+    console.assert(powers.length === 3 && powers[0].level === 7 && powers[1].level === 9 && powers[2].level === 10, "parsePowers failed");
+    const sample = { name:"X", alias:[], powers:[{name:"Flight",level:7}], locations:["Neo City"], tags:[], shortDesc:"", longDesc:"" };
+    console.assert(matchesFilters(sample, { powers:["Flight"] }, true, ""), "matchesFilters(power) failed");
+  } catch (e) {
+    console.warn("Self-tests encountered an error:", e);
+  }
 }
