@@ -959,4 +959,6 @@ function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, 
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold">Mode</span>
           <Badge className="bg-white/10 border-white/10">{combineAND ? "AND" : "Single"}</Badge>
-     )
+     </div> </div>
+  </aside> </section>
+);
