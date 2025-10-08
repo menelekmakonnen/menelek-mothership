@@ -14,10 +14,11 @@ import { Switch } from "@/components/ui/switch";
 /** -------------------- Config -------------------- */
 const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM";
 const SHEET_NAME = "Characters";
-const GVIZ_URL = (sheetName: string) =>
+const GVIZ_URL = (sheetName) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
 
-const COL_ALIAS: Record<string, string[]> = {
+/** @type {Record<string, string[]>} */
+const COL_ALIAS = {
   id: ["id", "char_id", "character id", "code"],
   name: ["character", "character name", "name"],
   alias: ["alias", "aliases", "also known as"],
