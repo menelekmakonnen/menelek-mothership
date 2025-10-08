@@ -962,3 +962,4 @@ function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, 
      </div> </div>
   </aside>
 );
+}
