@@ -1,21 +1,110 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Search, RefreshCcw, X, ArrowUp, ArrowRight, ChevronLeft, ChevronRight, Filter, Users, MapPin, Layers3, Atom, Clock, LibraryBig, Crown, Swords, PanelLeftOpen, PanelRightOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import {
+  Search,
+  RefreshCcw,
+  X,
+  ArrowUp,
+  ArrowRight,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Users,
+  MapPin,
+  Layers3,
+  Atom,
+  Clock,
+  Crown,
+  Swords,
+} from "lucide-react";
 
 /**
- * LOREMAKER — Ultra build (JS version, no TS in JSX)
- * - Filters & Arena tucked into floating pockets (left/right)
- * - Clickable power names in Character view to filter by power
- * - Hero pinned at top on load
+ * LOREMAKER — Ultra build (plain JSX, no TS)
+ * - Filters are a slide‑in drawer (hidden by default). No dropdowns anywhere.
+ * - Bright text everywhere except Arena (high contrast as requested).
+ * - Manual Hero slider (fixed height, keyboard arrows enabled). No auto-slide.
+ * - Hover-only "Simulate" button near insignia on cards; tactile pulse on click.
+ * - Syncs live from Google Sheets via GViz. Gallery/cover Drive links normalized.
+ * - No external UI imports (shadcn). Minimal in-file UI components to avoid module errors.
  */
 
+/** -------------------- Tiny UI kit (no external imports) -------------------- */
+function cx(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
+function Button({ variant = "default", className = "", children, as: Tag = "button", ...props }) {
+  const base =
+    "inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-extrabold transition active:scale-[.98] focus:outline-none focus:ring-2 focus:ring-offset-0";
+  const styles = {
+    default: "bg-white text-black hover:bg-white/90",
+    secondary: "bg-black/70 text-white hover:bg-black",
+    outline: "border border-white/30 text-white hover:bg-white/10",
+    ghost: "text-white/90 hover:bg-white/10",
+    destructive: "bg-red-600 text-white hover:bg-red-500",
+  }[variant];
+  return (
+    <Tag className={cx(base, styles, className)} {...props}>
+      {children}
+    </Tag>
+  );
+}
+function Card({ className = "", children }) {
+  return <div className={cx("rounded-2xl border border-white/10 bg-white/5 backdrop-blur", className)}>{children}</div>;
+}
+function CardHeader({ className = "", children }) {
+  return <div className={cx("p-4", className)}>{children}</div>;
+}
+function CardContent({ className = "", children }) {
+  return <div className={cx("p-4", className)}>{children}</div>;
+}
+function CardFooter({ className = "", children }) {
+  return <div className={cx("p-4 pt-0", className)}>{children}</div>;
+}
+function CardTitle({ className = "", children }) {
+  return <div className={cx("text-lg font-extrabold", className)}>{children}</div>;
+}
+function CardDescription({ className = "", children }) {
+  return <div className={cx("text-sm text-white/80", className)}>{children}</div>;
+}
+function Input({ className = "", ...props }) {
+  return (
+    <input
+      className={cx(
+        "w-full rounded-xl bg-white/10 text-white placeholder-white/60 border border-white/20 px-3 py-2 focus:outline-none focus:ring-2",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+function Badge({ className = "", children }) {
+  return <span className={cx("px-2 py-1 rounded-full text-xs font-extrabold", className)}>{children}</span>;
+}
+function Switch({ checked, onChange, id }) {
+  return (
+    <button
+      id={id}
+      role="switch"
+      aria-checked={!!checked}
+      onClick={() => onChange(!checked)}
+      className={cx(
+        "w-12 h-6 rounded-full relative transition border",
+        checked ? "bg-amber-300 border-amber-300" : "bg-white/10 border-white/30"
+      )}
+    >
+      <span
+        className={cx(
+          "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition",
+          checked ? "translate-x-6" : "translate-x-0"
+        )}
+      />
+    </button>
+  );
+}
+
 /** -------------------- Config -------------------- */
-const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM";
+const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM"; // replace if needed
 const SHEET_NAME = "Characters";
 const GVIZ_URL = (sheetName) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
@@ -90,13 +179,13 @@ function parsePowers(raw) {
     let name = item;
     let level = 0;
     const colon = item.match(/^(.*?)[=:]\s*(\d{1,2})(?:\s*\/\s*10)?$/);
-    const paren = item.match(/^(.*?)\((\d{1,2})\)$/);
     if (colon) {
       name = colon[1].trim();
       level = Math.min(10, parseInt(colon[2]));
-    } else if (paren) {
-      name = paren[1].trim();
-      level = Math.min(10, parseInt(paren[2]));
+    } else if (/\(/.test(item) && item.match(/\((\d{1,2})\)/)) {
+      const m = item.match(/^(.*?)\((\d{1,2})\)$/);
+      name = (m?.[1] || item).trim();
+      level = Math.min(10, parseInt(m?.[2] || "0"));
     } else {
       const trail = item.match(/^(.*?)(\d{1,2})$/);
       if (trail) {
@@ -194,6 +283,78 @@ function fillDailyPowers(c) {
 }
 
 /** -------------------- Data hook -------------------- */
+const SAMPLE = [
+  {
+    id: "mystic-man",
+    name: "Mystic Man",
+    alias: ["Arcanist"],
+    gender: "Male",
+    alignment: "Hero",
+    locations: ["Accra", "London"],
+    status: "Active",
+    era: "Modern",
+    firstAppearance: "2019",
+    powers: [
+      { name: "Spellcraft", level: 9 },
+      { name: "Teleportation", level: 7 },
+    ],
+    faction: ["Earthguard"],
+    tags: ["Leader"],
+    shortDesc: "A strategist mage who wages wars with runes.",
+    longDesc: "Master tactician of the Loremaker universe.",
+    stories: ["Heroes & Gods"],
+    cover:
+      "https://images.unsplash.com/photo-1544450770-94d251f81d7b?q=80&w=1200&auto=format&fit=crop",
+    gallery: [],
+  },
+  {
+    id: "lithespeed",
+    name: "Lithespeed",
+    alias: ["Quicksable"],
+    gender: "Female",
+    alignment: "Hero",
+    locations: ["Tema"],
+    status: "Active",
+    era: "Modern",
+    firstAppearance: "2020",
+    powers: [
+      { name: "Superspeed", level: 8 },
+      { name: "Reflexes", level: 7 },
+    ],
+    faction: ["Earthguard"],
+    tags: ["Legend"],
+    shortDesc: "Speedster with dancer's finesse.",
+    longDesc: "She can paint circles around thunder.",
+    stories: ["Heroes & Gods"],
+    cover:
+      "https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=1200&auto=format&fit=crop",
+    gallery: [],
+  },
+  {
+    id: "nighteagle",
+    name: "Nighteagle",
+    alias: ["Watcher"],
+    gender: "Male",
+    alignment: "Vigilante",
+    locations: ["Kumasi"],
+    status: "Unknown",
+    era: "Modern",
+    firstAppearance: "2018",
+    powers: [
+      { name: "Stealth", level: 8 },
+      { name: "Gadgets", level: 7 },
+    ],
+    faction: ["Janitors"],
+    tags: ["Mythic"],
+    shortDesc: "Silent guardian with metal wings.",
+    longDesc: "Haunts rooftops and rumor mills alike.",
+    stories: ["Vigilantes: Dawn of the"],
+    cover:
+      "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1200&auto=format&fit=crop",
+    gallery: [],
+  },
+];
+
 function useCharacters() {
   const [raw, setRaw] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -230,12 +391,14 @@ function useCharacters() {
         const c = rowToCharacter(r.c || [], map);
         if (c) parsed.push(fillDailyPowers(c));
       }
-      console.info(`[Loremaker] Loaded ${parsed.length} characters`);
       setRaw(parsed);
       __ALL_CHARS = parsed;
     } catch (e) {
-      console.error(e);
-      setError(e?.message || "Failed to load sheet");
+      console.error("Sheet load failed, using SAMPLE:", e?.message || e);
+      const parsed = SAMPLE.map(fillDailyPowers);
+      setRaw(parsed);
+      __ALL_CHARS = parsed;
+      setError("Loaded fallback sample data");
     } finally {
       setLoading(false);
     }
@@ -273,7 +436,12 @@ function Aurora({ className }) {
 
 // Upright heater shield insignia (interactive)
 function Insignia({ label, size = 48, variant = "character", expandableName }) {
-  const initials = label.split(/\s+/).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("") || "LM";
+  const initials =
+    label
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase())
+      .join("") || "LM";
   const hue = Math.abs([...label].reduce((a, c) => a + c.charCodeAt(0), 0)) % 360;
   const g1 = `hsl(${hue},85%,65%)`;
   const g2 = `hsl(${(hue + 50) % 360},85%,60%)`;
@@ -309,7 +477,7 @@ function ImageSafe({ src, alt, className, fallbackLabel }) {
   if (!src || err)
     return (
       <div className={`relative ${className || ""} flex items-center justify-center bg-white/5 border border-white/10 rounded-xl`}>
-        <Insignia label={fallbackLabel} size={64} />
+        <Insignia label={fallbackLabel || alt || ""} size={64} />
       </div>
     );
   return <img src={src} alt={alt} onError={() => setErr(true)} className={className} loading="lazy" />;
@@ -328,7 +496,10 @@ function FacetChip({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded-full text-sm font-bold border transition ${active ? "bg-white text-black border-white" : "bg-white/10 text-white border-white/40 hover:bg-white/20"}`}
+      className={cx(
+        "px-3 py-1 rounded-full text-sm font-bold border transition",
+        active ? "bg-white text-black border-white" : "bg-white/10 text-white border-white/40 hover:bg-white/20"
+      )}
     >
       {children}
     </button>
@@ -337,29 +508,46 @@ function FacetChip({ active, onClick, children }) {
 
 /** -------------------- Character Card / Modal -------------------- */
 function CharacterCard({ c, onOpen, onFacet, onUseInSim }) {
+  const [pulse, setPulse] = useState(false);
   const openProfile = () => onOpen(c);
+  const triggerSim = () => {
+    setPulse(true);
+    onUseInSim(c.id);
+    setTimeout(() => setPulse(false), 420);
+  };
   return (
-    <Card className="bg-white/5 border-white/10 backdrop-blur-md hover:shadow-2xl hover:shadow-fuchsia-500/15 transition overflow-hidden group">
+    <Card className={cx(
+      "hover:shadow-2xl hover:shadow-fuchsia-500/15 transition overflow-hidden group",
+      pulse ? "ring-2 ring-amber-300 scale-[1.01]" : ""
+    )}>
       <div className="relative">
         <button onClick={openProfile} className="block text-left w-full">
           <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-56 w-full object-cover" />
         </button>
-        <div className="absolute left-2 top-2">
-          <div className="inline-flex items-center gap-2">
-            <div onClick={openProfile} className="cursor-pointer">
-              <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
-            </div>
+        <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
+          <div onClick={openProfile} className="cursor-pointer">
+            <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
           </div>
+          {/* Hover-only Sim button near the name bubble */}
+          <motion.button
+            onClick={triggerSim}
+            whileTap={{ scale: 0.95 }}
+            className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-extrabold bg-amber-300 text-black shadow border border-black/10"
+            aria-label="Use in Simulator"
+            title="Load into Battle Arena"
+          >
+            <Swords size={14} /> Simulate
+          </motion.button>
         </div>
       </div>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-3">
           <Insignia label={c.faction?.[0] || c.name} size={32} variant={c.faction?.length ? "faction" : "character"} />
-          <CardTitle onClick={openProfile} role="button" className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
+          <CardTitle role="button" onClick={openProfile} className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-amber-200">{c.name}</span>
           </CardTitle>
         </div>
-        <CardDescription className="line-clamp-2 text-white font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
+        <CardDescription className="line-clamp-2 font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="flex flex-wrap gap-2">
@@ -391,9 +579,6 @@ function CharacterCard({ c, onOpen, onFacet, onUseInSim }) {
           <Button variant="secondary" className="font-bold" onClick={openProfile}>
             Read <ArrowRight className="ml-1" size={16} />
           </Button>
-          <Button variant="secondary" className="font-bold" onClick={() => onUseInSim(c.id)}>
-            Use in Sim
-          </Button>
         </div>
       </CardFooter>
     </Card>
@@ -414,15 +599,23 @@ function Gallery({ images, cover, name }) {
       <ImageSafe src={imgs[idx]} alt={`${name} gallery ${idx + 1}`} fallbackLabel={name} className="w-full h-64 object-cover rounded-xl border border-white/10" />
       {imgs.length > 1 && (
         <>
-          <button className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition" onClick={() => setIdx((i) => (i - 1 + imgs.length) % imgs.length)} aria-label="Previous">
+          <button
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition"
+            onClick={() => setIdx((i) => (i - 1 + imgs.length) % imgs.length)}
+            aria-label="Previous"
+          >
             <ChevronLeft size={18} />
           </button>
-          <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition" onClick={() => setIdx((i) => (i + 1) % imgs.length)} aria-label="Next">
+          <button
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition"
+            onClick={() => setIdx((i) => (i + 1) % imgs.length)}
+            aria-label="Next"
+          >
             <ChevronRight size={18} />
           </button>
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
             {imgs.map((_, i) => (
-              <span key={i} className={`h-1.5 w-1.5 rounded-full ${i === idx ? "bg-white" : "bg-white/60"}`} />
+              <span key={i} className={cx("h-1.5 w-1.5 rounded-full", i === idx ? "bg-white" : "bg-white/60")} />
             ))}
           </div>
         </>
@@ -576,7 +769,7 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
                 {c.powers.map((p) => (
                   <div key={p.name} className="text-sm">
                     <div className="mb-1 flex items-center justify-between font-bold">
-                      <button className="truncate pr-2 underline decoration-dotted" onClick={() => onFacet({ key: "powers", value: p.name })}>{p.name}</button>
+                      <span className="truncate pr-2">{p.name}</span>
                       <span>{p.level}/10</span>
                     </div>
                     <PowerMeter level={p.level} />
@@ -609,14 +802,14 @@ function matchesFilters(c, f, combineAND, query) {
   const checks = [];
   if (f.gender) checks.push((c.gender || "").toLowerCase() === f.gender.toLowerCase());
   if (f.alignment) checks.push((c.alignment || "").toLowerCase() === f.alignment.toLowerCase());
-  if (f.locations?.length) checks.push(f.locations.every((v) => c.locations.map((x) => x.toLowerCase()).includes(v.toLowerCase())));
+  if (f.locations?.length) checks.push(f.locations.every((v) => (c.locations || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
   if (f.faction?.length) checks.push(f.faction.every((v) => (c.faction || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
   if (f.tags?.length) checks.push(f.tags.every((v) => (c.tags || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
   if (f.era?.length) checks.push(f.era.some((v) => (c.era || "").toLowerCase() === v.toLowerCase()));
   if (f.status?.length) checks.push(f.status.some((v) => (c.status || "").toLowerCase() === v.toLowerCase()));
   if (f.stories?.length) checks.push(f.stories.every((v) => (c.stories || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
   if (f.alias?.length) checks.push(f.alias.some((v) => (c.alias || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
-  if (f.powers?.length) checks.push(f.powers.every((v) => c.powers.map((p) => p.name.toLowerCase()).includes(v.toLowerCase())));
+  if (f.powers?.length) checks.push(f.powers.every((v) => (c.powers || []).map((p) => p.name.toLowerCase()).includes(v.toLowerCase())));
   const filterMatch = combineAND ? checks.every(Boolean) : checks.some(Boolean) || Object.keys(f).length === 0;
   return searchMatch && filterMatch;
 }
@@ -808,345 +1001,498 @@ function CharacterGrid({ data, onOpen, onFacet, onUseInSim }) {
 
 /** -------------------- Battle Arena++ -------------------- */
 function scoreCharacter(c) {
-  const base = c.powers.reduce((s, p) => s + (isFinite(p.level) ? p.level : 0), 0);
+  const base = (c.powers || []).reduce((s, p) => s + (isFinite(p.level) ? p.level : 0), 0);
   const elite = (c.tags || []).some((t) => /leader|legend|mythic|prime/i.test(t)) ? 3 : 0;
-  const eraMod = /old gods/i.test(c.era || "") ? 1.05 : 1;
-  return Math.round((base + elite) * eraMod);
+  const eraMod = /old gods|ancient/i.test(c.era || "") ? 1.07 : 1;
+  const withBias = (base + elite) * scoreBiasByBeing(c) * eraMod;
+  return Math.round(withBias);
 }
 function rngLuck(max) {
-  const r = (Math.random() * 2 - 1) * 0.18 * max;
+  const r = (Math.random() * 2 - 1) * 0.18 * max; // ±18%
   return Math.round(r);
 }
+function scoreBiasByBeing(c) {
+  const tags = (c.tags || []).join(" ").toLowerCase();
+  const name = (c.name || "").toLowerCase();
+  const era = (c.era || "").toLowerCase();
+  const powerNames = (c.powers || []).map((p) => p.name.toLowerCase()).join(" ");
+  const isGod = /god|deity|divine|celestial/.test(tags) || /god|deity/.test(name) || /old gods/.test(era);
+  const isAlien = /alien|extraterrestrial|off-world/.test(tags);
+  const isMeta = /mutant|meta|enhanced|sorcer|mage|witch|wizard|cyborg|android|artifact/.test(tags) || /magic|spell|rune/.test(powerNames);
+  const isHuman = /human/.test(tags) && !isMeta && !isAlien && !isGod;
+  if (isGod) return 1.8; // gods are monsters by default
+  if (isAlien) return 1.35;
+  if (isMeta) return 1.2;
+  if (isHuman) return 1.0;
+  return 1.05;
+}
 function duel(c1, c2) {
-  const s1 = scoreCharacter(c1),
-    s2 = scoreCharacter(c2);
-  const m = Math.max(s1, s2) || 1;
-  const r1 = rngLuck(m),
-    r2 = rngLuck(m);
-  const f1 = s1 + r1,
-    f2 = s2 + r2;
-  const winner = f1 === f2 ? (Math.random() < 0.5 ? c1 : c2) : f1 > f2 ? c1 : c2;
-  return { s1, s2, r1, r2, f1, f2, winner };
+  const s1 = scoreCharacter(c1);
+  const s2 = scoreCharacter(c2);
+  const maxBase = Math.max(s1, s2) || 1;
+  const swings = 3;
+  let h1 = 100, h2 = 100;
+  const logs = [];
+  for (let i = 0; i < swings; i++) {
+    const luck1 = rngLuck(maxBase);
+    const luck2 = rngLuck(maxBase);
+    const hit1 = Math.max(0, s1 + luck1 - Math.max(0, s2 * 0.35));
+    const hit2 = Math.max(0, s2 + luck2 - Math.max(0, s1 * 0.35));
+    const scale = 34 / Math.max(1, Math.max(hit1, hit2));
+    const dmg1 = Math.round(hit1 * scale);
+    const dmg2 = Math.round(hit2 * scale);
+    h2 = Math.max(0, h2 - dmg1);
+    h1 = Math.max(0, h1 - dmg2);
+    logs.push({ swing: i + 1, luck1, luck2, dmg1, dmg2, h1, h2 });
+  }
+  const winner = h1 === h2 ? (s1 >= s2 ? c1 : c2) : h1 > h2 ? c1 : c2;
+  const loser = winner === c1 ? c2 : c1;
+  return { winner, loser, h1, h2, logs };
 }
 
-function BattleArena({ data, externalPick }) {
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
-  const [result, setResult] = useState(null);
-
-  useEffect(() => {
-    if (!externalPick) return;
-    setResult(null);
-    if (!a) setA(externalPick);
-    else if (!b) setB(externalPick);
-    else {
-      setA(externalPick);
-      setB("");
-    }
-  }, [externalPick]);
-
-  const ca = data.find((x) => x.id === a);
-  const cb = data.find((x) => x.id === b);
-  const runRandom = () => {
-    if (data.length < 2) return;
-    const i1 = Math.floor(Math.random() * data.length);
-    let i2 = Math.floor(Math.random() * data.length);
-    if (i2 === i1) i2 = (i2 + 1) % data.length;
-    setA(data[i1].id);
-    setB(data[i2].id);
-    setTimeout(() => setResult(duel(data[i1], data[i2])), 50);
-  };
-  const runDuel = () => {
-    if (ca && cb && ca.id !== cb.id) setResult(duel(ca, cb));
-  };
-
+function HealthBar({ value }) {
+  const pct = Math.max(0, Math.min(100, value));
   return (
-    <Card className="bg-white text-slate-900 border-0 shadow-[0_12px_60px_rgba(0,0,0,.35)]">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-2xl font-extrabold">
-          <Swords /> Battle Arena
-        </CardTitle>
-        <CardDescription className="text-slate-700 font-semibold">Auto‑luck enabled. Missing power values are seeded daily.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-bold">A:</span>
-          {a ? <Badge className="bg-slate-900 text-white font-extrabold">{ca?.name}</Badge> : <span className="text-slate-600">None</span>}
-          <span className="font-bold ml-4">B:</span>
-          {b ? <Badge className="bg-slate-900 text-white font-extrabold">{cb?.name}</Badge> : <span className="text-slate-600">None</span>}
-          <Button variant="outline" className="ml-auto font-bold" onClick={runRandom}>
-            Random Duel
-          </Button>
-          <Button className="font-bold" onClick={runDuel}>
-            Fight
-          </Button>
-          <Button variant="destructive" className="font-bold" onClick={() => { setA(""); setB(""); setResult(null); }}>
-            Reset
-          </Button>
-        </div>
-        {result && (
-          <div className="grid md:grid-cols-3 gap-4 mt-2">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="font-bold mb-1">{ca?.name}</div>
-              <div className="text-sm">
-                Base: <b>{result.s1}</b> | Luck: <b>{result.r1}</b> | Final: <b>{result.f1}</b>
-              </div>
-            </div>
-            <div className="flex items-center justify-center text-slate-600">
-              <Swords />
-            </div>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="font-bold mb-1">{cb?.name}</div>
-              <div className="text-sm">
-                Base: <b>{result.s2}</b> | Luck: <b>{result.r2}</b> | Final: <b>{result.f2}</b>
-              </div>
-            </div>
-            <div className="md:col-span-3 text-center font-extrabold text-lg">Winner: {result.winner.name}</div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="w-full h-2 rounded-full bg-white/20 overflow-hidden border border-white/20">
+      <div className="h-full bg-gradient-to-r from-green-300 via-yellow-300 to-red-300" style={{ width: `${pct}%` }} />
+    </div>
   );
 }
-
-/** -------------------- Sidebar Filters (reusable content for pocket) -------------------- */
-function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, onClear }) {
-  const uniq = (arr) => Array.from(new Set(arr)).filter(Boolean).sort((a, b) => a.localeCompare(b));
-  const genders = uniq(data.map((d) => d.gender || ""));
-  const alignments = uniq(data.map((d) => d.alignment || ""));
-  const locations = uniq(data.flatMap((d) => d.locations || []));
-  const factions = uniq(data.flatMap((d) => d.faction || []));
-  const eras = uniq(data.map((d) => d.era || ""));
-  const tags = uniq(data.flatMap((d) => d.tags || []));
-  const statuses = uniq(data.map((d) => d.status || ""));
-  const stories = uniq(data.flatMap((d) => d.stories || []));
-  const powers = uniq(data.flatMap((d) => d.powers.map((p) => p.name)));
-
-  const toggle = (key, value, single = false) =>
-    setFilters((f) => {
-      const next = { ...f };
-      if (single) {
-        next[key] = next[key] === value ? undefined : value;
-        return next;
-      }
-      const set = new Set([...(next[key] || [])]);
-      set.has(value) ? set.delete(value) : set.add(value);
-      next[key] = Array.from(set);
-      return next;
-    });
-
-  function Section({ title, values, keyName, single }) {
-    return (
+function StatRow({ label, value }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-white/80 font-bold mr-2">{label}</span>
+      <span className="font-extrabold text-white text-right">{Array.isArray(value) ? value.join(", ") : value}</span>
+    </div>
+  );
+}
+function CharacterMini({ c, hp, onOpen, onRelease }) {
+  if (!c) return <div className="text-white/60 text-sm">Empty slot. Choose a character.</div>;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-14 w-14 object-cover rounded-xl border border-white/15" />
+        <div className="min-w-0">
+          <div className="text-sm font-black truncate">{c.name}</div>
+          <HealthBar value={hp} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 bg-white/5 p-2 rounded-xl border border-white/10">
+        <StatRow label="Gender" value={c.gender} />
+        <StatRow label="Alignment" value={c.alignment} />
+        <StatRow label="Status" value={c.status} />
+        <StatRow label="Era" value={c.era} />
+        <StatRow label="First Seen" value={c.firstAppearance} />
+        <StatRow label="Locations" value={c.locations?.slice(0, 4)} />
+        <StatRow label="Factions" value={c.faction?.slice(0, 3)} />
+        <StatRow label="Tags" value={c.tags?.slice(0, 6)} />
+      </div>
       <div>
-        <div className="text-xs uppercase tracking-widest font-extrabold mb-2">{title}</div>
-        <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pr-1">
-          {values.map((v) => (
-            <FacetChip key={v} active={single ? filters[keyName] === v : (filters[keyName] || []).includes(v)} onClick={() => toggle(keyName, v, !!single)}>
-              {v}
-            </FacetChip>
+        <div className="text-[11px] uppercase tracking-widest text-white/80 font-bold mb-1">Powers</div>
+        <div className="space-y-1 max-h-40 overflow-auto pr-1">
+          {(c.powers || []).map((p) => (
+            <div key={p.name} className="text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
+              <PowerMeter level={p.level} />
+            </div>
           ))}
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 p-4 text-white">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-extrabold flex items-center gap-2">
-          <Filter /> Filters
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold">Mode</span>
-          <Badge className="bg-white/10 border-white/10">{combineAND ? "AND" : "Single"}</Badge>
-          <Switch checked={!!combineAND} onCheckedChange={(v) => setCombineAND(!!v)} />
-        </div>
-      </div>
-      <Section title="Gender" values={genders} keyName="gender" single />
-      <Section title="Alignment" values={alignments} keyName="alignment" single />
-      <Section title="Locations" values={locations} keyName="locations" />
-      <Section title="Factions/Teams" values={factions} keyName="faction" />
-      <Section title="Era" values={eras} keyName="era" />
-      <Section title="Status" values={statuses} keyName="status" />
-      <Section title="Tags" values={tags} keyName="tags" />
-      <Section title="Stories" values={stories} keyName="stories" />
-      <Section title="Powers" values={powers} keyName="powers" />
-      <div className="flex gap-2 pt-2">
-        <Button variant="secondary" className="font-bold" onClick={onClear}>
-          Clear Filters
-        </Button>
+      <div className="flex gap-2">
+        <Button variant="ghost" onClick={() => onOpen(c)}>View</Button>
+        <Button variant="outline" onClick={() => onRelease(c.id)}>Release</Button>
       </div>
     </div>
   );
 }
 
-/** -------------------- Pocket Panels -------------------- */
-function PocketPanel({ side = "left", open, onClose, title, icon, children }) {
-  return (
-    <div className={`fixed top-0 ${side === "left" ? "left-0" : "right-0"} z-50 h-full w-[320px] sm:w-[360px] transition-transform duration-300 ${open ? "translate-x-0" : side === "left" ? "-translate-x-full" : "translate-x-full"}`}>
-      <div className="h-full backdrop-blur-2xl bg-slate-900/85 border border-white/10">
-        <div className="flex items-center justify-between p-3 border-b border-white/10 text-white">
-          <div className="flex items-center gap-2 font-extrabold">{icon}{title}</div>
-          <Button variant="ghost" onClick={onClose} aria-label="Close"><X /></Button>
-        </div>
-        <div className="overflow-y-auto h-[calc(100%-52px)] text-white">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
+function Simulator({ data, selectedIds, setSelectedIds, onOpen, anchorId = "arena-anchor", onFightDone }) {
+  const [localShake, setLocalShake] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const [hp, setHp] = useState({ left: 100, right: 100 });
+  const left = data.find((c) => c.id === selectedIds[0]);
+  const right = data.find((c) => c.id === selectedIds[1]);
+  const canFight = !!left && !!right && !animating;
 
-/** -------------------- Main App -------------------- */
-export default function LoremakerDirectoryApp() {
-  const { data, loading, error, refetch } = useCharacters();
-  const [filters, setFilters] = useState({});
-  const [query, setQuery] = useState("");
-  const [combineAND, setCombineAND] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [active, setActive] = useState(null);
-  const [arenaPick, setArenaPick] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [showArena, setShowArena] = useState(false);
-
-  // Ensure the Hero starts at the very top on first render
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, []);
+    if (selectedIds.length) {
+      setLocalShake(true);
+      const t = setTimeout(() => setLocalShake(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [selectedIds.join("|")]);
 
-  const filtered = useMemo(() => {
-    return data.filter((c) => matchesFilters(c, filters, combineAND, query));
-  }, [data, filters, combineAND, query]);
+  const release = (id) => setSelectedIds((ids) => ids.filter((x) => x !== id));
+  const clearAll = () => setSelectedIds([]);
 
-  const onOpen = (c) => {
-    setActive(c);
-    setModalOpen(true);
+  const runFight = async () => {
+    if (!left || !right) return;
+    setAnimating(true);
+    setHp({ left: 100, right: 100 });
+    const outcome = duel(left, right);
+    for (const step of outcome.logs) {
+      await new Promise((r) => setTimeout(r, 500));
+      setHp({ left: step.h1, right: step.h2 });
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    setAnimating(false);
+    onFightDone?.(outcome.winner.id);
   };
-  const onFacet = ({ key, value }) => {
-    setFilters((f) => {
-      const next = { ...f };
-      if (key === "gender" || key === "alignment") next[key] = value;
-      else {
-        const set = new Set([...(next[key] || [])]);
-        set.has(value) ? set.delete(value) : set.add(value);
-        next[key] = Array.from(set);
-      }
-      return next;
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const onUseInSim = (id) => setArenaPick(id);
-  const clearFilters = () => setFilters({});
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Aurora />
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/70 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Insignia label="Loremaker" size={36} variant="site" />
-          <div className="font-black tracking-tight text-white text-lg">Loremaker Directory</div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="relative">
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" className="pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/60 font-semibold" />
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/70" size={16} />
-            </div>
-            <Button variant="secondary" className="font-bold" onClick={refetch}>
-              <RefreshCcw size={16} className="mr-1" /> Reload
-            </Button>
+    <div id={anchorId}>
+      <Card
+        className={cx(
+          "border-white/20 bg-white/5 backdrop-blur-xl text-white p-4 md:p-6 mt-6",
+          localShake ? "ring-2 ring-amber-300 animate-[pulse_0.6s_ease]" : ""
+        )}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Swords />
+            <div className="text-lg font-black tracking-tight">Battle Arena</div>
+            <Badge className="bg-amber-300 text-black">Beta</Badge>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <Button variant="outline" onClick={clearAll}>Clear</Button>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {error && <div className="text-red-300 font-bold mb-4">{String(error)}</div>}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+          <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", left ? "" : "opacity-70")}
+               style={{ boxShadow: left ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
+            <div className="text-xs font-bold mb-2">Fighter A</div>
+            <CharacterMini c={left} hp={hp.left} onOpen={onOpen} onRelease={release} />
+          </div>
 
-        {/* Hero at the top */}
-        <HeroSection data={data} onOpen={onOpen} onFacet={onFacet} />
-
-        <div className="mt-6">
-          <Card className="bg-white/5 border-white/10 backdrop-blur-2xl text-white">
-            <CardHeader>
-              <CardTitle className="text-2xl font-extrabold flex items-center gap-2">
-                <LibraryBig /> Explore the Universe
-              </CardTitle>
-              <CardDescription className="text-white/80 font-semibold">Use the left/right pockets for Filters and Arena. Click a card to open a rich profile. Add two to the arena and fight.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="text-xs uppercase tracking-widest font-extrabold mb-2">Popular Stories</div>
-                <StoryChips data={data} onFacet={onFacet} />
+          <div className="flex flex-col items-center justify-center gap-3">
+            <motion.div
+              animate={animating ? { rotate: [0, -20, 20, -12, 12, 0], scale: [1, 1.06, 1] } : { rotate: 0, scale: 1 }}
+              transition={{ duration: 0.6, repeat: animating ? 3 : 0, ease: "easeInOut" }}
+              className={cx("p-3 rounded-full border border-white/20", animating ? "bg-amber-300/20" : "bg-white/5")}
+            >
+              <Swords size={32} />
+            </motion.div>
+            <Button onClick={runFight} disabled={!canFight} className="font-black">
+              {animating ? "Fighting…" : "Fight"}
+            </Button>
+            {left && right && !animating && (hp.left !== 100 || hp.right !== 100) && (
+              <div className="text-xs font-extrabold px-3 py-1 rounded-full bg-black text-white/90">
+                {hp.left === hp.right ? "Draw" : hp.left > hp.right ? left.name : right.name}
               </div>
-              {loading ? (
-                <div className="text-white font-bold">Loading characters…</div>
-              ) : (
-                <CharacterGrid data={filtered} onOpen={onOpen} onFacet={onFacet} onUseInSim={onUseInSim} />)
-              }
-            </CardContent>
-          </Card>
+            )}
+          </div>
+
+          <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", right ? "" : "opacity-70")}
+               style={{ boxShadow: right ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
+            <div className="text-xs font-bold mb-2">Fighter B</div>
+            <CharacterMini c={right} hp={hp.right} onOpen={onOpen} onRelease={release} />
+          </div>
         </div>
-      </main>
-
-      {/* Floating pocket toggles */}
-      <button
-        onClick={() => setShowFilters(true)}
-        className="fixed bottom-4 left-4 p-3 rounded-full bg-white text-slate-900 shadow-[0_8px_40px_rgba(0,0,0,.4)] border border-slate-200 font-extrabold flex items-center gap-2"
-        aria-label="Open Filters"
-      >
-        <PanelLeftOpen />
-        Filters
-      </button>
-
-      <button
-        onClick={() => setShowArena(true)}
-        className="fixed bottom-4 right-4 p-3 rounded-full bg-white text-slate-900 shadow-[0_8px_40px_rgba(0,0,0,.4)] border border-slate-200 font-extrabold flex items-center gap-2"
-        aria-label="Open Arena"
-      >
-        <PanelRightOpen />
-        Arena
-      </button>
-
-      {/* Optional back-to-top sits above pockets */}
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed bottom-20 right-4 p-3 rounded-full bg-white/10 text-white shadow-[0_8px_40px_rgba(0,0,0,.4)] border border-white/20 font-extrabold"
-        aria-label="Back to top"
-      >
-        <ArrowUp />
-      </button>
-
-      {/* Pockets */}
-      <PocketPanel side="left" open={showFilters} onClose={() => setShowFilters(false)} title={<span>Filters</span>} icon={<Filter className="mr-2" size={16} />}>
-        <SidebarFilters
-          data={data}
-          filters={filters}
-          setFilters={setFilters}
-          combineAND={combineAND}
-          setCombineAND={setCombineAND}
-          onClear={clearFilters}
-        />
-      </PocketPanel>
-
-      <PocketPanel side="right" open={showArena} onClose={() => setShowArena(false)} title={<span>Arena</span>} icon={<Swords className="mr-2" size={16} />}>
-        <div className="p-4">
-          <BattleArena data={data} externalPick={arenaPick} />
-        </div>
-      </PocketPanel>
-
-      <CharacterModal open={modalOpen} onClose={() => setModalOpen(false)} c={active} onFacet={onFacet} onUseInSim={onUseInSim} />
+      </Card>
     </div>
   );
 }
 
-/** -------------------- Lightweight self-tests (non-blocking) -------------------- */
-if (typeof window !== "undefined" && !window.__LOREMAKER_TESTED__) {
-  window.__LOREMAKER_TESTED__ = true;
-  try {
-    console.assert(JSON.stringify(splitList("A, B and C;D|E")) === JSON.stringify(["A","B","C","D","E"]), "splitList failed");
-    const powers = parsePowers("Flight: 7, Fire(9), Ice10");
-    console.assert(powers.length === 3 && powers[0].level === 7 && powers[1].level === 9 && powers[2].level === 10, "parsePowers failed");
-    const sample = { name:"X", alias:[], powers:[{name:"Flight",level:7}], locations:["Neo City"], tags:[], shortDesc:"", longDesc:"" };
-    console.assert(matchesFilters(sample, { powers:["Flight"] }, true, ""), "matchesFilters(power) failed");
-  } catch (e) {
-    console.warn("Self-tests encountered an error:", e);
-  }
+/** -------------------- Controls, Filters Drawer, BackFloaters -------------------- */
+function BackFloaters() {
+  const [showTop, setShowTop] = useState(false);
+  const [showBottom, setShowBottom] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      setShowTop(scrollTop > 200);
+      setShowBottom(scrollTop + clientHeight < scrollHeight - 200);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <>
+      {showTop && (
+        <motion.button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          initial={{ scale: 0, rotate: -90, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          whileTap={{ scale: 0.9, rotate: 10 }}
+          whileHover={{ scale: 1.08 }}
+          className="fixed bottom-5 right-5 z-40 p-3 rounded-full bg-black/70 text-white border border-white/20 shadow-xl"
+          aria-label="Back to top"
+          title="Back to top"
+        >
+          <ArrowUp />
+        </motion.button>
+      )}
+      {showBottom && (
+        <motion.button
+          onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
+          initial={{ scale: 0, rotate: 90, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          whileTap={{ scale: 0.9, rotate: -10 }}
+          whileHover={{ scale: 1.08 }}
+          className="fixed bottom-5 right-20 z-40 p-3 rounded-full bg-black/70 text-white border border-white/20 shadow-xl"
+          aria-label="Back to bottom"
+          title="Back to bottom"
+        >
+          <ArrowRight />
+        </motion.button>
+      )}
+    </>
+  );
 }
+
+function Controls({ query, setQuery, setOpenFilters, onClear, onArenaJump, sortMode, setSortMode }) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+      <div className="flex-1">
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value)}
+          className="rounded-xl bg-black/70 text-white border border-white/20 px-3 py-2 text-sm font-bold"
+        >
+          <option value="default">Default</option>
+          <option value="random">Random</option>
+          <option value="faction">By Faction</option>
+          <option value="az">A–Z</option>
+          <option value="za">Z–A</option>
+          <option value="most">From Most Powerful</option>
+          <option value="least">From Least Powerful</option>
+          <option value="simresults">As per user's simulation battle results</option>
+        </select>
+        <Button variant="outline" onClick={() => setOpenFilters(true)} className="font-bold border-amber-300 text-amber-300">
+          <Filter className="mr-1" size={16} /> Filters
+        </Button>
+        <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
+        <Button variant="secondary" onClick={onArenaJump} className="font-bold">Arena</Button>
+      </div>
+    </div>
+  );
+}
+
+function FiltersDrawer({ open, onClose, filters, setFilters, data }) {
+  const uniques = useMemo(() => {
+    const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
+    return {
+      gender: uniq(data.map((d) => d.gender)),
+      alignment: uniq(data.map((d) => d.alignment)),
+      era: uniq(data.map((d) => d.era)),
+      status: uniq(data.map((d) => d.status)),
+      locations: uniq(data.flatMap((d) => d.locations || [])),
+      faction: uniq(data.flatMap((d) => d.faction || [])),
+      tags: uniq(data.flatMap((d) => d.tags || [])),
+      stories: uniq(data.flatMap((d) => d.stories || [])),
+      powers: uniq(data.flatMap((d) => d.powers.map((p) => p.name))),
+    };
+  }, [data]);
+
+  const toggle = (key, val) => {
+    setFilters((f) => {
+      const set = new Set([...(f[key] || [])]);
+      if (set.has(val)) set.delete(val);
+      else set.add(val);
+      return { ...f, [key]: Array.from(set) };
+    });
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-[#11121a] border-l border-white/10 p-5 overflow-y-auto text-white">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-lg font-black">Filters</div>
+          <Button variant="ghost" onClick={onClose}><X /></Button>
+        </div>
+        {Object.entries(uniques).map(([key, values]) => (
+          <div key={key} className="mb-5">
+            <div className="text-xs uppercase tracking-widest font-extrabold mb-2">{key}</div>
+            <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pr-1">
+              {values.map((v) => (
+                <FacetChip key={v} active={(filters[key] || []).includes(v)} onClick={() => toggle(key, v)}>
+                  {v}
+                </FacetChip>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** -------------------- App -------------------- */
+export default function App() {
+  const { data, loading, error } = useCharacters();
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({});
+  const [combineAND, setCombineAND] = useState(false);
+  const [openFilters, setOpenFilters] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(null);
+  const [sortMode, setSortMode] = useState("default");
+  const [selectedIds, setSelectedIds] = useState([]); // simulator slots
+  const [simHistory, setSimHistory] = useState([]); // winners list
+  const arenaAnchor = "arena-anchor";
+
+  const onOpen = (c) => { setActive(c); setOpen(true); };
+  const onFacet = ({ key, value }) => {
+    setFilters((f) => {
+      const arr = new Set([...(f[key] || [])]);
+      arr.add(value);
+      return { ...f, [key]: Array.from(arr) };
+    });
+  };
+  const onUseInSim = (id) => {
+    setSelectedIds((ids) => {
+      if (ids.includes(id)) return ids;
+      if (ids.length >= 2) return ids;
+      return [...ids, id];
+    });
+    const el = document.getElementById(arenaAnchor);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const filtered = useMemo(() => data.filter((c) => matchesFilters(c, filters, combineAND, query)), [data, filters, combineAND, query]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sortMode) {
+      case "random":
+        return arr.sort(() => Math.random() - 0.5);
+      case "faction":
+        return arr.sort((a, b) => String(a.faction?.[0] || "").localeCompare(String(b.faction?.[0] || "")));
+      case "az":
+        return arr.sort((a, b) => a.name.localeCompare(b.name));
+      case "za":
+        return arr.sort((a, b) => b.name.localeCompare(a.name));
+      case "most":
+        return arr.sort((a, b) => scoreCharacter(b) - scoreCharacter(a));
+      case "least":
+        return arr.sort((a, b) => scoreCharacter(a) - scoreCharacter(b));
+      case "simresults":
+        return arr.sort((a, b) => (simHistory.filter((w) => w === b.id).length - simHistory.filter((w) => w === a.id).length));
+      default:
+        return arr;
+    }
+  }, [filtered, sortMode, simHistory]);
+
+  // Dynamic Lore badge on top-right with changing effects
+  const [hue, setHue] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setHue((h) => (h + 17) % 360), 1400);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white relative">
+      <Aurora />
+
+      {/* Top-right Lore shield with effects */}
+      <motion.div
+        className="fixed top-4 right-4 z-40"
+        animate={{ rotate: [0, -3, 3, 0], scale: [1, 1.02, 1] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        style={{ filter: `drop-shadow(0 0 12px hsl(${hue}, 90%, 60%))` }}
+        title="Lore"
+      >
+        <Insignia label="Lore" size={54} variant="site" />
+      </motion.div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Insignia label="Loremaker" size={48} variant="site" />
+            <div>
+              <div className="text-2xl md:text-3xl font-black tracking-tight">Loremaker Universe</div>
+              <div className="text-xs uppercase tracking-widest text-white/80 font-bold">Living Characters • Premium UX</div>
+            </div>
+          </div>
+          <div className="hidden md:flex items-center gap-2">
+            <Switch id="mode" checked={combineAND} onChange={setCombineAND} />
+            <Badge className="bg-white/10 border border-white/20">{combineAND ? "AND" : "Single"}</Badge>
+          </div>
+        </div>
+
+        <HeroSection data={data} onOpen={onOpen} onFacet={onFacet} />
+
+        {/* Arena pinned directly under Hero */}
+        <Simulator
+          data={data}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          onOpen={(c) => { setActive(c); setOpen(true); }}
+          anchorId={arenaAnchor}
+          onFightDone={(winnerId) => setSimHistory((h) => [...h, winnerId])}
+        />
+
+        <div className="mt-6">
+          <Controls
+            query={query}
+            setQuery={setQuery}
+            setOpenFilters={setOpenFilters}
+            onClear={() => { setFilters({}); setQuery(""); }}
+            onArenaJump={() => document.getElementById(arenaAnchor)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            sortMode={sortMode}
+            setSortMode={setSortMode}
+          />
+        </div>
+
+        <div className="mt-6">
+          <StoryChips data={data} onFacet={onFacet} />
+        </div>
+
+        <div className="mt-6">
+          <CharacterGrid
+            data={sorted.filter((c) => !selectedIds.includes(c.id))}
+            onOpen={onOpen}
+            onFacet={onFacet}
+            onUseInSim={(id) => onUseInSim(id)}
+          />
+        </div>
+      </div>
+
+      <CharacterModal open={open} onClose={() => setOpen(false)} c={active} onFacet={onFacet} onUseInSim={(id) => { onUseInSim(id); setOpen(false); }} />
+
+      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} filters={filters} setFilters={setFilters} data={data} />
+
+      <BackFloaters />
+    </div>
+  );
+}
+
+/** -------------------- Minimal runtime tests (console) -------------------- */
+(function runTinyTests() {
+  try {
+    console.group("Tests");
+    // parsePowers
+    const ps = parsePowers("Spellcraft:9, Teleportation(7), Reflexes 6");
+    console.assert(ps.length === 3 && ps[0].level === 9 && ps[1].level === 7 && ps[2].level === 6, "parsePowers failed");
+
+    // normalizeDriveUrl
+    const u = normalizeDriveUrl("https://drive.google.com/file/d/ABC123/view?usp=sharing");
+    console.assert(u.includes("uc?export=view&id=ABC123"), "normalizeDriveUrl failed");
+
+    // matchesFilters basic
+    const c = SAMPLE[0];
+    const ok = matchesFilters(c, { faction: ["Earthguard"] }, false, "Mystic");
+    console.assert(ok === true, "matchesFilters failed");
+
+    // duel: gods bias tends to beat humans
+    const god = { ...SAMPLE[0], tags: ["God"], powers: [{ name: "Divinity", level: 7 }] };
+    const human = { ...SAMPLE[1], tags: ["Human"], powers: [{ name: "Training", level: 9 }] };
+    const res = duel(god, human);
+    console.assert(res && res.winner && res.loser, "duel result structure");
+
+    console.groupEnd();
+  } catch (e) {
+    console.error("Tests failed:", e);
+  }
+})();
