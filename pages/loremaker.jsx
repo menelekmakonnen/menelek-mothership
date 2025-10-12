@@ -13,7 +13,7 @@ import {
   Filter,
   Users,
   MapPin,
-  Layers3,
+  Layers,
   Atom,
   Clock,
   Crown,
@@ -81,6 +81,28 @@ function Input({ className = "", ...props }) {
 }
 function Badge({ className = "", children }) {
   return <span className={cx("px-2 py-1 rounded-full text-xs font-extrabold", className)}>{children}</span>;
+}
+
+function TagGlyph({ size = 14, className = "", ...rest }) {
+  if (Layers) {
+    return <Layers size={size} className={className} {...rest} />;
+  }
+  const style = {
+    width: size,
+    height: size,
+    fontSize: size * 0.7,
+    lineHeight: `${size}px`,
+  };
+  return (
+    <span
+      aria-hidden="true"
+      className={cx("inline-flex items-center justify-center font-black", className)}
+      style={style}
+      {...rest}
+    >
+      #
+    </span>
+  );
 }
 function Switch({ checked, onChange, id }) {
   return (
@@ -733,7 +755,7 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
             {!!(c.tags || []).length && (
               <div>
                 <div className="text-sm mb-2 font-bold flex items-center gap-2">
-                  <Layers3 size={14} /> Tags
+                  <TagGlyph size={14} /> Tags
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {c.tags.map((t) => (
@@ -1286,7 +1308,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
       )}
       {!!(c.tags || []).length && (
         <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers3 size={12}/> Tags</div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><TagGlyph size={12} /> Tags</div>
           <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
         </div>
       )}
