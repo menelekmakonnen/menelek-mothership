@@ -38,16 +38,28 @@ function Button({ variant = "default", className = "", children, as: Tag = "butt
   const base =
     "inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-extrabold transition active:scale-[.98] focus:outline-none focus:ring-2 focus:ring-offset-0";
   const styles = {
-    default: "bg.white text-black hover:bg-white/90".replace(".", "-"),
+    default: "bg-white text-black hover:bg-white/90",
     secondary: "bg-black/70 text-white hover:bg-black",
     outline: "border border-white/30 text-white hover:bg-white/10",
     ghost: "text-white/90 hover:bg-white/10",
     destructive: "bg-red-600 text-white hover:bg-red-500",
   }[variant];
   return (
-    <Tag className={cx(base, styles, className)} {...props}>
+    <Tag className={[base, styles, className].filter(Boolean).join(" ")} {...props}>
       {children}
     </Tag>
+  );
+}
+
+function Input({ className = "", ...props }) {
+  return (
+    <input
+      className={[
+        "w-full rounded-xl bg-white/10 text-white placeholder-white/60 border border-white/20 px-3 py-2 focus:outline-none focus:ring-2",
+        className,
+      ].filter(Boolean).join(" ")}
+      {...props}
+    />
   );
 }
 function Card({ className = "", children }) {
@@ -589,7 +601,7 @@ function CharacterCard({ c, onOpen, onFacet, onUseInSim }) {
 function Gallery({ images, cover, name }) {
   const [idx, setIdx] = useState(0);
   const imgs = [cover, ...(images || [])].filter(Boolean);
-  if (!imgs.length)
+  if (!imgs.length) return null;
     return (
       <div className="h-64 w-full rounded-xl border border-white/10 bg-white/5 flex items-center justify-center">
         <Insignia label={name} size={64} />
