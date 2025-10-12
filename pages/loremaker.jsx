@@ -255,9 +255,9 @@ function rowToCharacter(row, map) {
     cover: normalizeDriveUrl(get("cover")),
     gallery: [],
   };
-  for (let i = 1; i <= 15; i++) {
+ for (let i = 1; i <= 15; i++) {
     const url = get(`gallery_${i}`);
-    if (url) char.gallery.push(normalizeDriveUrl(url));
+    if (url) char.gallery.push(normalizeDriveUrl(String(url)));
   }
   return char;
 }
@@ -586,15 +586,16 @@ function CharacterCard({ c, onOpen, onFacet, onUseInSim }) {
   );
 }
 
-function Gallery({ images, cover, name }) {
-  const [idx, setIdx] = useState(0);
-  const imgs = [cover, ...(images || [])].filter(Boolean);
-  if (!imgs.length)
+function Gallery({ images = [], cover, name }) {
+  // ensure 'images' is iterable
+  const safeImages = Array.isArray(images) ? images : [images];
+  const imgs = [cover, ...safeImages].filter(Boolean);
+  if (!imgs.length) {
     return (
       <div className="h-64 w-full rounded-xl border border-white/10 bg-white/5 flex items-center justify-center">
         <Insignia label={name} size={64} />
       </div>
-    );
+    );}
   return (
     <div className="relative group">
       <ImageSafe src={imgs[idx]} alt={`${name} gallery ${idx + 1}`} fallbackLabel={name} className="w-full h-64 object-cover rounded-xl border border-white/10" />
