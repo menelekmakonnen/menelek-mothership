@@ -800,9 +800,12 @@ function matchesFilters(c, f, combineAND, query) {
     .join(" ")
     .toLowerCase();
   const searchMatch = terms.every((t) => hay.includes(t));
+  const norm = (v) => (Array.isArray(v) ? v : v != null ? [v] : []);
   const checks = [];
-  if (f.gender) checks.push((c.gender || "").toLowerCase() === f.gender.toLowerCase());
-  if (f.alignment) checks.push((c.alignment || "").toLowerCase() === f.alignment.toLowerCase());
+  const _fg = norm(f.gender).map((x) => String(x).toLowerCase());
+  if (_fg.length) checks.push(_fg.includes(String(c.gender || "").toLowerCase()));
+  const _fa = norm(f.alignment).map((x) => String(x).toLowerCase());
+  if (_fa.length) checks.push(_fa.includes(String(c.alignment || "").toLowerCase()));
   if (f.locations?.length) checks.push(f.locations.every((v) => (c.locations || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
   if (f.faction?.length) checks.push(f.faction.every((v) => (c.faction || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
   if (f.tags?.length) checks.push(f.tags.every((v) => (c.tags || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
