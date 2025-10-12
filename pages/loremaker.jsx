@@ -5,6 +5,7 @@ import {
   RefreshCcw,
   X,
   ArrowUp,
+  ArrowDown,
   ArrowRight,
   ArrowLeft,
   ChevronLeft,
@@ -37,7 +38,7 @@ function Button({ variant = "default", className = "", children, as: Tag = "butt
   const base =
     "inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-extrabold transition active:scale-[.98] focus:outline-none focus:ring-2 focus:ring-offset-0";
   const styles = {
-    default: "bg-white text-black hover:bg-white/90",
+    default: "bg.white text-black hover:bg-white/90".replace(".", "-"),
     secondary: "bg-black/70 text-white hover:bg-black",
     outline: "border border-white/30 text-white hover:bg-white/10",
     ghost: "text-white/90 hover:bg-white/10",
@@ -157,7 +158,7 @@ function splitList(raw) {
   if (!raw) return [];
   return raw
     .replace(/\band\b/gi, ",")
-    .replace(/[|;/]/g, ",")
+    .replace(/[|;]/g, ",")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
@@ -1012,26 +1013,30 @@ function rngLuck(max) {
   return Math.round(r);
 }
 function scoreBiasByBeing(c) {
-  const tags = (c.tags || []).join(" ").toLowerCase();
-  const name = (c.name || "").toLowerCase();
-  const era = (c.era || "").toLowerCase();
-  const powerNames = (c.powers || []).map((p) => p.name.toLowerCase()).join(" ");
-  const isGod = /god|deity|divine|celestial/.test(tags) || /god|deity/.test(name) || /old gods/.test(era);
-  const isAlien = /alien|extraterrestrial|off-world/.test(tags);
-  const isMeta = /mutant|meta|enhanced|sorcer|mage|witch|wizard|cyborg|android|artifact/.test(tags) || /magic|spell|rune/.test(powerNames);
-  const isHuman = /human/.test(tags) && !isMeta && !isAlien && !isGod;
-  if (isGod) return 1.8; // gods are monsters by default
-  if (isAlien) return 1.35;
-  if (isMeta) return 1.2;
-  if (isHuman) return 1.0;
-  return 1.05;
+  const text = [
+    (c.tags || []).join(" "),
+    (c.alias || []).join(" "),
+    c.longDesc || "",
+    c.shortDesc || "",
+  ].join(" ").toLowerCase();
+  // crude but effective class detection
+  const isGod = /(god|goddess|deity|divine|celestial|primordial)/i.test(text) || /old gods|ancient gods/i.test(c.era || "");
+  const isAlien = /(alien|extraterrestrial|offworld|cosmic)/i.test(text);
+  const isMeta = /(meta|mutant|enhanced|super soldier|augment)/i.test(text) || (c.powers || []).some((p) => p.level >= 7);
+  // Multipliers — humans 1.0 baseline
+  if (isGod) return 1.55; // requires stacked human to match
+  if (isAlien) return 1.25;
+  if (isMeta) return 1.12;
+  return 1.0;
 }
+
 function duel(c1, c2) {
   const s1 = scoreCharacter(c1);
   const s2 = scoreCharacter(c2);
   const maxBase = Math.max(s1, s2) || 1;
   const swings = 3;
-  let h1 = 100, h2 = 100;
+  let h1 = 100,
+    h2 = 100;
   const logs = [];
   for (let i = 0; i < swings; i++) {
     const luck1 = rngLuck(maxBase);
@@ -1043,10 +1048,10 @@ function duel(c1, c2) {
     const dmg2 = Math.round(hit2 * scale);
     h2 = Math.max(0, h2 - dmg1);
     h1 = Math.max(0, h1 - dmg2);
-    logs.push({ swing: i + 1, luck1, luck2, dmg1, dmg2, h1, h2 });
+    logs.push({ swing: i + 1, dmg1, dmg2, h1, h2 });
   }
-  const winner = h1 === h2 ? (s1 >= s2 ? c1 : c2) : h1 > h2 ? c1 : c2;
-  const loser = winner === c1 ? c2 : c1;
+  let winner = h1 === h2 ? (s1 >= s2 ? c1 : c2) : h1 > h2 ? c1 : c2;
+  let loser = winner === c1 ? c2 : c1;
   return { winner, loser, h1, h2, logs };
 }
 
@@ -1058,158 +1063,82 @@ function HealthBar({ value }) {
     </div>
   );
 }
-function StatRow({ label, value }) {
-  if (!value) return null;
+
+// Animated Lore shield with randomized micro-effects
+function LoreGlyph() {
+  const [seed] = useState(() => Math.floor(Math.random() * 1000));
+  const wobble = [0, -2, 2, -1, 1, 0];
   return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-white/80 font-bold mr-2">{label}</span>
-      <span className="font-extrabold text-white text-right">{Array.isArray(value) ? value.join(", ") : value}</span>
-    </div>
-  );
-}
-function CharacterMini({ c, hp, onOpen, onRelease }) {
-  if (!c) return <div className="text-white/60 text-sm">Empty slot. Choose a character.</div>;
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3">
-        <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-14 w-14 object-cover rounded-xl border border-white/15" />
-        <div className="min-w-0">
-          <div className="text-sm font-black truncate">{c.name}</div>
-          <HealthBar value={hp} />
-        </div>
+    <motion.div
+      animate={{ rotate: wobble, scale: [1, 1.02, 1], filter: ["drop-shadow(0 0 6px rgba(255,255,255,.25))", `drop-shadow(0 0 12px hsl(${(seed*37)%360},90%,60%))`, "drop-shadow(0 0 6px rgba(255,255,255,.25))"] }}
+      transition={{ duration: 2 + (seed % 10) / 5, repeat: Infinity, ease: "easeInOut" }}
+      className="relative"
+      title="Lore"
+    >
+      <Insignia label="Lore" size={54} variant="site" />
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className="text-xs font-black tracking-wide">Lore</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 bg-white/5 p-2 rounded-xl border border-white/10">
-        <StatRow label="Gender" value={c.gender} />
-        <StatRow label="Alignment" value={c.alignment} />
-        <StatRow label="Status" value={c.status} />
-        <StatRow label="Era" value={c.era} />
-        <StatRow label="First Seen" value={c.firstAppearance} />
-        <StatRow label="Locations" value={c.locations?.slice(0, 4)} />
-        <StatRow label="Factions" value={c.faction?.slice(0, 3)} />
-        <StatRow label="Tags" value={c.tags?.slice(0, 6)} />
-      </div>
-      <div>
-        <div className="text-[11px] uppercase tracking-widest text-white/80 font-bold mb-1">Powers</div>
-        <div className="space-y-1 max-h-40 overflow-auto pr-1">
-          {(c.powers || []).map((p) => (
-            <div key={p.name} className="text-xs">
-              <div className="flex items-center justify-between font-bold">
-                <span className="truncate pr-2">{p.name}</span>
-                <span>{p.level}/10</span>
-              </div>
-              <PowerMeter level={p.level} />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="ghost" onClick={() => onOpen(c)}>View</Button>
-        <Button variant="outline" onClick={() => onRelease(c.id)}>Release</Button>
-      </div>
-    </div>
+    </motion.div>
   );
 }
 
-function Simulator({ data, selectedIds, setSelectedIds, onOpen, anchorId = "arena-anchor", onFightDone }) {
-  const [localShake, setLocalShake] = useState(false);
-  const [animating, setAnimating] = useState(false);
-  const [hp, setHp] = useState({ left: 100, right: 100 });
-  const left = data.find((c) => c.id === selectedIds[0]);
-  const right = data.find((c) => c.id === selectedIds[1]);
-  const canFight = !!left && !!right && !animating;
-
-  useEffect(() => {
-    if (selectedIds.length) {
-      setLocalShake(true);
-      const t = setTimeout(() => setLocalShake(false), 600);
-      return () => clearTimeout(t);
-    }
-  }, [selectedIds.join("|")]);
-
-  const release = (id) => setSelectedIds((ids) => ids.filter((x) => x !== id));
-  const clearAll = () => setSelectedIds([]);
-
-  const runFight = async () => {
-    if (!left || !right) return;
-    setAnimating(true);
-    setHp({ left: 100, right: 100 });
-    const outcome = duel(left, right);
-    for (const step of outcome.logs) {
-      await new Promise((r) => setTimeout(r, 500));
-      setHp({ left: step.h1, right: step.h2 });
-    }
-    await new Promise((r) => setTimeout(r, 600));
-    setAnimating(false);
-    onFightDone?.(outcome.winner.id);
+/** Filters Drawer */
+function FiltersDrawer({ open, onClose, values, filters, setFilters }) {
+  if (!open) return null;
+  const toggle = (key, value) => {
+    setFilters((f) => {
+      const set = new Set([...(f[key] || [])]);
+      set.has(value) ? set.delete(value) : set.add(value);
+      return { ...f, [key]: Array.from(set) };
+    });
   };
-
+  const Section = ({ title, keyName, items }) => (
+    <div>
+      <div className="text-xs uppercase tracking-widest font-extrabold mb-2">{title}</div>
+      <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pr-1">
+        {items.map((v) => (
+          <FacetChip key={v} active={(filters[keyName] || []).includes(v)} onClick={() => toggle(keyName, v)}>
+            {v}
+          </FacetChip>
+        ))}
+      </div>
+    </div>
+  );
   return (
-    <div id={anchorId}>
-      <Card
-        className={cx(
-          "border-white/20 bg-white/5 backdrop-blur-xl text-white p-4 md:p-6 mt-6",
-          localShake ? "ring-2 ring-amber-300 animate-[pulse_0.6s_ease]" : ""
-        )}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Swords />
-            <div className="text-lg font-black tracking-tight">Battle Arena</div>
-            <Badge className="bg-amber-300 text-black">Beta</Badge>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-bold">
-            <Button variant="outline" onClick={clearAll}>Clear</Button>
-          </div>
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white/10 backdrop-blur-2xl border-l border-white/20 p-5 text-white overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-lg font-black tracking-tight">Filters</div>
+          <Button variant="ghost" onClick={onClose}><X /></Button>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-          <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", left ? "" : "opacity-70")}
-               style={{ boxShadow: left ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
-            <div className="text-xs font-bold mb-2">Fighter A</div>
-            <CharacterMini c={left} hp={hp.left} onOpen={onOpen} onRelease={release} />
-          </div>
-
-          <div className="flex flex-col items-center justify-center gap-3">
-            <motion.div
-              animate={animating ? { rotate: [0, -20, 20, -12, 12, 0], scale: [1, 1.06, 1] } : { rotate: 0, scale: 1 }}
-              transition={{ duration: 0.6, repeat: animating ? 3 : 0, ease: "easeInOut" }}
-              className={cx("p-3 rounded-full border border-white/20", animating ? "bg-amber-300/20" : "bg-white/5")}
-            >
-              <Swords size={32} />
-            </motion.div>
-            <Button onClick={runFight} disabled={!canFight} className="font-black">
-              {animating ? "Fighting…" : "Fight"}
-            </Button>
-            {left && right && !animating && (hp.left !== 100 || hp.right !== 100) && (
-              <div className="text-xs font-extrabold px-3 py-1 rounded-full bg-black text-white/90">
-                {hp.left === hp.right ? "Draw" : hp.left > hp.right ? left.name : right.name}
-              </div>
-            )}
-          </div>
-
-          <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", right ? "" : "opacity-70")}
-               style={{ boxShadow: right ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
-            <div className="text-xs font-bold mb-2">Fighter B</div>
-            <CharacterMini c={right} hp={hp.right} onOpen={onOpen} onRelease={release} />
-          </div>
+        <div className="space-y-5">
+          {values.gender.length > 0 && <Section title="Gender" keyName="gender" items={values.gender} />}
+          {values.alignment.length > 0 && <Section title="Alignment" keyName="alignment" items={values.alignment} />}
+          {values.faction.length > 0 && <Section title="Faction" keyName="faction" items={values.faction} />}
+          {values.locations.length > 0 && <Section title="Locations" keyName="locations" items={values.locations} />}
+          {values.era.length > 0 && <Section title="Era" keyName="era" items={values.era} />}
+          {values.status.length > 0 && <Section title="Status" keyName="status" items={values.status} />}
+          {values.tags.length > 0 && <Section title="Tags" keyName="tags" items={values.tags} />}
+          {values.powers.length > 0 && <Section title="Powers" keyName="powers" items={values.powers} />}
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
 
-/** -------------------- Controls, Filters Drawer, BackFloaters -------------------- */
-function BackFloaters() {
+function BackToTop() {
   const [showTop, setShowTop] = useState(false);
   const [showBottom, setShowBottom] = useState(false);
   useEffect(() => {
     const onScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      setShowTop(scrollTop > 200);
-      setShowBottom(scrollTop + clientHeight < scrollHeight - 200);
+      setShowTop(scrollTop > 300);
+      setShowBottom(scrollTop + clientHeight < scrollHeight - 300);
     };
-    onScroll();
     window.addEventListener("scroll", onScroll);
+    onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   return (
@@ -1217,10 +1146,8 @@ function BackFloaters() {
       {showTop && (
         <motion.button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          initial={{ scale: 0, rotate: -90, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          whileTap={{ scale: 0.9, rotate: 10 }}
-          whileHover={{ scale: 1.08 }}
+          whileHover={{ scale: 1.08, rotate: [-2, 2, 0] }}
+          whileTap={{ scale: 0.95, rotate: 0 }}
           className="fixed bottom-5 right-5 z-40 p-3 rounded-full bg-black/70 text-white border border-white/20 shadow-xl"
           aria-label="Back to top"
           title="Back to top"
@@ -1231,22 +1158,20 @@ function BackFloaters() {
       {showBottom && (
         <motion.button
           onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
-          initial={{ scale: 0, rotate: 90, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          whileTap={{ scale: 0.9, rotate: -10 }}
-          whileHover={{ scale: 1.08 }}
+          whileHover={{ scale: 1.08, rotate: [2, -2, 0] }}
+          whileTap={{ scale: 0.95, rotate: 0 }}
           className="fixed bottom-5 right-20 z-40 p-3 rounded-full bg-black/70 text-white border border-white/20 shadow-xl"
           aria-label="Back to bottom"
           title="Back to bottom"
         >
-          <ArrowRight />
+          <ArrowDown />
         </motion.button>
       )}
     </>
   );
 }
 
-function Controls({ query, setQuery, setOpenFilters, onClear, onArenaJump, sortMode, setSortMode }) {
+function Controls({ query, setQuery, openFilters, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
   return (
     <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
       <div className="flex-1">
@@ -1256,7 +1181,7 @@ function Controls({ query, setQuery, setOpenFilters, onClear, onArenaJump, sortM
         <select
           value={sortMode}
           onChange={(e) => setSortMode(e.target.value)}
-          className="rounded-xl bg-black/70 text-white border border-white/20 px-3 py-2 text-sm font-bold"
+          className="rounded-xl bg-black/60 text-white border border-white/20 px-3 py-2 text-sm font-bold"
         >
           <option value="default">Default</option>
           <option value="random">Random</option>
@@ -1271,66 +1196,189 @@ function Controls({ query, setQuery, setOpenFilters, onClear, onArenaJump, sortM
           <Filter className="mr-1" size={16} /> Filters
         </Button>
         <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
-        <Button variant="secondary" onClick={onArenaJump} className="font-bold">Arena</Button>
+        <Button variant="secondary" onClick={onJumpArena} className="font-bold">Arena</Button>
       </div>
     </div>
   );
 }
 
-function FiltersDrawer({ open, onClose, filters, setFilters, data }) {
-  const uniques = useMemo(() => {
-    const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
-    return {
-      gender: uniq(data.map((d) => d.gender)),
-      alignment: uniq(data.map((d) => d.alignment)),
-      era: uniq(data.map((d) => d.era)),
-      status: uniq(data.map((d) => d.status)),
-      locations: uniq(data.flatMap((d) => d.locations || [])),
-      faction: uniq(data.flatMap((d) => d.faction || [])),
-      tags: uniq(data.flatMap((d) => d.tags || [])),
-      stories: uniq(data.flatMap((d) => d.stories || [])),
-      powers: uniq(data.flatMap((d) => d.powers.map((p) => p.name))),
-    };
-  }, [data]);
+function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
+  const [animating, setAnimating] = useState(false);
+  const [hp, setHp] = useState({ left: 100, right: 100 });
+  const [shake, setShake] = useState(false);
+  const left = data.find((c) => c.id === selectedIds[0]);
+  const right = data.find((c) => c.id === selectedIds[1]);
+  const canFight = !!left && !!right && !animating;
 
-  const toggle = (key, val) => {
-    setFilters((f) => {
-      const set = new Set([...(f[key] || [])]);
-      if (set.has(val)) set.delete(val);
-      else set.add(val);
-      return { ...f, [key]: Array.from(set) };
-    });
+  // Subtle shake/glow when fighters change
+  useEffect(() => {
+    if (selectedIds.length) {
+      setShake(true);
+      const t = setTimeout(() => setShake(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [selectedIds.join('|')]);
+
+  const release = (id) => setSelectedIds((ids) => ids.filter((x) => x !== id));
+
+  const randomise = () => {
+    if (data.length < 2) return;
+    const r1 = Math.floor(Math.random() * data.length);
+    let r2 = Math.floor(Math.random() * data.length);
+    if (r2 === r1) r2 = (r2 + 1) % data.length;
+    setSelectedIds([data[r1].id, data[r2].id]);
+    setHp({ left: 100, right: 100 });
   };
 
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-[#11121a] border-l border-white/10 p-5 overflow-y-auto text-white">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-lg font-black">Filters</div>
-          <Button variant="ghost" onClick={onClose}><X /></Button>
-        </div>
-        {Object.entries(uniques).map(([key, values]) => (
-          <div key={key} className="mb-5">
-            <div className="text-xs uppercase tracking-widest font-extrabold mb-2">{key}</div>
-            <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pr-1">
-              {values.map((v) => (
-                <FacetChip key={v} active={(filters[key] || []).includes(v)} onClick={() => toggle(key, v)}>
-                  {v}
-                </FacetChip>
-              ))}
-            </div>
-          </div>
+  const runFight = async () => {
+    if (!left || !right) return;
+    setAnimating(true);
+    setHp({ left: 100, right: 100 });
+    const outcome = duel(left, right);
+    for (const step of outcome.logs) {
+      await new Promise((r) => setTimeout(r, 500));
+      setHp({ left: step.h1, right: step.h2 });
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    setAnimating(false);
+  };
+
+  const StatBlock = ({ c }) => (
+    <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+      {/* quick chips */}
+      <div className="flex flex-wrap gap-2">
+        {(c.alias || []).map((a) => (
+          <Badge key={a} className="bg-white/10 border border-white/20">{a}</Badge>
         ))}
       </div>
+      {/* grid stats */}
+      <div className="grid grid-cols-2 gap-2 text-[12px]">
+        {c.gender && (
+          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Gender</div><div className="font-extrabold">{c.gender}</div></div>
+        )}
+        {c.alignment && (
+          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Alignment</div><div className="font-extrabold">{c.alignment}</div></div>
+        )}
+        {c.status && (
+          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Status</div><div className="font-extrabold">{c.status}</div></div>
+        )}
+        {c.era && (
+          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Era</div><div className="font-extrabold">{c.era}</div></div>
+        )}
+        {c.firstAppearance && (
+          <div className="bg-white/10 p-2 rounded-lg border border-white/20 col-span-2"><div className="font-bold">First Appearance</div><div className="font-extrabold">{c.firstAppearance}</div></div>
+        )}
+      </div>
+      {!!(c.locations || []).length && (
+        <div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><MapPin size={12}/> Locations</div>
+          <div className="flex flex-wrap gap-2">{c.locations.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
+        </div>
+      )}
+      {!!(c.faction || []).length && (
+        <div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Crown size={12}/> Factions</div>
+          <div className="flex flex-wrap gap-2">{c.faction.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
+        </div>
+      )}
+      {!!(c.tags || []).length && (
+        <div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers3 size={12}/> Tags</div>
+          <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
+        </div>
+      )}
+      <div>
+        <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Atom size={12}/> Powers</div>
+        <div className="space-y-1.5">
+          {(c.powers || []).map((p) => (
+            <div key={p.name}>
+              <div className="flex items-center justify-between text-[12px] font-bold"><span className="truncate pr-2">{p.name}</span><span>{p.level}/10</span></div>
+              <PowerMeter level={p.level} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
+  );
+
+  return (
+    <Card className={cx("border-white/20 bg-white/5 backdrop-blur-xl text-white p-4 md:p-6 mt-6", shake ? "ring-2 ring-amber-300" : "") }>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Swords />
+          <div className="text-lg font-black tracking-tight">Battle Arena</div>
+          <Badge className="bg-amber-300 text-black">Beta</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={randomise} className="font-bold"><RefreshCcw size={16} className="mr-1"/> Randomise</Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+        {/* LEFT FIGHTER */}
+        <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", left ? "" : "opacity-70")} style={{ boxShadow: left ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
+          <div className="text-xs font-bold mb-2">Fighter A</div>
+          {left ? (
+            <div className={cx("space-y-2", animating ? "pointer-events-none" : "") }>
+              <div className="text-sm font-extrabold">{left.name}</div>
+              <HealthBar value={hp.left} />
+              <div className="text-[11px] uppercase tracking-widest">{left.faction?.[0] || "—"}</div>
+              <div className="text-xs opacity-90">{left.shortDesc || left.longDesc}</div>
+              <StatBlock c={left} />
+              <div className="flex gap-2 pt-1">
+                <Button variant="ghost" onClick={() => onOpen(left)}>View</Button>
+                <Button variant="outline" onClick={() => release(left.id)}>Release</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-white/60 text-sm">Empty slot. Choose a character.</div>
+          )}
+        </div>
+
+        {/* SWORD + ACTIONS */}
+        <div className="flex flex-col items-center justify-center gap-3">
+          <motion.div
+            animate={animating ? { rotate: [0, -20, 20, -12, 12, 0], scale: [1, 1.06, 1] } : { rotate: 0, scale: 1 }}
+            transition={{ duration: 0.6, repeat: animating ? 3 : 0, ease: "easeInOut" }}
+            className={cx("p-3 rounded-full border border-white/20", animating ? "bg-amber-300/20" : "bg-white/5")}
+          >
+            <Swords size={32} />
+          </motion.div>
+          <Button onClick={runFight} disabled={!canFight} className="font-black">{animating ? "Fighting…" : "Fight"}</Button>
+          {left && right && !animating && (hp.left !== 100 || hp.right !== 100) && (
+            <div className="text-xs font-extrabold px-3 py-1 rounded-full bg-black text-white/90">
+              {hp.left === hp.right ? "Draw" : hp.left > hp.right ? left.name : right.name}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT FIGHTER */}
+        <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", right ? "" : "opacity-70")} style={{ boxShadow: right ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
+          <div className="text-xs font-bold mb-2">Fighter B</div>
+          {right ? (
+            <div className={cx("space-y-2", animating ? "pointer-events-none" : "") }>
+              <div className="text-sm font-extrabold">{right.name}</div>
+              <HealthBar value={hp.right} />
+              <div className="text-[11px] uppercase tracking-widest">{right.faction?.[0] || "—"}</div>
+              <div className="text-xs opacity-90">{right.shortDesc || right.longDesc}</div>
+              <StatBlock c={right} />
+              <div className="flex gap-2 pt-1">
+                <Button variant="ghost" onClick={() => onOpen(right)}>View</Button>
+                <Button variant="outline" onClick={() => release(right.id)}>Release</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-white/60 text-sm">Empty slot. Choose a character.</div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 
 /** -------------------- App -------------------- */
 export default function App() {
-  const { data, loading, error } = useCharacters();
+  const { data, loading, error, refetch } = useCharacters();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({});
   const [combineAND, setCombineAND] = useState(false);
@@ -1338,27 +1386,32 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(null);
   const [sortMode, setSortMode] = useState("default");
-  const [selectedIds, setSelectedIds] = useState([]); // simulator slots
-  const [simHistory, setSimHistory] = useState([]); // winners list
-  const arenaAnchor = "arena-anchor";
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const onOpen = (c) => { setActive(c); setOpen(true); };
-  const onFacet = ({ key, value }) => {
-    setFilters((f) => {
-      const arr = new Set([...(f[key] || [])]);
-      arr.add(value);
-      return { ...f, [key]: Array.from(arr) };
-    });
-  };
+
+  // if both slots full and user adds a third, replace the oldest
   const onUseInSim = (id) => {
     setSelectedIds((ids) => {
       if (ids.includes(id)) return ids;
-      if (ids.length >= 2) return ids;
-      return [...ids, id];
+      if (ids.length < 2) return [...ids, id];
+      return [ids[1], id]; // replace oldest
     });
-    const el = document.getElementById(arenaAnchor);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // scroll to arena
+    const anchor = document.getElementById("arena-anchor");
+    if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const allValues = useMemo(() => ({
+    gender: Array.from(new Set(data.map((d) => d.gender).filter(Boolean))),
+    alignment: Array.from(new Set(data.map((d) => d.alignment).filter(Boolean))),
+    faction: Array.from(new Set(data.flatMap((d) => d.faction || []))),
+    locations: Array.from(new Set(data.flatMap((d) => d.locations || []))),
+    era: Array.from(new Set(data.map((d) => d.era).filter(Boolean))),
+    status: Array.from(new Set(data.map((d) => d.status).filter(Boolean))),
+    tags: Array.from(new Set(data.flatMap((d) => d.tags || []))),
+    powers: Array.from(new Set(data.flatMap((d) => d.powers.map((p) => p.name)))),
+  }), [data]);
 
   const filtered = useMemo(() => data.filter((c) => matchesFilters(c, filters, combineAND, query)), [data, filters, combineAND, query]);
 
@@ -1378,41 +1431,24 @@ export default function App() {
       case "least":
         return arr.sort((a, b) => scoreCharacter(a) - scoreCharacter(b));
       case "simresults":
-        return arr.sort((a, b) => (simHistory.filter((w) => w === b.id).length - simHistory.filter((w) => w === a.id).length));
+        return arr; // placeholder until we persist history
       default:
         return arr;
     }
-  }, [filtered, sortMode, simHistory]);
+  }, [filtered, sortMode]);
 
-  // Dynamic Lore badge on top-right with changing effects
-  const [hue, setHue] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setHue((h) => (h + 17) % 360), 1400);
-    return () => clearInterval(t);
-  }, []);
+  const clearAll = () => { setQuery(""); setFilters({}); };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white relative">
+    <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Aurora />
-
-      {/* Top-right Lore shield with effects */}
-      <motion.div
-        className="fixed top-4 right-4 z-40"
-        animate={{ rotate: [0, -3, 3, 0], scale: [1, 1.02, 1] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-        style={{ filter: `drop-shadow(0 0 12px hsl(${hue}, 90%, 60%))` }}
-        title="Lore"
-      >
-        <Insignia label="Lore" size={54} variant="site" />
-      </motion.div>
-
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Insignia label="Loremaker" size={48} variant="site" />
+            <LoreGlyph />
             <div>
               <div className="text-2xl md:text-3xl font-black tracking-tight">Loremaker Universe</div>
-              <div className="text-xs uppercase tracking-widest text-white/80 font-bold">Living Characters • Premium UX</div>
+              <div className="text-xs uppercase tracking-widest text-white/80 font-bold">Welcome to the official home of all the Loremaker universe and characters created by Menelek Makonnen</div>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-2">
@@ -1421,49 +1457,40 @@ export default function App() {
           </div>
         </div>
 
-        <HeroSection data={data} onOpen={onOpen} onFacet={onFacet} />
+        <HeroSection data={data} onOpen={onOpen} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} />
 
-        {/* Arena pinned directly under Hero */}
-        <Simulator
-          data={data}
-          selectedIds={selectedIds}
-          setSelectedIds={setSelectedIds}
-          onOpen={(c) => { setActive(c); setOpen(true); }}
-          anchorId={arenaAnchor}
-          onFightDone={(winnerId) => setSimHistory((h) => [...h, winnerId])}
-        />
+        {/* Arena pinned right under Hero */}
+        <div id="arena-anchor">
+          <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} />
+        </div>
 
         <div className="mt-6">
           <Controls
             query={query}
             setQuery={setQuery}
+            openFilters={openFilters}
             setOpenFilters={setOpenFilters}
-            onClear={() => { setFilters({}); setQuery(""); }}
-            onArenaJump={() => document.getElementById(arenaAnchor)?.scrollIntoView({ behavior: "smooth", block: "center" })}
             sortMode={sortMode}
             setSortMode={setSortMode}
+            onClear={clearAll}
+            onJumpArena={() => document.getElementById("arena-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" })}
           />
         </div>
 
         <div className="mt-6">
-          <StoryChips data={data} onFacet={onFacet} />
+          <StoryChips data={data} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} />
         </div>
 
         <div className="mt-6">
-          <CharacterGrid
-            data={sorted.filter((c) => !selectedIds.includes(c.id))}
-            onOpen={onOpen}
-            onFacet={onFacet}
-            onUseInSim={(id) => onUseInSim(id)}
-          />
+          <CharacterGrid data={sorted.filter((c) => !selectedIds.includes(c.id))} onOpen={onOpen} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={onUseInSim} />
         </div>
       </div>
 
-      <CharacterModal open={open} onClose={() => setOpen(false)} c={active} onFacet={onFacet} onUseInSim={(id) => { onUseInSim(id); setOpen(false); }} />
+      <CharacterModal open={open} onClose={() => setOpen(false)} c={active} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={(id) => { onUseInSim(id); setOpen(false); }} />
 
-      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} filters={filters} setFilters={setFilters} data={data} />
+      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} />
 
-      <BackFloaters />
+      <BackToTop />
     </div>
   );
 }
@@ -1472,25 +1499,15 @@ export default function App() {
 (function runTinyTests() {
   try {
     console.group("Tests");
-    // parsePowers
     const ps = parsePowers("Spellcraft:9, Teleportation(7), Reflexes 6");
     console.assert(ps.length === 3 && ps[0].level === 9 && ps[1].level === 7 && ps[2].level === 6, "parsePowers failed");
-
-    // normalizeDriveUrl
     const u = normalizeDriveUrl("https://drive.google.com/file/d/ABC123/view?usp=sharing");
     console.assert(u.includes("uc?export=view&id=ABC123"), "normalizeDriveUrl failed");
-
-    // matchesFilters basic
     const c = SAMPLE[0];
     const ok = matchesFilters(c, { faction: ["Earthguard"] }, false, "Mystic");
     console.assert(ok === true, "matchesFilters failed");
-
-    // duel: gods bias tends to beat humans
-    const god = { ...SAMPLE[0], tags: ["God"], powers: [{ name: "Divinity", level: 7 }] };
-    const human = { ...SAMPLE[1], tags: ["Human"], powers: [{ name: "Training", level: 9 }] };
-    const res = duel(god, human);
+    const res = duel(SAMPLE[0], SAMPLE[1]);
     console.assert(res && res.winner && res.loser, "duel result structure");
-
     console.groupEnd();
   } catch (e) {
     console.error("Tests failed:", e);
