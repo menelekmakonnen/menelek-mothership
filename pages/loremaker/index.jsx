@@ -24,6 +24,26 @@ import {
 import LoreLayout from "../../components/LoreLayout";
 import { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug } from "../../lib/loremaker-data";
 
+export async function getStaticProps() {
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA || null;
+  const builtAt = new Date();
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const label = `${builtAt.getUTCDate()} ${monthNames[builtAt.getUTCMonth()]} ${builtAt.getUTCFullYear()} • ${String(
+    builtAt.getUTCHours()
+  ).padStart(2, "0")}:${String(builtAt.getUTCMinutes()).padStart(2, "0")} UTC`;
+
+  return {
+    props: {
+      buildInfo: {
+        builtAt: builtAt.toISOString(),
+        label,
+        commit,
+      },
+    },
+    revalidate: 3600,
+  };
+}
+
 /**
  * LOREMAKER — Ultra build (plain JSX, no TS)
  * - Filters are a slide‑in drawer (hidden by default). No dropdowns anywhere.
@@ -1157,7 +1177,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
 }
 
 /** -------------------- App -------------------- */
-export default function App() {
+export default function LoremakerPage({ buildInfo }) {
   const { data, loading, error, refetch } = useCharacters();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -1166,6 +1186,10 @@ export default function App() {
   const [openFilters, setOpenFilters] = useState(false);
   const [sortMode, setSortMode] = useState("default");
   const [selectedIds, setSelectedIds] = useState([]);
+
+  const buildLabel = buildInfo?.label || null;
+  const buildCommitShort = buildInfo?.commit ? buildInfo.commit.slice(0, 7) : null;
+  const buildTitle = buildInfo?.builtAt ? `Build generated ${buildInfo.label}` : undefined;
 
   const onOpen = (c) => {
     if (!c) return;
@@ -1235,6 +1259,22 @@ export default function App() {
               <p className="text-sm md:text-base text-white/75 leading-relaxed max-w-xl">
                 Explore every storyline, faction, and mythic ability woven through Menelek Makonnen’s expanding cosmos. Filter the archive, dive into detailed dossiers, and summon characters into the Arena without losing your place.
               </p>
+              {buildLabel && (
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-white/60">
+                  <span className="tracking-[0.35em] uppercase">Updated</span>
+                  <span className="tracking-wide" title={buildTitle}>
+                    {buildLabel}
+                  </span>
+                  {buildCommitShort && (
+                    <span
+                      className="px-2 py-1 rounded-full border border-white/20 bg-white/10 tracking-[0.3em] uppercase text-white/70"
+                      title={`Deployed from commit ${buildCommitShort}`}
+                    >
+                      {buildCommitShort}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="hidden md:flex items-center gap-2">
