@@ -70,7 +70,7 @@ const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
 const CHATBOT_ENDPOINTS = { trackVisit: null, chatbot: "/workflow/cQltZgIikkp4fFER" };
 const CHATBOT_NAME = "Zara";
 const CHATBOT_TAGLINE = "Menelek's AI Assistant";
-const GOOGLE_PHOTOS_PROXY_PREFIX = "https://r.jina.ai/https://";
+const GOOGLE_PROXY_PREFIX = "https://r.jina.ai/https://";
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
@@ -733,8 +733,15 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       const out = [];
       let sd = 0;
       for (let i = 0; i < allocations.length; i++) {
-        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: allocations[i] / 7 });
-        sd += allocations[i];
+        const days = Math.max(0, allocations[i]);
+        out.push({
+          key: KEYS[i],
+          label: LABELS[i],
+          startDays: sd,
+          weeks: days / 7,
+          minWeeks: days > 0 ? 1 / 7 : 0,
+        });
+        sd += days;
       }
       return out;
     }
@@ -742,7 +749,7 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     const out = [];
     let sd = 0;
     for (let i = 0; i < parts.length; i++) {
-      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i] });
+      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i], minWeeks: 0.5 });
       sd += Math.ceil(parts[i] * 7);
     }
     return out;
@@ -790,11 +797,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     setPhases(makeFSForTotal(best.t));
   }, [randomizeKey]);
 
-  const phaseWeeksTotal = (arr) => arr.reduce((a, b) => a + (b.weeks || 0), 0);
-  const totalWeeksPlanned = phaseWeeksTotal(phases);
-  const totalLabel = total <= 2
-    ? `${Math.round(totalWeeksPlanned * 7)} days`
-    : `${totalWeeksPlanned.toFixed(1)} weeks`;
+  const totalSpanDays = phases.reduce((acc, p) => {
+    const durationDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+    return Math.max(acc, p.startDays + durationDays);
+  }, 0);
+  const totalLabel = totalSpanDays <= 14
+    ? `${Math.max(1, totalSpanDays)} days`
+    : `${(totalSpanDays / 7).toFixed(1)} weeks`;
 
   return (
     <div>
@@ -861,14 +870,23 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
   const dragRef = useRef(null);
   const pct = (days) => `${(days / totalDays) * 100}%`;
-  const minWeeks = total <= 2 ? 1 / 7 : 0.5;
+  const defaultMin = total <= 2 ? 1 / 7 : 0.5;
+  const snapWeeks = (value) => {
+    if (total <= 2) {
+      return Math.max(0, Math.round(value * 7) / 7);
+    }
+    return Math.max(0, Math.round(value * 2) / 2);
+  };
   const clampPhase = (p) => {
-    const widthWeeks = Math.max(minWeeks, p.weeks);
-    const maxStart = Math.max(0, totalDays - Math.ceil(widthWeeks * 7));
+    const minForPhase = p.minWeeks ?? defaultMin;
+    const snapped = snapWeeks(p.weeks);
+    const weeks = clamp(snapped, minForPhase, 26);
+    const durationDays = weeks <= 0 ? 0 : Math.max(1, Math.round(weeks * 7));
+    const maxStart = Math.max(0, totalDays - durationDays);
     return {
       ...p,
-      startDays: Math.min(Math.max(0, p.startDays), maxStart),
-      weeks: Math.max(minWeeks, Math.min(26, p.weeks)),
+      startDays: clamp(Math.round(p.startDays), 0, maxStart),
+      weeks,
     };
   };
   const onPointerDown = (e, idx, mode) => {
@@ -903,8 +921,16 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
         <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Interactive Schedule</div>
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
-          <input aria-label="Total duration weeks" type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
-          <span className="text-white/70 text-xs">{total} wks</span>
+          <input
+            aria-label="Total duration"
+            type="range"
+            min={1}
+            max={26}
+            step={1}
+            value={total}
+            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
+          />
+          <span className="text-white/70 text-xs">{showDays ? `${totalDays} d` : `${total} wks`}</span>
         </div>
       </div>
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
@@ -931,24 +957,31 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
           </div>
         </div>
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => (
-            <div key={p.key} className="flex items-center gap-3">
-              <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-10 flex-1">
-                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
-                <div className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]" style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}>
-                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
-                  <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                  <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {total <= 2 ? `${Math.ceil(p.weeks * 7)}d` : `${Math.round(p.weeks * 10) / 10}w`}
+          {phases.map((p, idx) => {
+            const visibleDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+            const widthDays = p.weeks <= 0 ? 0.75 : visibleDays;
+            return (
+              <div key={p.key} className="flex items-center gap-3">
+                <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
+                <div className="relative h-10 flex-1">
+                  <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
+                    style={{ left: pct(p.startDays), width: pct(widthDays) }}
+                  >
+                    <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
+                    <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                      <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {total <= 2 ? `${visibleDays}d` : `${Math.round(p.weeks * 10) / 10}w`}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.</div>
       </div>
@@ -957,20 +990,13 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 }
 
 // ========= CSV helper ========= //
-function proxyFetchableUrl(url) {
-  if (!url) return url;
-  if (url.startsWith("https://r.jina.ai/")) return url;
-  if (url.startsWith("https://")) return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url.slice("https://".length)}`;
-  return url;
-}
-
 function useCSV(url) {
   const [rows, setRows] = useState([]);
   useEffect(() => {
     let abort = false;
     (async () => {
       try {
-        const target = proxyFetchableUrl(url);
+        const target = url?.includes("google") ? proxyGoogleUrl(url) : url;
         const res = await fetch(target, { mode: "cors" });
         const text = await res.text();
         if (abort) return;
@@ -996,11 +1022,11 @@ const normalizePhotoUrl = (src) => {
   return out;
 };
 
-function proxyGooglePhotosUrl(url) {
+function proxyGoogleUrl(url) {
   if (!url) return url;
   if (url.startsWith("https://r.jina.ai/")) return url;
-  if (url.startsWith("https://")) return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url.slice("https://".length)}`;
-  return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url}`;
+  if (url.startsWith("https://")) return `${GOOGLE_PROXY_PREFIX}${url.slice("https://".length)}`;
+  return `${GOOGLE_PROXY_PREFIX}${url}`;
 }
 
 function extractGooglePhotosMedia(html) {
@@ -1038,7 +1064,7 @@ function useGooglePhotosAlbum(shareUrl, limit = 24) {
     const run = async () => {
       setLoading(true);
       try {
-        const res = await fetch(proxyGooglePhotosUrl(shareUrl));
+        const res = await fetch(proxyGoogleUrl(shareUrl));
         const text = await res.text();
         if (abort) return;
         const parsed = shuffleArray(extractGooglePhotosMedia(text)).slice(0, limit);
