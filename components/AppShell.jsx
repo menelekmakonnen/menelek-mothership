@@ -1520,8 +1520,6 @@ function Portfolio() {
   );
 }
 
-}
-
 // ========= Blog ========= //
 function Blog() {
   const POSTS = [
