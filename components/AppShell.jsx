@@ -68,8 +68,9 @@ const SHEETS_CSV_URL =
 
 const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
 const CHATBOT_ENDPOINTS = {
-  trackVisit: "/workflow/cQltZgIikkp4fFER",
-  chatbot: "/webhook/chatbot",
+  trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  workflow: "/workflow/cQltZgIikkp4fFER",
 };
 const CHATBOT_NAME = "Zara";
 const CHATBOT_TAGLINE = "Menelek's AI Assistant";
@@ -79,6 +80,34 @@ const INSTAGRAM_PROXY_PREFIX = "https://r.jina.ai/https://www.instagram.com/";
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ensureArray = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
+};
+
+async function postJSONWithFallback(paths, payload, { headers = {}, signal } = {}) {
+  const attempts = ensureArray(paths);
+  let lastError = null;
+  for (const path of attempts) {
+    try {
+      const res = await fetch(`${CHATBOT_BASE_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(payload),
+        signal,
+      });
+      if (!res.ok) {
+        lastError = new Error(`Request failed with status ${res.status}`);
+        continue;
+      }
+      return res;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) throw lastError;
+  throw new Error("No endpoints available");
+}
 const shuffleArray = (arr) => {
   const next = [...arr];
   for (let i = next.length - 1; i > 0; i--) {
@@ -394,77 +423,78 @@ function youtubeThumb(url) {
 const HERO_SLIDES = [
   {
     id: "reel",
-    kind: "video",
+    type: "video",
     title: "2024 Showreel",
     caption: "Latest film, commercial, and AI-assisted highlights.",
     videoUrl: "https://www.youtube.com/watch?v=A8cGpNe2JAE",
     thumb: youtubeThumb("https://www.youtube.com/watch?v=A8cGpNe2JAE"),
   },
   {
-    id: "photo",
-    kind: "image",
-    title: "Iconic Production Still",
-    caption: "Lens flare, liquid light, and an in-camera moment of resolve.",
-    src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+    id: "mmm-photo",
+    type: "instagram-image",
+    username: "mm.m.media",
+    filter: "images",
+    title: "Signature Production Still",
+    caption: "On-set stills that sell the scale and the soul.",
+    credit: "@mm.m.media",
   },
   {
-    id: "edit",
-    kind: "image",
-    title: "Epic Edit Frame",
-    caption: "AI-enhanced composites that sell the myth without losing the grit.",
-    src: "https://images.unsplash.com/photo-1522199996303-7b43878e352c?auto=format&fit=crop&w=1400&q=80",
+    id: "mmm-reel",
+    type: "instagram-video",
+    username: "mm.m.media",
+    filter: "reels",
+    title: "Epic Edit Spotlight",
+    caption: "Cinematic reel moments with hybrid VFX and AI polish.",
+    credit: "@mm.m.media",
   },
   {
-    id: "universe",
-    kind: "image",
-    title: "Loremaker Universe Poster",
-    caption: "Afro-futurist heroes and villains colliding in luminous colour.",
-    src: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1400&q=80",
+    id: "lore-art",
+    type: "instagram-image",
+    username: "lore.maker_",
+    filter: "images",
+    title: "Loremaker Universe Cover",
+    caption: "Afrofuturist mythos, glyphs, and the heroes defending each realm.",
+    credit: "@lore.maker_",
   },
 ];
 
 function Hero({ onOpenLinksModal }) {
   const [idx, setIdx] = useState(0);
-  const { media: mmmPhotos } = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 5, seed: 2 });
-  const { media: mmmReels } = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 5, seed: 4 });
-  const { media: loreImages } = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 5, seed: 6 });
+  const photoMedia = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 10, seed: 2 });
+  const reelMedia = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 10, seed: 4 });
+  const loreMedia = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 10, seed: 6 });
 
   const slides = useMemo(() => {
-    return HERO_SLIDES.map((slide) => {
-      if (slide.id === "photo" && mmmPhotos?.length) {
-        const shot = mmmPhotos[0];
-        return {
-          ...slide,
-          kind: "image",
-          src: shot.src,
-          caption: shot.caption || slide.caption,
-          credit: "@mm.m.media",
-        };
+    const computed = [];
+    HERO_SLIDES.forEach((entry) => {
+      if (entry.type === "video") {
+        computed.push({
+          ...entry,
+          kind: "video",
+          preview: entry.thumb,
+        });
+        return;
       }
-      if (slide.id === "edit" && mmmReels?.length) {
-        const reel = mmmReels[0];
-        return {
-          ...slide,
-          kind: "image",
-          src: reel.src,
-          videoUrl: reel.videoSrc || slide.videoUrl,
-          caption: reel.caption || slide.caption,
-          credit: "@mm.m.media",
-        };
-      }
-      if (slide.id === "universe" && loreImages?.length) {
-        const lore = loreImages[0];
-        return {
-          ...slide,
-          kind: "image",
-          src: lore.src,
-          caption: lore.caption || slide.caption,
-          credit: "@lore.maker_",
-        };
-      }
-      return slide;
+
+      let pool = [];
+      if (entry.username === "mm.m.media" && entry.filter === "images") pool = photoMedia.media;
+      if (entry.username === "mm.m.media" && entry.filter === "reels") pool = reelMedia.media;
+      if (entry.username === "lore.maker_") pool = loreMedia.media;
+
+      if (!pool?.length) return;
+      const item = pool[0];
+      computed.push({
+        id: entry.id,
+        kind: "image",
+        title: entry.title,
+        caption: item.caption || entry.caption,
+        preview: item.preview || item.src,
+        credit: entry.credit,
+        videoUrl: entry.type === "instagram-video" ? item.permalink || item.videoSrc : item.videoSrc || null,
+      });
     });
-  }, [mmmPhotos, mmmReels, loreImages]);
+    return computed;
+  }, [photoMedia.media, reelMedia.media, loreMedia.media]);
 
   const slidesLength = slides.length || 1;
 
@@ -480,12 +510,26 @@ function Hero({ onOpenLinksModal }) {
   const goPrev = () => setIdx((i) => (i - 1 + slidesLength) % slidesLength);
   const goNext = () => setIdx((i) => (i + 1) % slidesLength);
 
-  const slide = slides[idx];
-  const openVideo = () => {
-    if (slide.kind !== "video" || !slide.videoUrl) return;
-    window.open(slide.videoUrl, "_blank", "noopener,noreferrer");
+  const baseSlide = HERO_SLIDES[0];
+  const slide = slides[idx] || slides[0];
+  const activeSlide = slide || {
+    id: baseSlide.id,
+    title: baseSlide.title,
+    preview: baseSlide.thumb,
+    videoUrl: baseSlide.videoUrl,
+    caption: baseSlide.caption,
+    credit: baseSlide.credit,
   };
-  const imageSrc = slide.kind === "video" ? slide.thumb : slide.src;
+  const openVideo = () => {
+    if (!activeSlide?.videoUrl) return;
+    window.open(activeSlide.videoUrl, "_blank", "noopener,noreferrer");
+  };
+  const imageSrc = activeSlide?.preview || activeSlide?.thumb || activeSlide?.src || "";
+  const ctaLabel = activeSlide?.videoUrl
+    ? activeSlide.videoUrl.includes("instagram.com")
+      ? "View on Instagram"
+      : "Watch reel"
+    : "";
   return (
     <section className="relative pt-24 pb-10" id="hero">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
@@ -512,31 +556,35 @@ function Hero({ onOpenLinksModal }) {
           </div>
         </div>
         <Card className="relative overflow-hidden">
-          <div className="absolute top-4 right-4 z-20 flex gap-2">
-            <button
-              onClick={goPrev}
-              className="rounded-full bg-black/40 border border-white/20 p-1.5 text-white hover:bg-black/55"
-              aria-label="Previous showcase"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={goNext}
-              className="rounded-full bg-black/40 border border-white/20 p-1.5 text-white hover:bg-black/55"
-              aria-label="Next showcase"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
           <div className="text-sm uppercase tracking-[0.25em] text-white/60 flex items-center justify-between">
             <span>Showcase</span>
-            <div className="text-xs text-white/60">{idx + 1}/{slidesLength}</div>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span>{idx + 1}/{slidesLength}</span>
+              {slidesLength > 1 ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={goPrev}
+                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
+                    aria-label="Previous showcase"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={goNext}
+                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
+                    aria-label="Next showcase"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
             <AnimatePresence mode="wait">
-              <motion.div
-                key={slide.id}
-                className="absolute inset-0"
+                <motion.div
+                  key={activeSlide.id}
+                  className="absolute inset-0"
                 initial={{ opacity: 0, scale: 1.02 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.02 }}
@@ -545,22 +593,22 @@ function Hero({ onOpenLinksModal }) {
                 {imageSrc ? (
                   <img
                     src={imageSrc}
-                    alt={slide.title}
+                    alt={activeSlide.title}
                     className="w-full h-full object-cover object-center scale-[1.12] group-hover:scale-[1.18] transition-transform duration-700"
                     loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70">
-                    {slide.title}
+                    {activeSlide.title}
                   </div>
                 )}
-                {slide.kind === "video" ? (
+                {activeSlide.videoUrl ? (
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
                     <button
                       onClick={openVideo}
                       className="rounded-full bg-white/15 border border-white/40 backdrop-blur px-5 py-3 inline-flex items-center gap-2 text-sm font-semibold text-white hover:bg-white/20"
                     >
-                      <Play className="h-4 w-4" /> Watch reel
+                      <Play className="h-4 w-4" /> {ctaLabel || "Play"}
                     </button>
                   </div>
                 ) : null}
@@ -569,18 +617,18 @@ function Hero({ onOpenLinksModal }) {
           </div>
           {slide.caption ? (
             <motion.p
-              key={`${slide.id}-caption`}
+              key={`${activeSlide.id}-caption`}
               className="mt-4 text-sm text-white/75"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.4 }}
             >
-              {slide.caption}
+              {activeSlide.caption}
             </motion.p>
           ) : null}
-          {slide.credit ? (
-            <div className="mt-2 text-xs text-white/60">{slide.credit}</div>
+          {activeSlide.credit ? (
+            <div className="mt-2 text-xs text-white/60">{activeSlide.credit}</div>
           ) : null}
         </Card>
       </div>
@@ -676,8 +724,16 @@ function ContactInline({ calendarState }) {
 
   const clear = () => setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
 
-  const choose = (s) => setForm((f) => ({ ...f, subtype: s }));
+  const choose = (s) =>
+    setForm((f) => ({
+      ...f,
+      subtype: s,
+      otherDetail: s === "Other" ? f.otherDetail : "",
+      fitScore: s === "Other" ? "" : f.fitScore,
+      recTier: s === "Other" ? "" : f.recTier || "Starter",
+    }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
+  const showFitFields = form.subtype !== "Other";
 
   return (
     <Card id="contact-inline">
@@ -702,22 +758,39 @@ function ContactInline({ calendarState }) {
             </div>
           ) : null}
 
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-              <input value={form.fitScore} onChange={(e) => setForm({ ...form, fitScore: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
-            </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-              <select value={form.recTier} onChange={(e) => setForm({ ...form, recTier: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
-                {["Starter", "Signature", "Cinema+"].map((x) => (
-                  <option key={x} className="text-black">{x}</option>
-                ))}
-              </select>
-            </div>
-            <div>
+          <div className={cn("grid gap-3", showFitFields ? "sm:grid-cols-3" : "")}>
+            {showFitFields ? (
+              <>
+                <div>
+                  <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
+                  <input
+                    value={form.fitScore}
+                    onChange={(e) => setForm({ ...form, fitScore: e.target.value })}
+                    className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
+                  <select
+                    value={form.recTier || "Starter"}
+                    onChange={(e) => setForm({ ...form, recTier: e.target.value })}
+                    className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
+                    style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                  >
+                    {["Starter", "Signature", "Cinema+"].map((x) => (
+                      <option key={x} className="text-black">{x}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            ) : null}
+            <div className={showFitFields ? "" : "sm:col-span-1"}>
               <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-              <input value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.scope}
+                onChange={(e) => setForm({ ...form, scope: e.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           </div>
 
@@ -1093,8 +1166,11 @@ function useCSV(url) {
     (async () => {
       try {
         const target = proxyGoogleUrl(url);
-        const res = await fetch(target);
-        const text = await res.text();
+        const attempts = [target];
+        if (url && url !== target) attempts.push(url);
+        const text = await fetchTextWithFallback(attempts, {
+          headers: { Accept: "text/csv,application/csv,text/plain;q=0.9,*/*;q=0.8" },
+        });
         if (abort) return;
         const { rows } = parseCSV(text);
         setRows(rows.filter((r) => Object.values(r).some((v) => (v || "").toString().trim())));
@@ -1123,6 +1199,26 @@ function proxyGoogleUrl(url) {
   if (url.startsWith("https://r.jina.ai/")) return url;
   if (url.startsWith("https://")) return `${GOOGLE_PROXY_PREFIX}${url.slice("https://".length)}`;
   return `${GOOGLE_PROXY_PREFIX}${url}`;
+}
+
+async function fetchTextWithFallback(urls, init = {}) {
+  const attempts = ensureArray(urls);
+  let lastError = null;
+  for (const target of attempts) {
+    if (!target) continue;
+    try {
+      const res = await fetch(target, init);
+      if (!res.ok) {
+        lastError = new Error(`Status ${res.status}`);
+        continue;
+      }
+      return await res.text();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) throw lastError;
+  throw new Error("No URL succeeded");
 }
 
 function extractGooglePhotosMedia(html) {
@@ -1201,8 +1297,10 @@ function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) 
     const fetchProfile = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${INSTAGRAM_PROXY_PREFIX}${username}/?__a=1&__d=dis`, {
-          headers: { Accept: "application/json" },
+        const url = `${INSTAGRAM_PROXY_PREFIX}api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+        const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "Mozilla/5.0";
+        const res = await fetch(url, {
+          headers: { Accept: "application/json", "User-Agent": userAgent },
         });
         const text = await res.text();
         if (abort) return;
@@ -1217,7 +1315,7 @@ function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) 
 
         const pickNodes = (edges = []) => edges.map((edge) => edge?.node).filter(Boolean);
         const timeline = pickNodes(user.edge_owner_to_timeline_media?.edges);
-        const reels = pickNodes(user.edge_felix_video_timeline?.edges);
+        const felix = pickNodes(user.edge_felix_video_timeline?.edges);
 
         const flattenNode = (node) => {
           if (!node) return [];
@@ -1225,12 +1323,17 @@ function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) 
             return node.edge_sidecar_to_children.edges
               .map((edge) => edge?.node)
               .filter(Boolean)
-              .map((child) => ({ ...child, parentId: node.id, taken_at_timestamp: child.taken_at_timestamp || node.taken_at_timestamp }));
+              .map((child) => ({
+                ...child,
+                parentId: node.id,
+                taken_at_timestamp: child.taken_at_timestamp || node.taken_at_timestamp,
+                shortcode: node.shortcode || child.shortcode,
+              }));
           }
           return [{ ...node }];
         };
 
-        const combined = [...timeline, ...reels].flatMap(flattenNode);
+        const combined = [...timeline, ...felix].flatMap(flattenNode);
 
         const filtered = combined.filter((node) => {
           const isVideo = Boolean(
@@ -1253,8 +1356,7 @@ function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) 
               node.thumbnail_src,
               node.thumbnail_url,
               node.cover_photo_url,
-              node.image_versions2?.candidates?.[0]?.url,
-              node.image_versions2?.candidates?.find((c) => c?.url)?.url
+              node.image_versions2?.candidates?.find((c) => c?.url && !c.url.endsWith(".mp4"))?.url
             );
             const videoCandidate = pickFirst(
               node.video_url,
@@ -1266,6 +1368,7 @@ function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) 
             const id = node.id || `${node.parentId || "node"}-${imgCandidate || videoCandidate}`;
             const caption = node.edge_media_to_caption?.edges?.[0]?.node?.text || node.accessibility_caption || "";
             const takenAt = node.taken_at_timestamp || node.taken_at || 0;
+            const permalink = node.shortcode ? `https://www.instagram.com/p/${node.shortcode}/` : node.permalink || null;
             return {
               id,
               src: imgCandidate || videoCandidate,
@@ -1274,6 +1377,7 @@ function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) 
               videoSrc: videoCandidate || null,
               caption,
               takenAt,
+              permalink,
             };
           })
           .filter(Boolean);
@@ -1416,11 +1520,7 @@ function ChatbotWidget() {
         visitCount: session?.visitCount,
         fingerprint: session?.fingerprint,
       };
-      fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.trackVisit}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
+      postJSONWithFallback(CHATBOT_ENDPOINTS.trackVisit, payload).catch(() => {});
     }
   }, []);
 
@@ -1497,16 +1597,18 @@ function ChatbotWidget() {
         language: typeof navigator !== "undefined" ? navigator.language : "",
       };
 
-      const res = await fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.chatbot}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let res;
+      let data = null;
+      try {
+        res = await postJSONWithFallback(CHATBOT_ENDPOINTS.chatbot, payload);
+        data = await res.json();
+      } catch (err) {
+        throw err;
+      }
 
       await typingDelay;
 
-      if (res.ok) {
-        const data = await res.json();
+      if (res && data) {
         const replyText = data?.response || data?.reply || data?.message || failSafe;
         appendMessage({ id: Date.now() + 2, sender: "bot", text: replyText });
       } else {
@@ -1822,7 +1924,12 @@ function MMMBelt({ album, onOpen }) {
                       playsInline
                     />
                   ) : (
-                    <img src={item.src} alt={`${album.title} still`} className="w-full h-full object-cover" loading="lazy" />
+                    <img
+                      src={item.preview || item.src}
+                      alt={`${album.title} still`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
                   <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
