@@ -20,6 +20,7 @@ import {
   Minimize2,
   Maximize2,
   Loader2,
+  Expand,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
