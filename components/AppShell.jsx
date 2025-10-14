@@ -67,11 +67,11 @@ const LINKS = {
 const SHEETS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
 
-const CHATBOT_BASE_URL = "https://YOUR_N8N_INSTANCE.com"; // ⬅️ set
-const CHATBOT_ENDPOINTS = { trackVisit: "/webhook/track-visit", chatbot: "/webhook/chatbot" };
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = { trackVisit: null, chatbot: "/workflow/cQltZgIikkp4fFER" };
 const CHATBOT_NAME = "Zara";
 const CHATBOT_TAGLINE = "Menelek's AI Assistant";
-const GOOGLE_PHOTOS_PROXY_PREFIX = "https://r.jina.ai/https://";
+const GOOGLE_PROXY_PREFIX = "https://r.jina.ai/https://";
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
@@ -309,7 +309,7 @@ const PROJECTS = [
     runtime: "12 min",
     summary: "A possessed camera blinds its user while granting powers.",
     url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj",
-    thumbZoom: { base: 1.26, hover: 1.4 },
+    thumbZoom: { base: 1.38, hover: 1.6 },
   },
   {
     id: "heroes-gods",
@@ -326,7 +326,7 @@ const PROJECTS = [
     runtime: "14 min",
     summary: "BTS doc for a boxing pilot in London — Left Hook Gym.",
     url: "https://www.youtube.com/watch?v=4q6X6prhVOE",
-    thumbZoom: { base: 1.28, hover: 1.45 },
+    thumbZoom: { base: 1.4, hover: 1.62 },
   },
   {
     id: "soldier-mv",
@@ -335,7 +335,7 @@ const PROJECTS = [
     runtime: "3 min",
     summary: "Concept-to-delivery music video including cover art.",
     url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv",
-    thumbZoom: { base: 1.3, hover: 1.46 },
+    thumbZoom: { base: 1.42, hover: 1.64 },
   },
   {
     id: "abranteers",
@@ -367,10 +367,35 @@ function youtubeThumb(url) {
 
 // ========= HERO ========= //
 const HERO_SLIDES = [
-  { id: "reel", kind: "video", title: "Showreel", src: "https://www.youtube.com/embed/A8cGpNe2JAE" },
-  { id: "photo", kind: "image", title: "Best Photo", src: "https://i.imgur.com/1xqQwBn.jpg" },
-  { id: "edit", kind: "image", title: "Epic Edit", src: "https://i.imgur.com/dg9lQbH.jpg" },
-  { id: "universe", kind: "image", title: "Loremaker Universe", src: "https://i.imgur.com/2h2x3sC.jpg" },
+  {
+    id: "reel",
+    kind: "video",
+    title: "2024 Showreel",
+    caption: "Latest film, commercial, and AI-assisted highlights.",
+    videoUrl: "https://www.youtube.com/watch?v=A8cGpNe2JAE",
+    thumb: youtubeThumb("https://www.youtube.com/watch?v=A8cGpNe2JAE"),
+  },
+  {
+    id: "photo",
+    kind: "image",
+    title: "Iconic Production Still",
+    caption: "Lens flare, liquid light, and an in-camera moment of resolve.",
+    src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "edit",
+    kind: "image",
+    title: "Epic Edit Frame",
+    caption: "AI-enhanced composites that sell the myth without losing the grit.",
+    src: "https://images.unsplash.com/photo-1522199996303-7b43878e352c?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "universe",
+    kind: "image",
+    title: "Loremaker Universe Poster",
+    caption: "Afro-futurist heroes and villains colliding in luminous colour.",
+    src: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1400&q=80",
+  },
 ];
 
 function Hero({ onOpenLinksModal }) {
@@ -380,6 +405,11 @@ function Hero({ onOpenLinksModal }) {
     return () => clearInterval(t);
   }, []);
   const slide = HERO_SLIDES[idx];
+  const openVideo = () => {
+    if (slide.kind !== "video" || !slide.videoUrl) return;
+    window.open(slide.videoUrl, "_blank", "noopener,noreferrer");
+  };
+  const imageSrc = slide.kind === "video" ? slide.thumb : slide.src;
   return (
     <section className="relative pt-24 pb-10">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
@@ -420,27 +450,43 @@ function Hero({ onOpenLinksModal }) {
                 exit={{ opacity: 0, scale: 1.02 }}
                 transition={{ duration: 0.6 }}
               >
-                {slide.kind === "video" ? (
-                  <iframe
-                    className="w-full h-full"
-                    src={slide.src}
-                    title={slide.title}
-                    loading="lazy"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                ) : (
+                {imageSrc ? (
                   <img
-                    src={slide.src}
+                    src={imageSrc}
                     alt={slide.title}
                     className="w-full h-full object-cover object-center scale-[1.12] group-hover:scale-[1.18] transition-transform duration-700"
+                    loading="lazy"
                   />
+                ) : (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70">
+                    {slide.title}
+                  </div>
                 )}
+                {slide.kind === "video" ? (
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
+                    <button
+                      onClick={openVideo}
+                      className="rounded-full bg-white/15 border border-white/40 backdrop-blur px-5 py-3 inline-flex items-center gap-2 text-sm font-semibold text-white hover:bg-white/20"
+                    >
+                      <Play className="h-4 w-4" /> Watch reel
+                    </button>
+                  </div>
+                ) : null}
               </motion.div>
             </AnimatePresence>
           </div>
+          {slide.caption ? (
+            <motion.p
+              key={`${slide.id}-caption`}
+              className="mt-4 text-sm text-white/75"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4 }}
+            >
+              {slide.caption}
+            </motion.p>
+          ) : null}
         </Card>
       </div>
     </section>
@@ -667,12 +713,36 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
 
   const makeFSForTotal = (tWeeks) => {
-    if (tWeeks <= 1) {
+    if (tWeeks <= 2) {
+      const totalDays = Math.max(1, Math.round(tWeeks * 7));
+      const minDay = totalDays >= KEYS.length ? 1 : 0;
+      const allocations = SPLIT.map((r) => Math.max(minDay, Math.round(totalDays * r)));
+      let diff = totalDays - allocations.reduce((a, b) => a + b, 0);
+      let guard = 0;
+      while (diff !== 0 && guard < 400) {
+        const index = guard % allocations.length;
+        if (diff > 0) {
+          allocations[index] += 1;
+          diff -= 1;
+        } else if (allocations[index] > minDay) {
+          allocations[index] -= 1;
+          diff += 1;
+        }
+        guard += 1;
+        if (allocations.every((a) => a === minDay)) break;
+      }
       const out = [];
       let sd = 0;
-      for (let i = 0; i < KEYS.length; i++) {
-        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: 1 / 7 });
-        sd += 1;
+      for (let i = 0; i < allocations.length; i++) {
+        const days = Math.max(0, allocations[i]);
+        out.push({
+          key: KEYS[i],
+          label: LABELS[i],
+          startDays: sd,
+          weeks: days / 7,
+          minWeeks: days > 0 ? 1 / 7 : 0,
+        });
+        sd += days;
       }
       return out;
     }
@@ -680,7 +750,7 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     const out = [];
     let sd = 0;
     for (let i = 0; i < parts.length; i++) {
-      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i] });
+      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i], minWeeks: 0.5 });
       sd += Math.ceil(parts[i] * 7);
     }
     return out;
@@ -690,11 +760,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
 
   useEffect(() => {
     setPhases((prev) => {
-      if (total <= 1) return makeFSForTotal(1);
+      if (total <= 2) return makeFSForTotal(total);
       const maxDays = total * 7;
+      const minWeeksClamp = 0.5;
       return prev.map((p) => {
-        const weeks = Math.max(0.5, Math.min(26, p.weeks));
-        let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
+        const weeks = Math.max(minWeeksClamp, Math.min(26, p.weeks));
+        const allowedStart = Math.max(0, maxDays - Math.ceil(weeks * 7));
+        const startDays = Math.min(Math.max(0, p.startDays), allowedStart);
         return { ...p, weeks, startDays };
       });
     });
@@ -726,7 +798,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     setPhases(makeFSForTotal(best.t));
   }, [randomizeKey]);
 
-  const phaseWeeksTotal = (arr) => arr.reduce((a, b) => a + (b.weeks || 0), 0);
+  const totalSpanDays = phases.reduce((acc, p) => {
+    const durationDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+    return Math.max(acc, p.startDays + durationDays);
+  }, 0);
+  const totalLabel = totalSpanDays <= 14
+    ? `${Math.max(1, totalSpanDays)} days`
+    : `${(totalSpanDays / 7).toFixed(1)} weeks`;
 
   return (
     <div>
@@ -755,7 +833,7 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
             <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
             <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
           </svg>
-          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {phaseWeeksTotal(phases).toFixed(1)} {phaseWeeksTotal(phases) <= 2 ? 'weeks (days mode below)' : 'weeks'}</div>
+          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalLabel}</div>
         </div>
       </div>
       <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
@@ -793,9 +871,24 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
   const dragRef = useRef(null);
   const pct = (days) => `${(days / totalDays) * 100}%`;
+  const defaultMin = total <= 2 ? 1 / 7 : 0.5;
+  const snapWeeks = (value) => {
+    if (total <= 2) {
+      return Math.max(0, Math.round(value * 7) / 7);
+    }
+    return Math.max(0, Math.round(value * 2) / 2);
+  };
   const clampPhase = (p) => {
-    const maxStart = Math.max(0, totalDays - Math.ceil(p.weeks * 7));
-    return { ...p, startDays: Math.min(Math.max(0, p.startDays), maxStart), weeks: Math.max(0.5, Math.min(26, p.weeks)) };
+    const minForPhase = p.minWeeks ?? defaultMin;
+    const snapped = snapWeeks(p.weeks);
+    const weeks = clamp(snapped, minForPhase, 26);
+    const durationDays = weeks <= 0 ? 0 : Math.max(1, Math.round(weeks * 7));
+    const maxStart = Math.max(0, totalDays - durationDays);
+    return {
+      ...p,
+      startDays: clamp(Math.round(p.startDays), 0, maxStart),
+      weeks,
+    };
   };
   const onPointerDown = (e, idx, mode) => {
     const rect = containerRef.current.getBoundingClientRect();
@@ -829,8 +922,16 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
         <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Interactive Schedule</div>
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
-          <input aria-label="Total duration weeks" type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
-          <span className="text-white/70 text-xs">{total} wks</span>
+          <input
+            aria-label="Total duration"
+            type="range"
+            min={1}
+            max={26}
+            step={1}
+            value={total}
+            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
+          />
+          <span className="text-white/70 text-xs">{showDays ? `${totalDays} d` : `${total} wks`}</span>
         </div>
       </div>
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
@@ -857,24 +958,31 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
           </div>
         </div>
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => (
-            <div key={p.key} className="flex items-center gap-3">
-              <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-10 flex-1">
-                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
-                <div className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]" style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}>
-                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
-                  <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                  <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {total <= 2 ? `${Math.ceil(p.weeks * 7)}d` : `${Math.round(p.weeks * 10) / 10}w`}
+          {phases.map((p, idx) => {
+            const visibleDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+            const widthDays = p.weeks <= 0 ? 0.75 : visibleDays;
+            return (
+              <div key={p.key} className="flex items-center gap-3">
+                <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
+                <div className="relative h-10 flex-1">
+                  <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
+                    style={{ left: pct(p.startDays), width: pct(widthDays) }}
+                  >
+                    <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
+                    <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                      <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {total <= 2 ? `${visibleDays}d` : `${Math.round(p.weeks * 10) / 10}w`}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.</div>
       </div>
@@ -889,7 +997,8 @@ function useCSV(url) {
     let abort = false;
     (async () => {
       try {
-        const res = await fetch(url, { mode: "cors" });
+        const target = url?.includes("google") ? proxyGoogleUrl(url) : url;
+        const res = await fetch(target, { mode: "cors" });
         const text = await res.text();
         if (abort) return;
         const { rows } = parseCSV(text);
@@ -914,11 +1023,11 @@ const normalizePhotoUrl = (src) => {
   return out;
 };
 
-function proxyGooglePhotosUrl(url) {
+function proxyGoogleUrl(url) {
   if (!url) return url;
   if (url.startsWith("https://r.jina.ai/")) return url;
-  if (url.startsWith("https://")) return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url.slice("https://".length)}`;
-  return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url}`;
+  if (url.startsWith("https://")) return `${GOOGLE_PROXY_PREFIX}${url.slice("https://".length)}`;
+  return `${GOOGLE_PROXY_PREFIX}${url}`;
 }
 
 function extractGooglePhotosMedia(html) {
@@ -956,7 +1065,7 @@ function useGooglePhotosAlbum(shareUrl, limit = 24) {
     const run = async () => {
       setLoading(true);
       try {
-        const res = await fetch(proxyGooglePhotosUrl(shareUrl));
+        const res = await fetch(proxyGoogleUrl(shareUrl));
         const text = await res.text();
         if (abort) return;
         const parsed = shuffleArray(extractGooglePhotosMedia(text)).slice(0, limit);
@@ -981,25 +1090,121 @@ function useGooglePhotosAlbum(shareUrl, limit = 24) {
 }
 
 // ========= Chatbot ========= //
+const CHATBOT_SESSION_KEYS = {
+  id: "zara_session_id",
+  firstSeen: "zara_first_seen",
+  fingerprint: "zara_fingerprint",
+  lastActive: "zara_session_time",
+  visitCount: "zara_visit_count",
+};
+const CHATBOT_SESSION_TIMEOUT = 30 * 60 * 1000;
+
+function createChatbotFingerprint() {
+  if (typeof window === "undefined") return "";
+  return JSON.stringify({
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    screen: typeof window !== "undefined" ? `${window.screen.width}x${window.screen.height}` : "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+}
+
+function ensureChatbotSession() {
+  if (typeof window === "undefined") return null;
+  const now = Date.now();
+  const storedId = localStorage.getItem(CHATBOT_SESSION_KEYS.id);
+  const storedFirstSeen = localStorage.getItem(CHATBOT_SESSION_KEYS.firstSeen);
+  const storedFingerprint = localStorage.getItem(CHATBOT_SESSION_KEYS.fingerprint);
+  const storedLastActive = parseInt(localStorage.getItem(CHATBOT_SESSION_KEYS.lastActive) || "0", 10);
+  let visitCount = parseInt(localStorage.getItem(CHATBOT_SESSION_KEYS.visitCount) || "0", 10);
+  const fingerprint = createChatbotFingerprint();
+
+  let sessionId = storedId;
+  let firstSeen = storedFirstSeen;
+  let isReturning = visitCount > 0;
+
+  const invalid =
+    !sessionId ||
+    !storedFirstSeen ||
+    !storedFingerprint ||
+    storedFingerprint !== fingerprint ||
+    now - storedLastActive > CHATBOT_SESSION_TIMEOUT;
+
+  if (invalid) {
+    sessionId = `session_${now}_${Math.random().toString(36).slice(2, 9)}`;
+    firstSeen = new Date().toISOString();
+    visitCount += 1;
+    isReturning = visitCount > 1;
+    localStorage.setItem(CHATBOT_SESSION_KEYS.visitCount, String(visitCount));
+  }
+
+  localStorage.setItem(CHATBOT_SESSION_KEYS.id, sessionId);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.firstSeen, firstSeen);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.fingerprint, fingerprint);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.lastActive, String(now));
+
+  return { id: sessionId, firstSeen, fingerprint, isReturning, visitCount };
+}
+
 function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [messages, setMessages] = useState(() => [
-    { id: 0, sender: "bot", text: `Hi, I'm ${CHATBOT_NAME}. Share your project goal, timeline, or budget and I’ll guide you.` },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [unread, setUnread] = useState(1);
+  const [isReturning, setIsReturning] = useState(false);
   const listRef = useRef(null);
+  const sessionRef = useRef(null);
+  const messageCountRef = useRef(0);
+  const openRef = useRef(open);
+  const minimizedRef = useRef(minimized);
 
   useEffect(() => {
-    if (!CHATBOT_BASE_URL || CHATBOT_BASE_URL.includes("YOUR_N8N_INSTANCE")) return;
-    fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.trackVisit}`, { method: "POST", mode: "cors" }).catch(() => {});
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    minimizedRef.current = minimized;
+  }, [minimized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const session = ensureChatbotSession();
+    sessionRef.current = session;
+    setIsReturning(Boolean(session?.isReturning));
+    setMessages([
+      {
+        id: Date.now(),
+        sender: "bot",
+        text: session?.isReturning
+          ? "👋 Welcome back! Pick up where we left off—what can I line up for you today?"
+          : `Hey there! I'm ${CHATBOT_NAME}. Share your brief, budget, or timeline and I'll map next steps.`,
+      },
+    ]);
+
+    if (CHATBOT_BASE_URL && CHATBOT_ENDPOINTS.trackVisit) {
+      const payload = {
+        page: window.location.pathname,
+        referrer: document.referrer,
+        timestamp: new Date().toISOString(),
+        sessionId: session?.id,
+        firstSeen: session?.firstSeen,
+        isReturningVisitor: session?.isReturning,
+        visitCount: session?.visitCount,
+        fingerprint: session?.fingerprint,
+      };
+      fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.trackVisit}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
     if (open && !minimized) setUnread(0);
-  }, [open, minimized]);
+  }, [open, minimized, messages.length]);
 
   useEffect(() => {
     if (!open || minimized) return;
@@ -1026,32 +1231,72 @@ function ChatbotWidget() {
     });
   };
 
+  const appendMessage = (msg) => {
+    setMessages((prev) => [...prev, msg]);
+    if (msg.sender === "bot" && (!openRef.current || minimizedRef.current)) {
+      setUnread((u) => u + 1);
+    }
+  };
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
     setInput("");
+
+    const baseSession = sessionRef.current || ensureChatbotSession();
+    sessionRef.current = baseSession;
+
     const userMsg = { id: Date.now(), sender: "user", text };
-    setMessages((msgs) => [...msgs, userMsg]);
+    appendMessage(userMsg);
+    messageCountRef.current += 1;
     setLoading(true);
+
+    const typingDelay = new Promise((resolve) => setTimeout(resolve, 450));
+
+    const failSafe = "I'm running in demo mode right now. Drop an email or call sheet and I'll loop Menelek in manually.";
+
     try {
-      let replyText = "Thanks for reaching out! I'll follow up with a deeper answer shortly.";
-      if (CHATBOT_BASE_URL && !CHATBOT_BASE_URL.includes("YOUR_N8N_INSTANCE")) {
-        const res = await fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.chatbot}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          mode: "cors",
-          body: JSON.stringify({ message: text }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          replyText = data?.reply || data?.message || replyText;
-        }
-      } else {
-        replyText = "I'm running in demo mode. Drop your email or call sheet and I'll forward it to Menelek.";
+      if (!CHATBOT_BASE_URL || !CHATBOT_ENDPOINTS.chatbot) {
+        await typingDelay;
+        appendMessage({ id: Date.now() + 1, sender: "bot", text: failSafe });
+        return;
       }
-      setMessages((msgs) => [...msgs, { id: Date.now() + 1, sender: "bot", text: replyText }]);
-    } catch (e) {
-      setMessages((msgs) => [...msgs, { id: Date.now() + 2, sender: "bot", text: "Connection hiccup. Email hello@menelekmakonnen.com and I'll jump in." }]);
+
+      const payload = {
+        message: text,
+        sessionId: baseSession?.id,
+        messageCount: messageCountRef.current,
+        firstSeen: baseSession?.firstSeen,
+        isReturningVisitor: baseSession?.isReturning,
+        conversationContext: baseSession?.isReturning ? "continuing" : "new",
+        page: typeof window !== "undefined" ? window.location.pathname : "",
+        referrer: typeof document !== "undefined" ? document.referrer : "",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        language: typeof navigator !== "undefined" ? navigator.language : "",
+      };
+
+      const res = await fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.chatbot}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await typingDelay;
+
+      if (res.ok) {
+        const data = await res.json();
+        const replyText = data?.response || data?.reply || data?.message || failSafe;
+        appendMessage({ id: Date.now() + 2, sender: "bot", text: replyText });
+      } else {
+        appendMessage({ id: Date.now() + 3, sender: "bot", text: failSafe });
+      }
+    } catch (err) {
+      await typingDelay;
+      appendMessage({
+        id: Date.now() + 4,
+        sender: "bot",
+        text: "Connection hiccup. Email hello@menelekmakonnen.com and I'll jump in directly.",
+      });
     } finally {
       setLoading(false);
     }
@@ -1079,47 +1324,97 @@ function ChatbotWidget() {
           <div>
             <div className="font-semibold text-sm">Chat with {CHATBOT_NAME}</div>
             <div className="text-xs text-white/70">{CHATBOT_TAGLINE}</div>
+            {isReturning ? <div className="text-[10px] text-emerald-300/80">Welcome back</div> : null}
           </div>
         </div>
       </button>
     );
   }
 
+  const onHeaderClick = (event) => {
+    if (event.target.closest("button")) return;
+    toggleMinimize();
+  };
+
   return (
     <div className="w-[320px] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer select-none"
+        onClick={onHeaderClick}
+        title={minimized ? "Expand Zara" : "Minimise Zara"}
+      >
         <div>
           <div className="font-semibold text-sm">{CHATBOT_NAME}</div>
           <div className="text-xs text-white/70">{CHATBOT_TAGLINE}</div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={toggleMinimize} className="rounded-full p-1.5 hover:bg-white/10" title={minimized ? "Maximize" : "Minimize"}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMinimize();
+            }}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            title={minimized ? "Maximize" : "Minimize"}
+          >
             {minimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
           </button>
-          <button onClick={() => { setOpen(false); setMinimized(false); }} className="rounded-full p-1.5 hover:bg-white/10" title="Close chat">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              setMinimized(false);
+            }}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            title="Close chat"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
       </div>
       {minimized ? (
-        <button onClick={() => setMinimized(false)} className="w-full px-4 py-6 text-sm text-white/75 hover:bg-white/5">Tap to resume conversation</button>
+        <button
+          onClick={() => setMinimized(false)}
+          className="w-full px-4 py-6 text-sm text-white/75 hover:bg-white/5"
+        >
+          Tap to resume conversation
+        </button>
       ) : (
         <div className="flex flex-col h-[380px]">
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((msg) => (
-              <div key={msg.id} className={cn("max-w-[90%] rounded-2xl px-3 py-2 text-sm", msg.sender === "user" ? "ml-auto bg-white/20" : "bg-white/10 border border-white/15")}>{msg.text}</div>
+              <div
+                key={msg.id}
+                className={cn(
+                  "max-w-[90%] rounded-2xl px-3 py-2 text-sm transition-all",
+                  msg.sender === "user" ? "ml-auto bg-white/20" : "bg-white/10 border border-white/15"
+                )}
+              >
+                {msg.text}
+              </div>
             ))}
-            {loading ? <div className="text-xs text-white/60">{CHATBOT_NAME} is typing…</div> : null}
+            {loading ? (
+              <div className="flex items-center gap-2 text-xs text-white/60">
+                <span className="relative flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/70 animate-pulse" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/50 animate-pulse [animation-delay:120ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/30 animate-pulse [animation-delay:240ms]" />
+                </span>
+                {CHATBOT_NAME} is typing…
+              </div>
+            ) : null}
           </div>
           <form onSubmit={onSubmit} className="p-3 border-t border-white/10 bg-black/40">
             <div className="flex items-center gap-2">
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-sm"
+                className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-sm placeholder:text-white/50"
                 placeholder="Share your idea…"
+                maxLength={500}
               />
-              <Button type="submit" variant="accent">Send</Button>
+              <Button type="submit" variant="accent" disabled={loading}>
+                Send
+              </Button>
             </div>
           </form>
         </div>
@@ -1229,84 +1524,82 @@ const MMM_ALBUMS = [
   },
 ];
 
-function MMMAlbumCard({ album, onOpen }) {
-  const { media, loading, error } = useGooglePhotosAlbum(album.shareUrl, 30);
-  const [index, setIndex] = useState(0);
+function MMMBelt({ album, onOpen }) {
+  const { media, loading, error } = useGooglePhotosAlbum(album.shareUrl, 48);
+  const [hovered, setHovered] = useState(null);
 
-  useEffect(() => {
-    if (media.length && typeof album.seed === "number") {
-      setIndex(album.seed % media.length);
-    }
-  }, [album.seed, media.length]);
-
-  useEffect(() => {
-    if (!media.length) return;
-    const timer = setInterval(() => {
-      setIndex((i) => (i + 1) % media.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [media.length]);
-
-  const slide = media.length ? media[index % media.length] : null;
-  const openLightbox = () => {
+  const duplicated = media.length ? [...media, ...media] : [];
+  const openAt = (index) => {
     if (!media.length) return;
     onOpen?.({ album, media, initialIndex: index % media.length });
   };
 
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="relative aspect-[4/3] bg-black/45 border-b border-white/10 flex items-center justify-center">
-        {loading ? (
-          <div className="flex items-center gap-2 text-white/70">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Syncing album…</span>
-          </div>
-        ) : slide ? (
-          slide.type === "video" ? (
-            <video
-              key={`${album.id}-${slide.src}`}
-              src={slide.src}
-              className="w-full h-full object-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
-          ) : (
-            <img
-              key={`${album.id}-${slide.src}`}
-              src={slide.src}
-              alt={`${album.title} still`}
-              className="w-full h-full object-cover"
-            />
-          )
+    <div className="rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 overflow-hidden">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div>
+          <div className="text-lg font-semibold">{album.title}</div>
+          <p className="text-white/70 text-sm max-w-2xl">{album.description}</p>
+        </div>
+        <div className="flex items-center gap-2 text-white/65 text-xs">
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Syncing media…</span>
+            </>
+          ) : error && !media.length ? (
+            <span className="text-rose-200/80">Album temporarily unavailable.</span>
+          ) : null}
+        </div>
+      </div>
+      <div className="relative overflow-hidden">
+        {duplicated.length ? (
+          <motion.div
+            className="flex gap-4"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: album.kind === "video" ? 48 : 56, repeat: Infinity, ease: "linear" }}
+          >
+            {duplicated.map((item, idx) => {
+              const baseIndex = idx % media.length;
+              const isActive = hovered === baseIndex;
+              const isDimmed = hovered !== null && !isActive;
+              return (
+                <button
+                  key={`${album.id}-${idx}`}
+                  onMouseEnter={() => setHovered(baseIndex)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => openAt(baseIndex)}
+                  className={cn(
+                    "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                    isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                  )}
+                  title="Open lightbox"
+                >
+                  {item.type === "video" ? (
+                    <video
+                      src={item.src}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img src={item.src} alt={`${album.title} still`} className="w-full h-full object-cover" loading="lazy" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                </button>
+              );
+            })}
+          </motion.div>
         ) : (
-          <div className="text-white/60 text-sm px-6 text-center">
-            {error ? "Album unavailable right now." : "No media available yet."}
+          <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
+            {loading ? "Loading gallery…" : "No media pulled yet."}
           </div>
         )}
-        <button
-          onClick={openLightbox}
-          className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/65 border border-white/20 backdrop-blur px-3 py-1.5 text-xs font-medium uppercase tracking-wide hover:bg-black/75 disabled:opacity-60"
-          disabled={!media.length}
-          title="Open lightbox"
-        >
-          <Expand className="h-4 w-4" /> View
-        </button>
       </div>
-      <div className="p-5 space-y-2">
-        <div className="font-semibold text-lg">{album.title}</div>
-        <p className="text-white/70 text-sm">{album.description}</p>
-        <a
-          href={album.shareUrl}
-          className="mt-2 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <ExternalLink className="h-4 w-4" /> Open in Google Photos
-        </a>
-      </div>
-    </Card>
+    </div>
   );
 }
 
@@ -1378,17 +1671,17 @@ function MMMGalleries() {
 
   return (
     <section className="py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-3">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="flex items-end justify-between">
           <h2 className="text-2xl sm:text-3xl font-bold">MMM Galleries</h2>
-          <span className="text-white/70 text-sm">Google Photos albums • tap to open</span>
+          <span className="text-white/70 text-sm">Hover to magnify • tap to open lightbox</span>
         </div>
-        <p className="text-white/75 max-w-2xl mb-4">
-          Curated pulls from MMM Media productions — stills, edits, and AI experiments that stay in slow-motion rotation. Tap a tile for an expanded lightbox and swipe through the full album.
+        <p className="text-white/75 max-w-3xl">
+          Four belts of living media from MMM Media—photos, edits, and AI experiments gliding endlessly. Hover to spotlight a frame; click to open the lightbox and scroll through every pull without leaving the site.
         </p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-5">
           {MMM_ALBUMS.map((album) => (
-            <MMMAlbumCard key={album.id} album={album} onOpen={(payload) => setLightbox(payload)} />
+            <MMMBelt key={album.id} album={album} onOpen={(payload) => setLightbox(payload)} />
           ))}
         </div>
       </div>
@@ -1450,6 +1743,13 @@ function CharacterCard({ row }) {
 // ========= Portfolio ========= //
 function Portfolio() {
   const [modal, setModal] = useState(null);
+  const embedSrc = useMemo(() => {
+    if (!modal || modal.type !== "watch") return null;
+    const id = getYouTubeId(modal?.p?.url || "");
+    if (id) return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
+    if (!modal?.p?.url) return null;
+    return modal.p.url.includes("shorts/") ? modal.p.url.replace("shorts/", "embed/") : modal.p.url;
+  }, [modal]);
   return (
     <section className="py-12" id="featured-projects">
       <div className="max-w-7xl mx-auto px-6">
@@ -1496,7 +1796,7 @@ function Portfolio() {
             <div className="aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
               <iframe
                 className="w-full h-full"
-                src={modal?.p?.url?.replace("watch?v=", "embed/").replace("shorts/", "embed/")}
+                src={embedSrc || modal?.p?.url}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
