@@ -22,7 +22,8 @@ import {
   Swords,
 } from "lucide-react";
 import LoreLayout from "../../components/LoreLayout";
-import { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug } from "../../lib/loremaker-data";
+impimport { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug, todayKey, seededRandom } from "../../lib/loremaker-data";
+
 
 export async function getStaticProps() {
   const commit = process.env.VERCEL_GIT_COMMIT_SHA || null;
