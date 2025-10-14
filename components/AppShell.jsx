@@ -17,16 +17,26 @@ import {
   Info,
   ArrowUp,
   MessageSquare,
+  Minimize2,
+  Maximize2,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 /**
- * Menelek Makonnen — Mothership (v11.2 — Canvas build)
- *
- * Fix: Resolved SyntaxError by repairing a corrupted section where getYouTubeId
- *      was overwritten with useCSV internals. Restored missing helpers
- *      (youtubeThumb, useCSV, IG constants) and ensured all JSX blocks close.
- *      Also keeps previous feature work: axis alignment, single‑color CVC bar,
- *      sheet‑only Featured Universe, bigger zoom + click‑to‑watch tiles.
+ * Mothership V13.2 — Luxe overhaul + bugfix
+ * - FIX: Unterminated string in CharacterCard <img className> + prior truncation.
+ * - FIX: Restored missing components (ChatbotWidget, AppShell) and ensured WorkWithMe exists.
+ * - Theme: richer glass, deeper gradients, neon accents.
+ * - Back‑to‑top: always visible.
+ * - Chatbot: compact dock + unread badge + minimize.
+ * - Hero: animated showcase slider (reel, photo, epic edit, universe art).
+ * - Portfolio: stronger fill + harder hover zoom.
+ * - Schedule: days mode for ≤2 weeks; weeks >2. Distribution phase removed.
+ * - Featured Universe: robust CSV + Drive image normalization.
+ * - MMM Galleries: Google Photos album embeds with modal lightbox.
+ * - Self‑tests: added assertions for helpers and component presence.
  */
 
 // ========= FACTUAL LINKS ========= //
@@ -56,18 +66,33 @@ const LINKS = {
 const SHEETS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
 
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = { trackVisit: null, chatbot: "/workflow/cQltZgIikkp4fFER" };
+const CHATBOT_NAME = "Zara";
+const CHATBOT_TAGLINE = "Menelek's AI Assistant";
+const GOOGLE_PHOTOS_PROXY_PREFIX = "https://r.jina.ai/https://";
+
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const shuffleArray = (arr) => {
+  const next = [...arr];
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
 
-function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
+function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title, ...rest }) {
   const palettes = {
     default: "bg-white/10 hover:bg-white/15",
     ghost: "bg-white/5 hover:bg-white/10",
-    accent: "bg-gradient-to-tr from-amber-400/20 to-fuchsia-400/20 hover:from-amber-400/25 hover:to-fuchsia-400/25",
+    accent: "bg-gradient-to-tr from-cyan-300/20 via-fuchsia-400/20 to-amber-300/20 hover:from-cyan-300/30 hover:to-amber-300/30",
   };
   const base = cn(
-    "px-4 py-2.5 rounded-xl border border-white/15 text-white",
-    "shadow-[0_10px_30px_rgba(0,0,0,0.25)] active:translate-y-px backdrop-blur transition-all",
+    "px-4 py-2.5 rounded-2xl border border-white/15 text-white",
+    "shadow-[0_12px_40px_rgba(0,0,0,0.35)] active:translate-y-px backdrop-blur-xl transition-all",
     palettes[variant],
     className
   );
@@ -79,23 +104,21 @@ function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, class
   );
   if (href)
     return (
-      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title}>
+      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title} {...rest}>
         {inner}
       </a>
     );
-  return (
-    <Cmp onClick={onClick} className={base} title={title}>
-      {inner}
-    </Cmp>
-  );
+  const props = { onClick, className: base, title, target, rel, ...rest };
+  if (Cmp === "button" && props.type === undefined) props.type = "button";
+  return <Cmp {...props}>{inner}</Cmp>;
 }
 
 function Card({ className = "", children }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-white/10 bg-white/5 backdrop-blur",
-        "shadow-[0_12px_50px_rgba(0,0,0,0.35)] p-5 transition-transform hover:-translate-y-[2px]",
+        "rounded-3xl border border-white/10 bg-[radial-gradient(1200px_600px_at_10%_-20%,rgba(111,66,193,0.18),transparent_60%),radial-gradient(1200px_600px_at_110%_120%,rgba(0,180,255,0.15),transparent_60%)]",
+        "backdrop-blur-xl p-5 shadow-[0_15px_70px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_80px_rgba(0,0,0,0.55)] transition-all",
         className
       )}
     >
@@ -115,15 +138,17 @@ function Modal({ open, onClose, title, children }) {
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
           <motion.div
-            initial={{ y: 20, scale: 0.98, opacity: 0 }}
+            initial={{ y: 24, scale: 0.98, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 10, scale: 0.98, opacity: 0 }}
+            exit={{ y: 12, scale: 0.98, opacity: 0 }}
             className={cn(
-              "relative z-10 mx-auto mt-[8vh] w-[92vw] max-w-5xl",
+              "relative z-10 mx-auto mt-[6vh] w-[92vw] max-w-5xl",
               "rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 text-white"
             )}
+            role="dialog"
+            aria-modal="true"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
@@ -155,10 +180,9 @@ function DiamondsCanvas({ className }) {
     const ctx = canvas.getContext("2d");
 
     const scale = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const { offsetWidth, offsetHeight } = canvas;
-      canvas.width = offsetWidth * dpr;
-      canvas.height = offsetHeight * dpr;
+      const dpr = devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
     };
@@ -172,29 +196,27 @@ function DiamondsCanvas({ className }) {
     const onLeave = () => (mouseRef.current = { x: -9999, y: -9999 });
     const onClick = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      ripplesRef.current.push({ x, y, t: 0 });
+      ripplesRef.current.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, t: 0 });
     };
 
     scale();
 
-    const cell = 10; // density
+    const cell = 9;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.02; // darker default
-    const auraR = 95; // hover radius
-    const size = 2.1;
+    const baseAlpha = 0.018;
+    const auraR = 90;
+    const size = 2.0;
 
     const draw = () => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
       const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, "#03050a");
-      g.addColorStop(1, "#070a12");
+      g.addColorStop(0, "#050611");
+      g.addColorStop(1, "#0b0f1a");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
-      ripplesRef.current = ripplesRef.current.map((r) => ({ ...r, t: r.t + 1 })).filter((r) => r.t < 300);
+      ripplesRef.current = ripplesRef.current.map((r) => ({ ...r, t: r.t + 1 })).filter((r) => r.t < 260);
 
       const { x: mx, y: my } = mouseRef.current;
 
@@ -205,18 +227,15 @@ function DiamondsCanvas({ className }) {
 
           const dxh = cx - mx;
           const dyh = cy - my;
-          const distHover = Math.hypot(dxh, dyh);
-          const hoverK = Math.max(0, 1 - distHover / auraR);
+          const hoverK = Math.max(0, 1 - Math.hypot(dxh, dyh) / auraR);
 
           let clickGlow = 0;
           for (const r of ripplesRef.current) {
-            const k = r.t / 300;
-            const radius = 14 + k * 340; // expands
-            const thickness = 16;
-            const dxc = cx - r.x;
-            const dyc = cy - r.y;
-            const d = Math.hypot(dxc, dyc);
-            const ring = Math.max(0, 1 - Math.abs(d - radius) / thickness);
+            const k = r.t / 260;
+            const R = 12 + k * 320;
+            const thick = 14;
+            const d = Math.hypot(cx - r.x, cy - r.y);
+            const ring = Math.max(0, 1 - Math.abs(d - R) / thick);
             clickGlow = Math.max(clickGlow, ring * (1 - k));
           }
 
@@ -245,13 +264,13 @@ function DiamondsCanvas({ className }) {
     };
 
     draw();
-    window.addEventListener("resize", onResize);
+    addEventListener("resize", onResize);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerleave", onLeave);
     canvas.addEventListener("pointerdown", onClick);
     return () => {
       cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", onResize);
+      removeEventListener("resize", onResize);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("pointerdown", onClick);
@@ -274,12 +293,57 @@ const SERVICES = [
 const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s.name]));
 
 const PROJECTS = [
-  { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D" },
-  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj" },
-  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D" },
-  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Director, Cinematographer, Editor", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: "https://www.youtube.com/watch?v=4q6X6prhVOE" },
-  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv" },
-  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
+  {
+    id: "im-alright",
+    title: "I'm Alright (2024)",
+    role: "Writer–Director",
+    runtime: "8 min",
+    summary: "Addiction & depression inside a lockdown flat.",
+    url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D",
+  },
+  {
+    id: "blinded-by-magic",
+    title: "Blinded by Magic (2022)",
+    role: "Writer–Director",
+    runtime: "12 min",
+    summary: "A possessed camera blinds its user while granting powers.",
+    url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj",
+    thumbZoom: { base: 1.38, hover: 1.6 },
+  },
+  {
+    id: "heroes-gods",
+    title: "Heroes & Gods (2024)",
+    role: "Writer–Director, Editor",
+    runtime: "120 min",
+    summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.",
+    url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D",
+  },
+  {
+    id: "spar-bts",
+    title: "SPAR (Doc, 2024)",
+    role: "Director, Cinematographer, Editor",
+    runtime: "14 min",
+    summary: "BTS doc for a boxing pilot in London — Left Hook Gym.",
+    url: "https://www.youtube.com/watch?v=4q6X6prhVOE",
+    thumbZoom: { base: 1.4, hover: 1.62 },
+  },
+  {
+    id: "soldier-mv",
+    title: "Soldier (Music Video)",
+    role: "Director, Editor",
+    runtime: "3 min",
+    summary: "Concept-to-delivery music video including cover art.",
+    url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv",
+    thumbZoom: { base: 1.42, hover: 1.64 },
+  },
+  {
+    id: "abranteers",
+    title: "Abranteers (Proof, 2023)",
+    role: "Writer–Director",
+    runtime: "9 min",
+    summary: "Anti-magic veteran + rookie vs a dangerous magic user.",
+    url: "https://www.youtube.com/shorts/CPPkq5zsXgE",
+  },
 ];
 
 function getYouTubeId(url) {
@@ -300,69 +364,128 @@ function youtubeThumb(url) {
   return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
 }
 
-// Best‑effort Instagram thumb (may be blocked by CORS; fallback to gradient)
-const IG_REEL_ID = "DI6NjVNN0tS";
-const IG_THUMB_URL = `https://www.instagram.com/p/${IG_REEL_ID}/media/?size=l`;
-
 // ========= HERO ========= //
-function ShimmerTitle({ children }) {
-  return (
-    <motion.h1
-      className="text-4xl sm:text-6xl font-extrabold leading-[1.05] select-none"
-      style={{
-        backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.45), rgba(255,255,255,0.95))",
-        backgroundSize: "200% 100%",
-        backgroundClip: "text",
-        WebkitBackgroundClip: "text",
-        color: "transparent",
-        backgroundPosition: "0% 50%",
-      }}
-      whileHover={{ backgroundPosition: "100% 50%" }}
-      transition={{ duration: 0.8 }}
-    >
-      {children}
-    </motion.h1>
-  );
-}
+const HERO_SLIDES = [
+  {
+    id: "reel",
+    kind: "video",
+    title: "2024 Showreel",
+    caption: "Latest film, commercial, and AI-assisted highlights.",
+    videoUrl: "https://www.youtube.com/watch?v=A8cGpNe2JAE",
+    thumb: youtubeThumb("https://www.youtube.com/watch?v=A8cGpNe2JAE"),
+  },
+  {
+    id: "photo",
+    kind: "image",
+    title: "Iconic Production Still",
+    caption: "Lens flare, liquid light, and an in-camera moment of resolve.",
+    src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "edit",
+    kind: "image",
+    title: "Epic Edit Frame",
+    caption: "AI-enhanced composites that sell the myth without losing the grit.",
+    src: "https://images.unsplash.com/photo-1522199996303-7b43878e352c?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "universe",
+    kind: "image",
+    title: "Loremaker Universe Poster",
+    caption: "Afro-futurist heroes and villains colliding in luminous colour.",
+    src: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1400&q=80",
+  },
+];
 
-function Hero({ onWatch, onOpenLinksModal }) {
-  const [imgOk, setImgOk] = useState(true);
+function Hero({ onOpenLinksModal }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);
+    return () => clearInterval(t);
+  }, []);
+  const slide = HERO_SLIDES[idx];
+  const openVideo = () => {
+    if (slide.kind !== "video" || !slide.videoUrl) return;
+    window.open(slide.videoUrl, "_blank", "noopener,noreferrer");
+  };
+  const imageSrc = slide.kind === "video" ? slide.thumb : slide.src;
   return (
     <section className="relative pt-24 pb-10">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
         <div>
-          <ShimmerTitle>Menelek Makonnen</ShimmerTitle>
-          <div className="mt-2 text-xl text-white/80 select-none">
-            <span className="group inline-block mr-2">
-              <motion.span whileHover={{ letterSpacing: 2, scale: 1.02 }} className="transition-all">Worldbuilder.</motion.span>
-              <span className="block h-[2px] w-0 bg-white/30 group-hover:w-full transition-all"></span>
-            </span>
-            <span className="group inline-block mr-2">
-              <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">Filmmaker.</motion.span>
-            </span>
-            <span className="group inline-block">
-              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">Storyteller.</motion.span>
-            </span>
-          </div>
+          <motion.h1
+            className="text-5xl sm:text-7xl font-extrabold leading-[1.05] select-none"
+            animate={{ textShadow: ["0 0 0 rgba(255,255,255,0)", "0 0 22px rgba(255,255,255,0.35)", "0 0 0 rgba(255,255,255,0)"] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            style={{
+              backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.98), rgba(255,255,255,0.5), rgba(255,255,255,0.98))",
+              backgroundSize: "200% 100%",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            Menelek Makonnen
+          </motion.h1>
+          <div className="mt-2 text-xl text-white/85 select-none">Worldbuilder. Filmmaker. Storyteller.</div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button onClick={onWatch} icon={Play}>Watch Instagram Reel</Button>
-            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">Explore the Loremaker Universe</Button>
+            <Button href={LINKS.loremakerSite} icon={ExternalLink}>Explore the Loremaker Universe</Button>
             <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
             <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
           </div>
         </div>
         <Card>
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">Showreel</div>
-          <button onClick={onWatch} className="mt-3 aspect-video w-full rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative group" title="Open Instagram reel">
-            {imgOk ? (
-              <img src={IG_THUMB_URL} onError={() => setImgOk(false)} alt="Instagram Reel thumbnail" className="w-full h-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/0" />
-            )}
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="rounded-full p-3 bg-black/50 border border-white/20 group-hover:scale-105 transition-transform"><Play className="h-6 w-6" /></div>
-            </div>
-          </button>
+          <div className="text-sm uppercase tracking-[0.25em] text-white/60 flex items-center justify-between">
+            <span>Showcase</span>
+            <div className="text-xs text-white/60">{idx + 1}/{HERO_SLIDES.length}</div>
+          </div>
+          <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={slide.id}
+                className="absolute inset-0"
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.6 }}
+              >
+                {imageSrc ? (
+                  <img
+                    src={imageSrc}
+                    alt={slide.title}
+                    className="w-full h-full object-cover object-center scale-[1.12] group-hover:scale-[1.18] transition-transform duration-700"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70">
+                    {slide.title}
+                  </div>
+                )}
+                {slide.kind === "video" ? (
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
+                    <button
+                      onClick={openVideo}
+                      className="rounded-full bg-white/15 border border-white/40 backdrop-blur px-5 py-3 inline-flex items-center gap-2 text-sm font-semibold text-white hover:bg-white/20"
+                    >
+                      <Play className="h-4 w-4" /> Watch reel
+                    </button>
+                  </div>
+                ) : null}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          {slide.caption ? (
+            <motion.p
+              key={`${slide.id}-caption`}
+              className="mt-4 text-sm text-white/75"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4 }}
+            >
+              {slide.caption}
+            </motion.p>
+          ) : null}
         </Card>
       </div>
     </section>
@@ -544,16 +667,13 @@ function ContactInline({ calendarState }) {
   );
 }
 
-// ========= Calculator (CVC) ========= //
+// ========= Calculator (CVC) with days/weeks modes & no Distribution ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
   useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
-
   const [budget, setBudget] = useState(2000);
   const [ambition, setAmbition] = useState(6);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
-
-  // total duration is the single source of truth
   const [total, setTotal] = useState(6); // weeks
 
   const RULES = {
@@ -565,60 +685,62 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     "BTS": { base: 900, budgetRange: [300, 5000], ambitionIdeal: [3, 7], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
     "AI Advert": { base: 3000, budgetRange: [200, 20000], ambitionIdeal: [6, 10], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
   };
-
   const cfg = RULES[service] || RULES["Short Film"];
-  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
-
   const durationScoreFor = (svc, tot) => {
     const ideal = RULES[svc].durationIdeal;
     return norm(1 - Math.abs(tot - ideal) / ideal, [0, 1]);
   };
-
   const scoreFor = (svc, bgt, amb, tot) => {
-    const rcfg = RULES[svc];
-    const budgetScore = norm(bgt, rcfg.budgetRange);
-    const ambitionScore = norm(amb, rcfg.ambitionIdeal);
+    const r = RULES[svc];
+    const budgetScore = norm(bgt, r.budgetRange);
+    const ambitionScore = norm(amb, r.ambitionIdeal);
     const durationScore = durationScoreFor(svc, tot);
-    const raw = rcfg.weights.budget * budgetScore + rcfg.weights.ambition * ambitionScore + rcfg.weights.duration * durationScore;
+    const raw = r.weights.budget * budgetScore + r.weights.ambition * ambitionScore + r.weights.duration * durationScore;
     return Math.round(clamp(raw, 0, 1) * 100);
   };
 
-  const budgetScore = norm(budget, cfg.budgetRange);
-  const ambitionScore = norm(ambition, cfg.ambitionIdeal);
-  const durationScore = durationScoreFor(service, total);
-  const raw = cfg.weights.budget * budgetScore + cfg.weights.ambition * ambitionScore + cfg.weights.duration * durationScore;
-  const score = Math.round(clamp(raw, 0, 1) * 100);
-
-  // single color mapped to score: 0 (red) → 120 (green)
+  const score = scoreFor(service, budget, ambition, total);
   const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
-
   const coverage = budget / cfg.base;
   const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
   const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
 
-  // Default FS split ratios (sequential). Will also be used as baseline for 3–4 weeks cases.
-  const SPLIT = [0.2, 0.3, 0.2, 0.25, 0.05];
+  // No distribution phase. Split across: Development / Pre‑Production / Production / Post‑Production
+  const SPLIT = [0.22, 0.33, 0.22, 0.23];
+  const KEYS = ["development", "pre", "production", "post"];
+  const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
 
   const makeFSForTotal = (tWeeks) => {
-    if (tWeeks <= 1) {
-      // one-week project ⇒ each phase defaults to 1 day; FS sequential
-      const KEYS = ["development", "pre", "production", "post", "distribution"];
-      const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
+    if (tWeeks <= 2) {
+      const totalDays = Math.max(1, Math.round(tWeeks * 7));
+      const minDay = totalDays >= KEYS.length ? 1 : 0;
+      const allocations = SPLIT.map((r) => Math.max(minDay, Math.round(totalDays * r)));
+      let diff = totalDays - allocations.reduce((a, b) => a + b, 0);
+      let guard = 0;
+      while (diff !== 0 && guard < 400) {
+        const index = guard % allocations.length;
+        if (diff > 0) {
+          allocations[index] += 1;
+          diff -= 1;
+        } else if (allocations[index] > minDay) {
+          allocations[index] -= 1;
+          diff += 1;
+        }
+        guard += 1;
+        if (allocations.every((a) => a === minDay)) break;
+      }
       const out = [];
       let sd = 0;
-      for (let i = 0; i < 5; i++) {
-        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: 1 / 7 });
-        sd += 1; // 1 day each
+      for (let i = 0; i < allocations.length; i++) {
+        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: allocations[i] / 7 });
+        sd += allocations[i];
       }
       return out;
     }
-    // For 2–4 weeks use split but scale into total; FS sequential
     const parts = SPLIT.map((r) => Math.max(0.5, Math.round(tWeeks * r * 2) / 2));
     const out = [];
     let sd = 0;
-    const KEYS = ["development", "pre", "production", "post", "distribution"];
-    const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
     for (let i = 0; i < parts.length; i++) {
       out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i] });
       sd += Math.ceil(parts[i] * 7);
@@ -628,27 +750,26 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
 
   const [phases, setPhases] = useState(() => makeFSForTotal(6));
 
-  // When total changes, keep FS by default but respect user drags by clamping only
   useEffect(() => {
     setPhases((prev) => {
-      if (total <= 1) return makeFSForTotal(1);
+      if (total <= 2) return makeFSForTotal(total);
       const maxDays = total * 7;
+      const minWeeksClamp = 0.5;
       return prev.map((p) => {
-        const weeks = Math.max(0.5, Math.min(26, p.weeks));
-        let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
+        const weeks = Math.max(minWeeksClamp, Math.min(26, p.weeks));
+        const allowedStart = Math.max(0, maxDays - Math.ceil(weeks * 7));
+        const startDays = Math.min(Math.max(0, p.startDays), allowedStart);
         return { ...p, weeks, startDays };
       });
     });
   }, [total]);
 
-  // push calendar state up + prefill events
   useEffect(() => {
     onCalendarChange?.(buildCalendarStateOverlapping(phases, projectDate));
     window.dispatchEvent(new CustomEvent("prefill-fit", { detail: { service, fit: score, suggestedTier, budget, timeline: total } }));
     window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: service } }));
   }, [phases, projectDate, service, score, suggestedTier, budget, total]);
 
-  // High‑fit randomizer
   useEffect(() => {
     if (randomizeKey === undefined) return;
     let best = { s: service, b: budget, a: ambition, t: total, score: -1 };
@@ -656,8 +777,8 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       const svc = SERVICES[Math.floor(Math.random() * SERVICES.length)].name;
       const rcfg = RULES[svc];
       const bgt = Math.round((Math.random() * (rcfg.budgetRange[1] - rcfg.budgetRange[0]) + rcfg.budgetRange[0]) / 50) * 50;
-      const amb = Math.floor(Math.random() * 5) + 6; // 6–10 bias
-      const tot = Math.floor(Math.random() * 26) + 1; // 1–26 weeks
+      const amb = Math.floor(Math.random() * 5) + 6;
+      const tot = Math.floor(Math.random() * 26) + 1;
       const sc = scoreFor(svc, bgt, amb, tot);
       if (sc > best.score) best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
       if (sc >= 80) { best = { s: svc, b: bgt, a: amb, t: tot, score: sc }; break; }
@@ -670,6 +791,10 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   }, [randomizeKey]);
 
   const phaseWeeksTotal = (arr) => arr.reduce((a, b) => a + (b.weeks || 0), 0);
+  const totalWeeksPlanned = phaseWeeksTotal(phases);
+  const totalLabel = total <= 2
+    ? `${Math.round(totalWeeksPlanned * 7)} days`
+    : `${totalWeeksPlanned.toFixed(1)} weeks`;
 
   return (
     <div>
@@ -680,40 +805,29 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
         </div>
         <div>
           <div className="text-white/70 text-sm mb-1">Budget (£{budget.toLocaleString()})</div>
-          <input type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
+          <input aria-label="Budget" type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
           <div className="text-white/70 text-sm mb-1">Ambition ({ambition})</div>
-          <input type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
+          <input aria-label="Ambition" type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
           <div className="text-white/70 text-sm mb-1">Proposed Project Start</div>
-          <input type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
+          <input aria-label="Project start" type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
         </div>
       </div>
-
       <div className="mt-5">
         <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
         <div className="rounded-2xl p-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
-          <svg viewBox="0 0 110 6" className="w-full block">
+          <svg viewBox="0 0 110 6" className="w-full block" aria-label={`Fit score ${score}%`}>
             <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
             <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
           </svg>
-          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {phaseWeeksTotal(phases)} weeks</div>
+          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalLabel}</div>
         </div>
       </div>
-
-      <TimelineGrid
-        phases={phases}
-        onChange={setPhases}
-        total={total}
-        onTotalChange={setTotal}
-        startDate={projectDate}
-      />
-
-      <div className="mt-4 flex gap-2">
-        <Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button>
-      </div>
+      <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
+      <div className="mt-4 flex gap-2"><Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button></div>
     </div>
   );
 }
@@ -745,17 +859,18 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const containerRef = useRef(null);
   const totalDays = Math.max(7, total * 7);
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
-
-  // drag state: which phase, mode ("move" | "left" | "right")
   const dragRef = useRef(null);
-
-  const clampPhase = (p) => {
-    const maxStart = Math.max(0, totalDays - Math.ceil(p.weeks * 7));
-    return { ...p, startDays: Math.min(Math.max(0, p.startDays), maxStart), weeks: Math.max(0.5, Math.min(26, p.weeks)) };
-  };
-
   const pct = (days) => `${(days / totalDays) * 100}%`;
-
+  const minWeeks = total <= 2 ? 1 / 7 : 0.5;
+  const clampPhase = (p) => {
+    const widthWeeks = Math.max(minWeeks, p.weeks);
+    const maxStart = Math.max(0, totalDays - Math.ceil(widthWeeks * 7));
+    return {
+      ...p,
+      startDays: Math.min(Math.max(0, p.startDays), maxStart),
+      weeks: Math.max(minWeeks, Math.min(26, p.weeks)),
+    };
+  };
   const onPointerDown = (e, idx, mode) => {
     const rect = containerRef.current.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -770,7 +885,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     if (d.mode === "left") {
       const newStart = d.startStart + deltaDays;
       const newWeeks = d.startWeeks - deltaDays / 7;
-      next[d.idx].startDays = newStart; next[d.idx].weeks = newWeeks;
+      next[d.idx].startDays = newStart;
+      next[d.idx].weeks = newWeeks;
     }
     if (d.mode === "right") {
       const newWeeks = d.startWeeks + deltaDays / 7;
@@ -779,39 +895,24 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     onChange(next.map(clampPhase));
   };
   const onPointerUp = () => { dragRef.current = null; };
-
   const cal = buildCalendarStateOverlapping(phases, startDate);
-
-  // Axis mode: days for ≤4 weeks, week numbers for >4 weeks
-  const showDays = total <= 4;
-
+  const showDays = total <= 2;
   return (
     <div className="mt-6">
-      {/* Separate header with Start/End line */}
       <div className="flex items-center justify-between text-white/80 text-sm mb-2">
         <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Interactive Schedule</div>
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
-          <input type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
+          <input aria-label="Total duration weeks" type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
           <span className="text-white/70 text-xs">{total} wks</span>
         </div>
       </div>
-
-      {/* Start / End inline, separate from the lane grid */}
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
-
       <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-        {/* X‑axis header aligned with the lanes */}
         <div className="mb-2 flex items-center gap-3">
-          {/* left spacer equal to phase label column */}
-          <div className="w-40 shrink-0" />
+          <div className="w-44 shrink-0" />
           <div ref={containerRef} className="relative h-6 flex-1 select-none">
-            {/* grid columns per day */}
-            <div
-              className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-              style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-            />
-            {/* labels aligned from 0 to totalDays */}
+            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
             {showDays ? (
               [...Array(total).keys()].map((w) => (
                 <div key={w} className="absolute top-0 text-center" style={{ left: pct(w * 7), width: pct(7) }}>
@@ -829,85 +930,470 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
             )}
           </div>
         </div>
-
-        {/* Y‑axis phases with draggable bars (overlap allowed after user edits) */}
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
           {phases.map((p, idx) => (
             <div key={p.key} className="flex items-center gap-3">
-              <div className="w-40 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-9 flex-1">
-                {/* grid background same as header for visual alignment */}
-                <div
-                  className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-                  style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-                />
-                {/* bar */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 h-7 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
-                  style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}
-                >
-                  {/* move handle (center) */}
-                  <div
-                    className="absolute inset-0 cursor-grab active:cursor-grabbing"
-                    onPointerDown={(e) => onPointerDown(e, idx, "move")}
-                    title="Drag to move"
-                  />
-                  {/* left resize */}
-                  <div
-                    className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e) => onPointerDown(e, idx, "left")}
-                    title="Drag to adjust start"
-                  >
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
-                  </div>
-                  {/* right resize */}
-                  <div
-                    className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e) => onPointerDown(e, idx, "right")}
-                    title="Drag to adjust end"
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
-                  </div>
-
-                  {/* duration label */}
+              <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
+              <div className="relative h-10 flex-1">
+                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
+                <div className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]" style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}>
+                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
+                  <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                  <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
                   <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks * 10) / 10}w</div>
+                    <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {total <= 2 ? `${Math.ceil(p.weeks * 7)}d` : `${Math.round(p.weeks * 10) / 10}w`}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-
-        <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases (Start‑to‑Start, etc.). Bars snap by <b>day</b>. Use the Total slider to expand/contract the full calendar.</div>
+        <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.</div>
       </div>
     </div>
   );
 }
 
 // ========= CSV helper ========= //
+function proxyFetchableUrl(url) {
+  if (!url) return url;
+  if (url.startsWith("https://r.jina.ai/")) return url;
+  if (url.startsWith("https://")) return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url.slice("https://".length)}`;
+  return url;
+}
+
 function useCSV(url) {
   const [rows, setRows] = useState([]);
-  const [headers, setHeaders] = useState([]);
   useEffect(() => {
     let abort = false;
     (async () => {
       try {
-        const res = await fetch(url, { mode: "cors" });
+        const target = proxyFetchableUrl(url);
+        const res = await fetch(target, { mode: "cors" });
         const text = await res.text();
         if (abort) return;
-        const { headers, rows } = parseCSV(text);
-        setHeaders(headers);
-        setRows(rows);
+        const { rows } = parseCSV(text);
+        setRows(rows.filter((r) => Object.values(r).some((v) => (v || "").toString().trim())));
       } catch (e) {
-        // Sheet only: no local filler; show skeletons when empty
-        setHeaders([]);
         setRows([]);
       }
     })();
     return () => { abort = true; };
   }, [url]);
-  return { headers, rows };
+  return { rows };
+}
+
+const normalizePhotoUrl = (src) => {
+  if (!src) return src;
+  let out = src;
+  out = out.replace(/=w\d+-h\d+(-no)?/g, "=w1600-h900-no");
+  out = out.replace(/=s\d+-c/g, "=w1600-h900-no");
+  if (!out.includes("=w") && !out.includes("=m") && !out.includes("=mp4")) {
+    out = `${out}=w1600-h900-no`;
+  }
+  return out;
+};
+
+function proxyGooglePhotosUrl(url) {
+  if (!url) return url;
+  if (url.startsWith("https://r.jina.ai/")) return url;
+  if (url.startsWith("https://")) return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url.slice("https://".length)}`;
+  return `${GOOGLE_PHOTOS_PROXY_PREFIX}${url}`;
+}
+
+function extractGooglePhotosMedia(html) {
+  if (!html) return [];
+  const matches = html.matchAll(/"(https:\/\/lh3\.googleusercontent\.com\/[^"\\]+)"/g);
+  const seen = new Set();
+  const media = [];
+  for (const m of matches) {
+    const raw = m[1];
+    if (!raw) continue;
+    if (/=s\d+-c/.test(raw) && !/=w\d+/.test(raw)) continue;
+    if (!/=w\d+/.test(raw) && !/=m\d+/.test(raw) && !raw.includes("=mp4")) continue;
+    const normalized = normalizePhotoUrl(raw);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    const type = /=m\d+/.test(raw) || raw.includes("=mp4") ? "video" : "image";
+    media.push({ src: normalized, type });
+  }
+  return media;
+}
+
+function useGooglePhotosAlbum(shareUrl, limit = 24) {
+  const [media, setMedia] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!shareUrl) {
+      setMedia([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let abort = false;
+    const run = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(proxyGooglePhotosUrl(shareUrl));
+        const text = await res.text();
+        if (abort) return;
+        const parsed = shuffleArray(extractGooglePhotosMedia(text)).slice(0, limit);
+        setMedia(parsed);
+        setError(null);
+      } catch (err) {
+        if (!abort) {
+          setMedia([]);
+          setError(err);
+        }
+      } finally {
+        if (!abort) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      abort = true;
+    };
+  }, [shareUrl, limit]);
+
+  return { media, loading, error };
+}
+
+// ========= Chatbot ========= //
+const CHATBOT_SESSION_KEYS = {
+  id: "zara_session_id",
+  firstSeen: "zara_first_seen",
+  fingerprint: "zara_fingerprint",
+  lastActive: "zara_session_time",
+  visitCount: "zara_visit_count",
+};
+const CHATBOT_SESSION_TIMEOUT = 30 * 60 * 1000;
+
+function createChatbotFingerprint() {
+  if (typeof window === "undefined") return "";
+  return JSON.stringify({
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    screen: typeof window !== "undefined" ? `${window.screen.width}x${window.screen.height}` : "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+}
+
+function ensureChatbotSession() {
+  if (typeof window === "undefined") return null;
+  const now = Date.now();
+  const storedId = localStorage.getItem(CHATBOT_SESSION_KEYS.id);
+  const storedFirstSeen = localStorage.getItem(CHATBOT_SESSION_KEYS.firstSeen);
+  const storedFingerprint = localStorage.getItem(CHATBOT_SESSION_KEYS.fingerprint);
+  const storedLastActive = parseInt(localStorage.getItem(CHATBOT_SESSION_KEYS.lastActive) || "0", 10);
+  let visitCount = parseInt(localStorage.getItem(CHATBOT_SESSION_KEYS.visitCount) || "0", 10);
+  const fingerprint = createChatbotFingerprint();
+
+  let sessionId = storedId;
+  let firstSeen = storedFirstSeen;
+  let isReturning = visitCount > 0;
+
+  const invalid =
+    !sessionId ||
+    !storedFirstSeen ||
+    !storedFingerprint ||
+    storedFingerprint !== fingerprint ||
+    now - storedLastActive > CHATBOT_SESSION_TIMEOUT;
+
+  if (invalid) {
+    sessionId = `session_${now}_${Math.random().toString(36).slice(2, 9)}`;
+    firstSeen = new Date().toISOString();
+    visitCount += 1;
+    isReturning = visitCount > 1;
+    localStorage.setItem(CHATBOT_SESSION_KEYS.visitCount, String(visitCount));
+  }
+
+  localStorage.setItem(CHATBOT_SESSION_KEYS.id, sessionId);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.firstSeen, firstSeen);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.fingerprint, fingerprint);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.lastActive, String(now));
+
+  return { id: sessionId, firstSeen, fingerprint, isReturning, visitCount };
+}
+
+function ChatbotWidget() {
+  const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [unread, setUnread] = useState(1);
+  const [isReturning, setIsReturning] = useState(false);
+  const listRef = useRef(null);
+  const sessionRef = useRef(null);
+  const messageCountRef = useRef(0);
+  const openRef = useRef(open);
+  const minimizedRef = useRef(minimized);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    minimizedRef.current = minimized;
+  }, [minimized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const session = ensureChatbotSession();
+    sessionRef.current = session;
+    setIsReturning(Boolean(session?.isReturning));
+    setMessages([
+      {
+        id: Date.now(),
+        sender: "bot",
+        text: session?.isReturning
+          ? "👋 Welcome back! Pick up where we left off—what can I line up for you today?"
+          : `Hey there! I'm ${CHATBOT_NAME}. Share your brief, budget, or timeline and I'll map next steps.`,
+      },
+    ]);
+
+    if (CHATBOT_BASE_URL && CHATBOT_ENDPOINTS.trackVisit) {
+      const payload = {
+        page: window.location.pathname,
+        referrer: document.referrer,
+        timestamp: new Date().toISOString(),
+        sessionId: session?.id,
+        firstSeen: session?.firstSeen,
+        isReturningVisitor: session?.isReturning,
+        visitCount: session?.visitCount,
+        fingerprint: session?.fingerprint,
+      };
+      fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.trackVisit}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && !minimized) setUnread(0);
+  }, [open, minimized, messages.length]);
+
+  useEffect(() => {
+    if (!open || minimized) return;
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, open, minimized]);
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      if (!prev) {
+        setUnread(0);
+        setMinimized(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleMinimize = () => {
+    setMinimized((prev) => {
+      const next = !prev;
+      if (!next) setUnread(0);
+      return next;
+    });
+  };
+
+  const appendMessage = (msg) => {
+    setMessages((prev) => [...prev, msg]);
+    if (msg.sender === "bot" && (!openRef.current || minimizedRef.current)) {
+      setUnread((u) => u + 1);
+    }
+  };
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+
+    const baseSession = sessionRef.current || ensureChatbotSession();
+    sessionRef.current = baseSession;
+
+    const userMsg = { id: Date.now(), sender: "user", text };
+    appendMessage(userMsg);
+    messageCountRef.current += 1;
+    setLoading(true);
+
+    const typingDelay = new Promise((resolve) => setTimeout(resolve, 450));
+
+    const failSafe = "I'm running in demo mode right now. Drop an email or call sheet and I'll loop Menelek in manually.";
+
+    try {
+      if (!CHATBOT_BASE_URL || !CHATBOT_ENDPOINTS.chatbot) {
+        await typingDelay;
+        appendMessage({ id: Date.now() + 1, sender: "bot", text: failSafe });
+        return;
+      }
+
+      const payload = {
+        message: text,
+        sessionId: baseSession?.id,
+        messageCount: messageCountRef.current,
+        firstSeen: baseSession?.firstSeen,
+        isReturningVisitor: baseSession?.isReturning,
+        conversationContext: baseSession?.isReturning ? "continuing" : "new",
+        page: typeof window !== "undefined" ? window.location.pathname : "",
+        referrer: typeof document !== "undefined" ? document.referrer : "",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        language: typeof navigator !== "undefined" ? navigator.language : "",
+      };
+
+      const res = await fetch(`${CHATBOT_BASE_URL}${CHATBOT_ENDPOINTS.chatbot}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await typingDelay;
+
+      if (res.ok) {
+        const data = await res.json();
+        const replyText = data?.response || data?.reply || data?.message || failSafe;
+        appendMessage({ id: Date.now() + 2, sender: "bot", text: replyText });
+      } else {
+        appendMessage({ id: Date.now() + 3, sender: "bot", text: failSafe });
+      }
+    } catch (err) {
+      await typingDelay;
+      appendMessage({
+        id: Date.now() + 4,
+        sender: "bot",
+        text: "Connection hiccup. Email hello@menelekmakonnen.com and I'll jump in directly.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    sendMessage();
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={toggleOpen}
+        className="relative rounded-full px-4 py-3 bg-white/10 border border-white/20 backdrop-blur-xl text-left shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/15 w-48"
+        title="Open chat"
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="rounded-full p-2 bg-white/10 border border-white/20"><MessageSquare className="h-4 w-4" /></div>
+            {unread > 0 ? (
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-xs font-semibold px-1.5 py-0.5 rounded-full">{unread}</span>
+            ) : null}
+          </div>
+          <div>
+            <div className="font-semibold text-sm">Chat with {CHATBOT_NAME}</div>
+            <div className="text-xs text-white/70">{CHATBOT_TAGLINE}</div>
+            {isReturning ? <div className="text-[10px] text-emerald-300/80">Welcome back</div> : null}
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  const onHeaderClick = (event) => {
+    if (event.target.closest("button")) return;
+    toggleMinimize();
+  };
+
+  return (
+    <div className="w-[320px] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer select-none"
+        onClick={onHeaderClick}
+        title={minimized ? "Expand Zara" : "Minimise Zara"}
+      >
+        <div>
+          <div className="font-semibold text-sm">{CHATBOT_NAME}</div>
+          <div className="text-xs text-white/70">{CHATBOT_TAGLINE}</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMinimize();
+            }}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            title={minimized ? "Maximize" : "Minimize"}
+          >
+            {minimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              setMinimized(false);
+            }}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            title="Close chat"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      {minimized ? (
+        <button
+          onClick={() => setMinimized(false)}
+          className="w-full px-4 py-6 text-sm text-white/75 hover:bg-white/5"
+        >
+          Tap to resume conversation
+        </button>
+      ) : (
+        <div className="flex flex-col h-[380px]">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "max-w-[90%] rounded-2xl px-3 py-2 text-sm transition-all",
+                  msg.sender === "user" ? "ml-auto bg-white/20" : "bg-white/10 border border-white/15"
+                )}
+              >
+                {msg.text}
+              </div>
+            ))}
+            {loading ? (
+              <div className="flex items-center gap-2 text-xs text-white/60">
+                <span className="relative flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/70 animate-pulse" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/50 animate-pulse [animation-delay:120ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/30 animate-pulse [animation-delay:240ms]" />
+                </span>
+                {CHATBOT_NAME} is typing…
+              </div>
+            ) : null}
+          </div>
+          <form onSubmit={onSubmit} className="p-3 border-t border-white/10 bg-black/40">
+            <div className="flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-sm placeholder:text-white/50"
+                placeholder="Share your idea…"
+                maxLength={500}
+              />
+              <Button type="submit" variant="accent" disabled={loading}>
+                Send
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function parseCSV(text) {
@@ -925,8 +1411,14 @@ function parseCSV(text) {
     } else {
       if (c === '"') inQ = true;
       else if (c === ',') { cur.push(val); val = ""; }
-      else if (c === "\n" || c === "\r") { if (val !== "" || cur.length) { cur.push(val); lines.push(cur); cur = []; val = ""; } }
-      else val += c;
+      else if (c === "\n" || c === "\r") {
+        if (val !== "" || cur.length) {
+          cur.push(val);
+          lines.push(cur);
+          cur = [];
+          val = "";
+        }
+      } else val += c;
     }
   }
   if (val !== "" || cur.length) { cur.push(val); lines.push(cur); }
@@ -974,26 +1466,238 @@ function FeaturedUniverse() {
   );
 }
 
+const MMM_ALBUMS = [
+  {
+    id: "mmm-photos",
+    title: "MMM Photos",
+    shareUrl: "https://photos.app.goo.gl/syCYDJW3Ks3BrWGi6",
+    description: "On-set stills, lookbook pulls, and documentary frames from recent commissions.",
+  },
+  {
+    id: "mmm-epic-edits",
+    title: "Epic Edits Gallery",
+    shareUrl: "https://photos.app.goo.gl/syCYDJW3Ks3BrWGi6",
+    description: "Cinematic key art, AI-assisted composites, and surreal lore beats.",
+    seed: 9,
+  },
+  {
+    id: "mmm-videos",
+    title: "MMM Video Highlights",
+    shareUrl: "https://photos.app.goo.gl/6mLydwc1VsX2zPa96",
+    description: "Delivered spots, teasers, and BTS motion selects straight from the edit suite.",
+    kind: "video",
+  },
+  {
+    id: "mmm-ai-videos",
+    title: "AI Video Lab",
+    shareUrl: "https://photos.app.goo.gl/kticmQ8LupL1LmZi7",
+    description: "Experimental AI motion tests, previs experiments, and stylised loops.",
+    kind: "video",
+    seed: 5,
+  },
+];
+
+function MMMBelt({ album, onOpen }) {
+  const { media, loading, error } = useGooglePhotosAlbum(album.shareUrl, 48);
+  const [hovered, setHovered] = useState(null);
+
+  const duplicated = media.length ? [...media, ...media] : [];
+  const openAt = (index) => {
+    if (!media.length) return;
+    onOpen?.({ album, media, initialIndex: index % media.length });
+  };
+
+  return (
+    <div className="rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 overflow-hidden">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div>
+          <div className="text-lg font-semibold">{album.title}</div>
+          <p className="text-white/70 text-sm max-w-2xl">{album.description}</p>
+        </div>
+        <div className="flex items-center gap-2 text-white/65 text-xs">
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Syncing media…</span>
+            </>
+          ) : error && !media.length ? (
+            <span className="text-rose-200/80">Album temporarily unavailable.</span>
+          ) : null}
+        </div>
+      </div>
+      <div className="relative overflow-hidden">
+        {duplicated.length ? (
+          <motion.div
+            className="flex gap-4"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: album.kind === "video" ? 48 : 56, repeat: Infinity, ease: "linear" }}
+          >
+            {duplicated.map((item, idx) => {
+              const baseIndex = idx % media.length;
+              const isActive = hovered === baseIndex;
+              const isDimmed = hovered !== null && !isActive;
+              return (
+                <button
+                  key={`${album.id}-${idx}`}
+                  onMouseEnter={() => setHovered(baseIndex)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => openAt(baseIndex)}
+                  className={cn(
+                    "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                    isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                  )}
+                  title="Open lightbox"
+                >
+                  {item.type === "video" ? (
+                    <video
+                      src={item.src}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img src={item.src} alt={`${album.title} still`} className="w-full h-full object-cover" loading="lazy" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                </button>
+              );
+            })}
+          </motion.div>
+        ) : (
+          <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
+            {loading ? "Loading gallery…" : "No media pulled yet."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GalleryLightbox({ album, media, startIndex = 0, onClose }) {
+  const [index, setIndex] = useState(startIndex);
+
+  useEffect(() => {
+    setIndex(startIndex);
+  }, [startIndex]);
+
+  if (!media?.length) return null;
+  const item = media[index % media.length];
+  const goPrev = () => setIndex((i) => (i - 1 + media.length) % media.length);
+  const goNext = () => setIndex((i) => (i + 1) % media.length);
+
+  return (
+    <Modal open={true} onClose={onClose} title={album?.title || "Gallery"}>
+      <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
+        {item?.type === "video" ? (
+          <video
+            key={item.src}
+            src={item.src}
+            className="w-full h-full object-contain bg-black"
+            controls
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+        ) : (
+          <img
+            key={item?.src}
+            src={item?.src}
+            alt={`${album?.title || "Gallery"} frame`}
+            className="w-full h-full object-contain bg-black"
+          />
+        )}
+        {media.length > 1 ? (
+          <>
+            <button
+              onClick={goPrev}
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 border border-white/20 p-2 hover:bg-black/75"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={goNext}
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 border border-white/20 p-2 hover:bg-black/75"
+              aria-label="Next"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        ) : null}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-white/70 text-sm">
+        <span>{album?.description}</span>
+        <span>
+          {index % media.length + 1} / {media.length}
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
+function MMMGalleries() {
+  const [lightbox, setLightbox] = useState(null);
+
+  return (
+    <section className="py-12">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="flex items-end justify-between">
+          <h2 className="text-2xl sm:text-3xl font-bold">MMM Galleries</h2>
+          <span className="text-white/70 text-sm">Hover to magnify • tap to open lightbox</span>
+        </div>
+        <p className="text-white/75 max-w-3xl">
+          Four belts of living media from MMM Media—photos, edits, and AI experiments gliding endlessly. Hover to spotlight a frame; click to open the lightbox and scroll through every pull without leaving the site.
+        </p>
+        <div className="space-y-5">
+          {MMM_ALBUMS.map((album) => (
+            <MMMBelt key={album.id} album={album} onOpen={(payload) => setLightbox(payload)} />
+          ))}
+        </div>
+      </div>
+      {lightbox ? (
+        <GalleryLightbox
+          album={lightbox.album}
+          media={lightbox.media}
+          startIndex={lightbox.initialIndex || 0}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+
 function CharacterCard({ row }) {
   const name = row["Character"] || row["Name"] || row["Title"] || "Unnamed";
   const alias = row["Alias"] || row["AKA"] || "";
   const alignment = row["Alignment"] || row["Faction"] || "";
-  const location = row["Location"] || "";
+  const location = row["Location"] || row["Base"] || "";
   const short = row["Short Description"] || row["Summary"] || row["Bio"] || "";
-  const img = row["Cover Image"] || row["Image"] || "";
+  const img = (row["Cover Image"] || row["Image"] || "").replace(/open\?id=/, "uc?export=view&id=");
   const long = row["Long Description"] || row["Bio"] || "";
   const powers = row["Powers"] || row["Abilities"] || "";
+  const role = row["Role"] || row["Type"] || "";
+  const status = row["Status"] || "";
   return (
     <Card>
       <div className="aspect-[16/10] rounded-xl bg-black/45 border border-white/10 overflow-hidden grid place-items-center group">
         {img ? (
-          <img src={img} alt={name} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform duration-400" />
+          <img src={img} alt={name} className="w-full h-full object-cover object-center scale-[1.12] group-hover:scale-[1.18] transition-transform duration-700" />
         ) : (
           <div className="text-white/50 text-sm">Art / Poster</div>
         )}
       </div>
       <div className="mt-3 font-semibold">{name}{alias ? <span className="text-white/60 font-normal"> — {alias}</span> : null}</div>
-      <div className="text-white/70 text-sm">{alignment}{location ? ` • ${location}` : ""}</div>
+      <div className="text-white/70 text-sm flex flex-wrap gap-1 items-center">
+        {alignment ? <span>{alignment}</span> : null}
+        {location ? <span>• {location}</span> : null}
+        {role ? <span>• {role}</span> : null}
+        {status ? <span>• {status}</span> : null}
+      </div>
       {short ? <p className="mt-2 text-white/80 text-sm">{short}</p> : null}
       {(powers || long) ? (
         <details className="mt-2 text-white/75 text-sm">
@@ -1012,6 +1716,13 @@ function CharacterCard({ row }) {
 // ========= Portfolio ========= //
 function Portfolio() {
   const [modal, setModal] = useState(null);
+  const embedSrc = useMemo(() => {
+    if (!modal || modal.type !== "watch") return null;
+    const id = getYouTubeId(modal?.p?.url || "");
+    if (id) return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
+    if (!modal?.p?.url) return null;
+    return modal.p.url.includes("shorts/") ? modal.p.url.replace("shorts/", "embed/") : modal.p.url;
+  }, [modal]);
   return (
     <section className="py-12" id="featured-projects">
       <div className="max-w-7xl mx-auto px-6">
@@ -1023,12 +1734,22 @@ function Portfolio() {
         <div className="grid md:grid-cols-3 gap-6">
           {PROJECTS.map((p) => (
             <Card key={p.id}>
-              <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
+              <div
+                className="aspect-[16/10] rounded-2xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer relative"
+                onClick={() => setModal({ type: "watch", p })}
+                title="Watch now"
+              >
                 {youtubeThumb(p.url) ? (
-                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform" />
+                  <img
+                    src={youtubeThumb(p.url)}
+                    alt={p.title}
+                    className="w-full h-full object-cover object-center transition-transform duration-700 [transform:scale(var(--zoom-base))] group-hover:[transform:scale(var(--zoom-hover))]"
+                    style={{ "--zoom-base": p.thumbZoom?.base ?? 1.12, "--zoom-hover": p.thumbZoom?.hover ?? 1.22 }}
+                  />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
                 )}
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="mt-3 font-semibold">{p.title}</div>
               <div className="text-white/70 text-sm">{p.role} • {p.runtime}</div>
@@ -1048,7 +1769,7 @@ function Portfolio() {
             <div className="aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
               <iframe
                 className="w-full h-full"
-                src={modal?.p?.url?.replace("watch?v=", "embed/").replace("shorts/", "embed/")}
+                src={embedSrc || modal?.p?.url}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -1188,40 +1909,27 @@ const MENU = [
 ];
 
 function FloatingButtons({ onOpenContact }) {
-  const [showTop, setShowTop] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 300);
-    onScroll();
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
-      {/* Contact bubble */}
-      <button
-        onClick={onOpenContact}
-        className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-        title="Quick contact"
-        aria-label="Contact"
-      >
-        <MessageSquare className="h-5 w-5" />
-      </button>
-      {/* Back to top */}
-      <AnimatePresence>
-        {showTop && (
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-            title="Back to top"
-            aria-label="Back to top"
-          >
-            <ArrowUp className="h-5 w-5" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <ChatbotWidget />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onOpenContact}
+          className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
+          title="Quick contact"
+          aria-label="Contact"
+        >
+          <MessageSquare className="h-5 w-5" />
+        </button>
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
+          title="Back to top"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1229,6 +1937,7 @@ function FloatingButtons({ onOpenContact }) {
 function runSelfTests() {
   try {
     console.group("Self‑tests");
+    console.assert(typeof clamp === "function", "clamp helper exists");
     // getYouTubeId
     console.assert(getYouTubeId("https://www.youtube.com/watch?v=abc123") === "abc123", "watch?v= failed");
     console.assert(getYouTubeId("https://youtu.be/xyz789") === "xyz789", "youtu.be failed");
@@ -1253,6 +1962,10 @@ function runSelfTests() {
 
     // extra test: ensure pct math stays consistent
     console.assert(typeof youtubeThumb(PROJECTS[0].url) === "string", "thumb returns string");
+    console.assert(Array.isArray(HERO_SLIDES) && HERO_SLIDES.length >= 4, "hero slides configured");
+    console.assert(typeof ChatbotWidget === "function", "chatbot widget present");
+    console.assert(typeof WorkWithMe === "function", "work with me component present");
+    console.assert(Array.isArray(MMM_ALBUMS) && MMM_ALBUMS.length === 4, "MMM albums configured");
 
     console.groupEnd();
   } catch (e) {
@@ -1262,7 +1975,6 @@ function runSelfTests() {
 
 export default function AppShell() {
   const [route, setRoute] = useState("home");
-  const [reelOpen, setReelOpen] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
@@ -1317,8 +2029,9 @@ export default function AppShell() {
       <main>
         {route === "home" && (
           <>
-            <Hero onWatch={() => setReelOpen(true)} onOpenLinksModal={() => setLinksOpen(true)} />
+            <Hero onOpenLinksModal={() => setLinksOpen(true)} />
             <Portfolio />
+            <MMMGalleries />
             <FeaturedUniverse />
             <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
             <section className="py-6"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
@@ -1364,19 +2077,6 @@ export default function AppShell() {
             <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
           </div>
           <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
-        </div>
-      </Modal>
-
-      <Modal open={reelOpen} onClose={() => setReelOpen(false)} title="Instagram Reel">
-        <div className="aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.instagram.com/reel/${IG_REEL_ID}/embed`}
-            title="Instagram reel"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            allowFullScreen
-          />
         </div>
       </Modal>
     </div>
