@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Search,
@@ -22,7 +22,7 @@ import {
   Swords,
 } from "lucide-react";
 import LoreLayout from "../../components/LoreLayout";
-import { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug } from "../../lib/loremaker-data";
+import { fetchCharactersFromApi, normalizeDriveUrl, parsePowers, SAMPLE, toSlug } from "../../lib/loremaker-data";
 
 export async function getStaticProps() {
   const commit = process.env.VERCEL_GIT_COMMIT_SHA || null;
@@ -158,29 +158,44 @@ function useCharacters() {
   const [raw, setRaw] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const abortRef = useRef(null);
 
-  const fetchSheet = async () => {
+  const fetchSheet = useCallback(async () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await loadCharacters();
+      const { data, error } = await fetchCharactersFromApi({ signal: controller.signal });
+      if (controller.signal.aborted) return;
       setRaw(data);
       __ALL_CHARS = data;
       if (error) setError(error);
     } catch (err) {
+      if (err?.name === "AbortError") return;
       console.error("Failed to load characters", err);
       const fallback = SAMPLE;
       setRaw(fallback);
       __ALL_CHARS = fallback;
       setError(err?.message || "Failed to load characters");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSheet();
-  }, []);
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+    };
+  }, [fetchSheet]);
 
   return { data: raw, loading, error, refetch: fetchSheet };
 }

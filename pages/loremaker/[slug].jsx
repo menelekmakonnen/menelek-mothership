@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 import { Atom, ArrowLeft, Crown, MapPin, Tag, Users } from "lucide-react";
 import LoreLayout from "../../components/LoreLayout";
-import { loadCharacters, toSlug } from "../../lib/loremaker-data";
+import { fetchCharactersFromApi, SAMPLE, toSlug } from "../../lib/loremaker-data";
 
 function SafeImage({ src, alt, fallback }) {
   const [error, setError] = useState(false);
@@ -58,25 +58,43 @@ export default function CharacterDetail() {
 
   useEffect(() => {
     if (!slug) return;
-    let mounted = true;
-    const run = async () => {
-      setLoading(true);
-      const { data, error: fetchError } = await loadCharacters();
-      if (!mounted) return;
-      setAllCharacters(data);
-      if (fetchError) setError(fetchError);
-      const match = data.find((c) => c.slug === slug || toSlug(c.name) === slug || toSlug(c.id) === slug);
-      if (match) {
-        setCharacter(match);
-      } else {
-        setError("Character not found");
-      }
-      setLoading(false);
-    };
-    run();
-    return () => {
-      mounted = false;
-    };
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    const findMatch = (list) => list.find((c) => c.slug === slug || toSlug(c.name) === slug || toSlug(c.id) === slug);
+    fetchCharactersFromApi({ signal: controller.signal })
+      .then(({ data, error: fetchError }) => {
+        if (controller.signal.aborted) return;
+        setAllCharacters(data);
+        if (fetchError) setError(fetchError);
+        const match = findMatch(data);
+        if (match) {
+          setCharacter(match);
+        } else {
+          setCharacter(null);
+          setError("Character not found");
+        }
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
+        console.error("Failed to load character detail", err);
+        const fallback = SAMPLE;
+        setAllCharacters(fallback);
+        const match = findMatch(fallback);
+        if (match) {
+          setCharacter(match);
+          setError(err?.message || "Loaded fallback character data");
+        } else {
+          setCharacter(null);
+          setError(err?.message || "Failed to load characters");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+    return () => controller.abort();
   }, [slug]);
 
   const allies = useMemo(() => {

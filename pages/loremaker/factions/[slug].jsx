@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import LoreLayout from "../../../components/LoreLayout";
-import { loadCharacters, toSlug } from "../../../lib/loremaker-data";
+import { fetchCharactersFromApi, SAMPLE, toSlug } from "../../../lib/loremaker-data";
 
 function hueFromString(text) {
   let hash = 0;
@@ -46,23 +46,37 @@ export default function FactionDetail() {
 
   useEffect(() => {
     if (!slug) return;
-    let mounted = true;
-    const load = async () => {
-      setLoading(true);
-      const { data, error: fetchError } = await loadCharacters();
-      if (!mounted) return;
-      if (fetchError) setError(fetchError);
-      const filtered = data.filter((c) => (c.faction || []).some((f) => toSlug(f) === slug));
-      if (!filtered.length) {
-        setError("Faction not found");
-      }
-      setMembers(filtered);
-      setLoading(false);
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    const filterMembers = (list) => list.filter((c) => (c.faction || []).some((f) => toSlug(f) === slug));
+    fetchCharactersFromApi({ signal: controller.signal })
+      .then(({ data, error: fetchError }) => {
+        if (controller.signal.aborted) return;
+        if (fetchError) setError(fetchError);
+        const filtered = filterMembers(data);
+        if (!filtered.length) {
+          setError("Faction not found");
+        }
+        setMembers(filtered);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
+        console.error("Failed to load faction detail", err);
+        const fallback = filterMembers(SAMPLE);
+        setMembers(fallback);
+        if (!fallback.length) {
+          setError(err?.message || "Failed to load characters");
+        } else {
+          setError(err?.message || "Showing fallback roster");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+    return () => controller.abort();
   }, [slug]);
 
   const factionName = members[0]?.faction?.find((f) => toSlug(f) === slug) || (slug ? slug.replace(/-/g, " ") : "Faction");

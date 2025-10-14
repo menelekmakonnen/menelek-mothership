@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import LoreLayout from "../../../components/LoreLayout";
-import { loadCharacters, toSlug } from "../../../lib/loremaker-data";
+import { fetchCharactersFromApi, SAMPLE, toSlug } from "../../../lib/loremaker-data";
 
 function CharacterPowerSummary({ character, power }) {
   return (
@@ -40,26 +40,43 @@ export default function PowerDetail() {
 
   useEffect(() => {
     if (!slug) return;
-    let mounted = true;
-    const run = async () => {
-      setLoading(true);
-      const { data, error: fetchError } = await loadCharacters();
-      if (!mounted) return;
-      if (fetchError) setError(fetchError);
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    const extract = (list) => {
       const matches = [];
-      data.forEach((c) => {
+      list.forEach((c) => {
         (c.powers || []).forEach((p) => {
           if (toSlug(p.name) === slug) matches.push({ character: c, power: p });
         });
       });
-      if (!matches.length) setError("Power not found");
-      setEntries(matches);
-      setLoading(false);
+      return matches;
     };
-    run();
-    return () => {
-      mounted = false;
-    };
+    fetchCharactersFromApi({ signal: controller.signal })
+      .then(({ data, error: fetchError }) => {
+        if (controller.signal.aborted) return;
+        if (fetchError) setError(fetchError);
+        const matches = extract(data);
+        if (!matches.length) setError("Power not found");
+        setEntries(matches);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
+        console.error("Failed to load power detail", err);
+        const matches = extract(SAMPLE);
+        setEntries(matches);
+        if (!matches.length) {
+          setError(err?.message || "Failed to load characters");
+        } else {
+          setError(err?.message || "Showing fallback character data");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+    return () => controller.abort();
   }, [slug]);
 
   const powerName = entries[0]?.power?.name || (slug ? slug.replace(/-/g, " ") : "Power");
