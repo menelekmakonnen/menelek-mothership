@@ -22,7 +22,8 @@ import {
   Swords,
 } from "lucide-react";
 import LoreLayout from "../../components/LoreLayout";
-impimport { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug, todayKey, seededRandom } from "../../lib/loremaker-data";
+ import { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug, todayKey, seededRandom } from "../../lib/loremaker-data";
+
 
 
 export async function getStaticProps() {
