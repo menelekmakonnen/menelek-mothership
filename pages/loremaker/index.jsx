@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
@@ -13,12 +15,34 @@ import {
   Filter,
   Users,
   MapPin,
-  Layers3,
+  Layers,
   Atom,
   Clock,
   Crown,
   Swords,
 } from "lucide-react";
+import LoreLayout from "../../components/LoreLayout";
+import { loadCharacters, normalizeDriveUrl, parsePowers, SAMPLE, toSlug } from "../../lib/loremaker-data";
+
+export async function getStaticProps() {
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA || null;
+  const builtAt = new Date();
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const label = `${builtAt.getUTCDate()} ${monthNames[builtAt.getUTCMonth()]} ${builtAt.getUTCFullYear()} • ${String(
+    builtAt.getUTCHours()
+  ).padStart(2, "0")}:${String(builtAt.getUTCMinutes()).padStart(2, "0")} UTC`;
+
+  return {
+    props: {
+      buildInfo: {
+        builtAt: builtAt.toISOString(),
+        label,
+        commit,
+      },
+    },
+    revalidate: 3600,
+  };
+}
 
 /**
  * LOREMAKER — Ultra build (plain JSX, no TS)
@@ -82,6 +106,28 @@ function Input({ className = "", ...props }) {
 function Badge({ className = "", children }) {
   return <span className={cx("px-2 py-1 rounded-full text-xs font-extrabold", className)}>{children}</span>;
 }
+
+function TagGlyph({ size = 14, className = "", ...rest }) {
+  if (Layers) {
+    return <Layers size={size} className={className} {...rest} />;
+  }
+  const style = {
+    width: size,
+    height: size,
+    fontSize: size * 0.7,
+    lineHeight: `${size}px`,
+  };
+  return (
+    <span
+      aria-hidden="true"
+      className={cx("inline-flex items-center justify-center font-black", className)}
+      style={style}
+      {...rest}
+    >
+      #
+    </span>
+  );
+}
 function Switch({ checked, onChange, id }) {
   return (
     <button
@@ -104,258 +150,10 @@ function Switch({ checked, onChange, id }) {
   );
 }
 
-/** -------------------- Config -------------------- */
-const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM"; // replace if needed
-const SHEET_NAME = "Characters";
-const GVIZ_URL = (sheetName) =>
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-
-const COL_ALIAS = {
-  id: ["id", "char_id", "character id", "code"],
-  name: ["character", "character name", "name"],
-  alias: ["alias", "aliases", "also known as"],
-  gender: ["gender", "sex"],
-  alignment: ["alignment"],
-  location: ["location", "base of operations", "locations"],
-  status: ["status"],
-  era: ["era", "origin/era", "time"],
-  firstAppearance: ["first appearance", "debut", "firstappearance"],
-  powers: ["powers", "abilities", "power"],
-  faction: ["faction", "team", "faction/team"],
-  tag: ["tag", "tags"],
-  shortDesc: ["short description", "shortdesc", "blurb"],
-  longDesc: ["long description", "longdesc", "bio"],
-  stories: ["stories", "story", "appears in"],
-  cover: ["cover image", "cover", "cover url"],
-};
-const GALLERY_ALIASES = Array.from({ length: 15 }, (_, i) => i + 1).map((n) => [
-  `gallery image ${n}`,
-  `gallery ${n}`,
-  `img ${n}`,
-  `image ${n}`,
-]);
-
 // Global cache for Alliances suggestions
 let __ALL_CHARS = [];
 
-/** -------------------- Utils -------------------- */
-const toSlug = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
-function normalizeDriveUrl(url) {
-  if (!url) return undefined;
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("drive.google.com")) {
-      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
-      const id = (m && m[1]) || u.searchParams.get("id");
-      if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
-    }
-    return url;
-  } catch {
-    return url;
-  }
-}
-function splitList(raw) {
-  if (!raw) return [];
-  return raw
-    .replace(/\band\b/gi, ",")
-    .replace(/[|;]/g, ",")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-function parseLocations(raw) {
-  const items = splitList(raw);
-  const out = [];
-  for (const item of items) {
-    const parts = item.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
-    if (parts.length > 1) out.push(...parts);
-    else out.push(item);
-  }
-  return Array.from(new Set(out));
-}
-function parsePowers(raw) {
-  if (!raw) return [];
-  const items = splitList(raw);
-  return items.map((item) => {
-    let name = item;
-    let level = 0;
-    const colon = item.match(/^(.*?)[=:]\s*(\d{1,2})(?:\s*\/\s*10)?$/);
-    if (colon) {
-      name = colon[1].trim();
-      level = Math.min(10, parseInt(colon[2]));
-    } else if (/\(/.test(item) && item.match(/\((\d{1,2})\)/)) {
-      const m = item.match(/^(.*?)\((\d{1,2})\)$/);
-      name = (m?.[1] || item).trim();
-      level = Math.min(10, parseInt(m?.[2] || "0"));
-    } else {
-      const trail = item.match(/^(.*?)(\d{1,2})$/);
-      if (trail) {
-        name = trail[1].trim();
-        level = Math.min(10, parseInt(trail[2]));
-      } else {
-        name = item.trim();
-        level = 0;
-      }
-    }
-    return { name, level: isFinite(level) ? level : 0 };
-  });
-}
-function headerMap(headers) {
-  const map = {};
-  const lower = headers.map((h) => (h || "").toLowerCase().trim());
-  function findIndex(aliases) {
-    for (const a of aliases) {
-      const idx = lower.indexOf(a);
-      if (idx !== -1) return idx;
-    }
-    return -1;
-  }
-  for (const key of Object.keys(COL_ALIAS)) {
-    const idx = findIndex(COL_ALIAS[key]);
-    if (idx !== -1) map[key] = idx;
-  }
-  GALLERY_ALIASES.forEach((aliases, n) => {
-    const idx = findIndex(aliases);
-    if (idx !== -1) map[`gallery_${n + 1}`] = idx;
-  });
-  return map;
-}
-function parseGViz(text) {
-  const m = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/s);
-  if (!m) throw new Error("GViz format not recognized");
-  return JSON.parse(m[1]);
-}
-function rowToCharacter(row, map) {
-  const get = (k) => {
-    const idx = map[k];
-    if (idx == null) return undefined;
-    const cell = row[idx];
-    if (!cell) return undefined;
-    const v = cell.v ?? cell.f ?? cell;
-    return typeof v === "string" ? v : String(v ?? "");
-  };
-  const name = (get("name") || "").trim();
-  if (!name) return null;
-  const char = {
-    id: get("id") || toSlug(name),
-    name,
-    alias: splitList(get("alias")),
-    gender: get("gender"),
-    alignment: get("alignment"),
-    locations: parseLocations(get("location")),
-    status: get("status"),
-    era: get("era"),
-    firstAppearance: get("firstAppearance"),
-    powers: parsePowers(get("powers")),
-    faction: splitList(get("faction")),
-    tags: splitList(get("tag")),
-    shortDesc: get("shortDesc"),
-    longDesc: get("longDesc"),
-    stories: splitList(get("stories")),
-    cover: normalizeDriveUrl(get("cover")),
-    gallery: [],
-  };
-  for (let i = 1; i <= 15; i++) {
-    const url = get(`gallery_${i}`);
-    if (url) char.gallery.push(normalizeDriveUrl(url));
-  }
-  return char;
-}
-
-/** Daily seeding helpers */
-const todayKey = () => new Date().toISOString().slice(0, 10);
-function seededRandom(seed) {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
-  return () => {
-    h += 0x6d2b79f5;
-    let t = Math.imul(h ^ (h >>> 15), 1 | h);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const dailyInt = (seed, min = 1, max = 10) => {
-  const r = seededRandom(seed + todayKey())();
-  return Math.floor(r * (max - min + 1)) + min;
-};
-function fillDailyPowers(c) {
-  const powers = (c.powers || []).map((p) => ({ ...p, level: p.level > 0 ? p.level : dailyInt(`${c.name}|${p.name}`, 4, 9) }));
-  return { ...c, powers };
-}
-
 /** -------------------- Data hook -------------------- */
-const SAMPLE = [
-  {
-    id: "mystic-man",
-    name: "Mystic Man",
-    alias: ["Arcanist"],
-    gender: "Male",
-    alignment: "Hero",
-    locations: ["Accra", "London"],
-    status: "Active",
-    era: "Modern",
-    firstAppearance: "2019",
-    powers: [
-      { name: "Spellcraft", level: 9 },
-      { name: "Teleportation", level: 7 },
-    ],
-    faction: ["Earthguard"],
-    tags: ["Leader"],
-    shortDesc: "A strategist mage who wages wars with runes.",
-    longDesc: "Master tactician of the Loremaker universe.",
-    stories: ["Heroes & Gods"],
-    cover:
-      "https://images.unsplash.com/photo-1544450770-94d251f81d7b?q=80&w=1200&auto=format&fit=crop",
-    gallery: [],
-  },
-  {
-    id: "lithespeed",
-    name: "Lithespeed",
-    alias: ["Quicksable"],
-    gender: "Female",
-    alignment: "Hero",
-    locations: ["Tema"],
-    status: "Active",
-    era: "Modern",
-    firstAppearance: "2020",
-    powers: [
-      { name: "Superspeed", level: 8 },
-      { name: "Reflexes", level: 7 },
-    ],
-    faction: ["Earthguard"],
-    tags: ["Legend"],
-    shortDesc: "Speedster with dancer's finesse.",
-    longDesc: "She can paint circles around thunder.",
-    stories: ["Heroes & Gods"],
-    cover:
-      "https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=1200&auto=format&fit=crop",
-    gallery: [],
-  },
-  {
-    id: "nighteagle",
-    name: "Nighteagle",
-    alias: ["Watcher"],
-    gender: "Male",
-    alignment: "Vigilante",
-    locations: ["Kumasi"],
-    status: "Unknown",
-    era: "Modern",
-    firstAppearance: "2018",
-    powers: [
-      { name: "Stealth", level: 8 },
-      { name: "Gadgets", level: 7 },
-    ],
-    faction: ["Janitors"],
-    tags: ["Mythic"],
-    shortDesc: "Silent guardian with metal wings.",
-    longDesc: "Haunts rooftops and rumor mills alike.",
-    stories: ["Vigilantes: Dawn of the"],
-    cover:
-      "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1200&auto=format&fit=crop",
-    gallery: [],
-  },
-];
-
 function useCharacters() {
   const [raw, setRaw] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -365,50 +163,29 @@ function useCharacters() {
     setLoading(true);
     setError(null);
     try {
-      const pull = async (sheetName) => {
-        const res = await fetch(GVIZ_URL(sheetName));
-        const txt = await res.text();
-        return parseGViz(txt);
-      };
-      let obj;
-      try {
-        obj = await pull(SHEET_NAME);
-      } catch {
-        obj = await pull("Sheet1");
-      }
-      let rows = obj.table.rows || [];
-      const labels = obj.table.cols.map((c) => (c?.label || c?.id || "").trim());
-      let map = headerMap(labels);
-      if (map.name == null && rows.length) {
-        const first = (rows[0]?.c || []).map((cell) => String(cell?.v ?? cell?.f ?? "").trim());
-        const alt = headerMap(first);
-        if (alt.name != null) {
-          map = alt;
-          rows = rows.slice(1);
-        }
-      }
-      const parsed = [];
-      for (const r of rows) {
-        const c = rowToCharacter(r.c || [], map);
-        if (c) parsed.push(fillDailyPowers(c));
-      }
-      setRaw(parsed);
-      __ALL_CHARS = parsed;
-    } catch (e) {
-      console.error("Sheet load failed, using SAMPLE:", e?.message || e);
-      const parsed = SAMPLE.map(fillDailyPowers);
-      setRaw(parsed);
-      __ALL_CHARS = parsed;
-      setError("Loaded fallback sample data");
+      const { data, error } = await loadCharacters();
+      setRaw(data);
+      __ALL_CHARS = data;
+      if (error) setError(error);
+    } catch (err) {
+      console.error("Failed to load characters", err);
+      const fallback = SAMPLE;
+      setRaw(fallback);
+      __ALL_CHARS = fallback;
+      setError(err?.message || "Failed to load characters");
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchSheet();
   }, []);
+
   return { data: raw, loading, error, refetch: fetchSheet };
 }
+
+/** -------------------- Utils -------------------- */
 
 /** -------------------- Aesthetics -------------------- */
 function Aurora({ className }) {
@@ -493,15 +270,20 @@ function PowerMeter({ level }) {
     </div>
   );
 }
-function FacetChip({ active, onClick, children }) {
+function FacetChip({ active, onClick, children, href }) {
+  const className = cx(
+    "px-3 py-1 rounded-full text-sm font-bold border transition",
+    active ? "bg-white text-black border-white" : "bg-white/10 text-white border-white/40 hover:bg-white/20"
+  );
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {children}
+      </Link>
+    );
+  }
   return (
-    <button
-      onClick={onClick}
-      className={cx(
-        "px-3 py-1 rounded-full text-sm font-bold border transition",
-        active ? "bg-white text-black border-white" : "bg-white/10 text-white border-white/40 hover:bg-white/20"
-      )}
-    >
+    <button onClick={onClick} className={className}>
       {children}
     </button>
   );
@@ -733,7 +515,7 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
             {!!(c.tags || []).length && (
               <div>
                 <div className="text-sm mb-2 font-bold flex items-center gap-2">
-                  <Layers3 size={14} /> Tags
+                  <TagGlyph size={14} /> Tags
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {c.tags.map((t) => (
@@ -1067,21 +849,36 @@ function HealthBar({ value }) {
   );
 }
 
-// Animated Lore shield with randomized micro-effects
+// Animated Lore logo with pulsing gradients
 function LoreGlyph() {
-  const [seed] = useState(() => Math.floor(Math.random() * 1000));
-  const wobble = [0, -2, 2, -1, 1, 0];
+  const [baseHue] = useState(() => Math.floor(Math.random() * 360));
   return (
     <motion.div
-      animate={{ rotate: wobble, scale: [1, 1.02, 1], filter: ["drop-shadow(0 0 6px rgba(255,255,255,.25))", `drop-shadow(0 0 12px hsl(${(seed*37)%360},90%,60%))`, "drop-shadow(0 0 6px rgba(255,255,255,.25))"] }}
-      transition={{ duration: 2 + (seed % 10) / 5, repeat: Infinity, ease: "easeInOut" }}
       className="relative"
+      animate={{ rotate: [0, 2, -2, 0], scale: [1, 1.05, 0.98, 1] }}
+      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       title="Lore"
     >
-      <Insignia label="Lore" size={54} variant="site" />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-xs font-black tracking-wide">Lore</span>
-      </div>
+      <motion.div
+        className="relative h-14 w-14 rounded-3xl border border-white/25 flex items-center justify-center overflow-hidden shadow-[0_0_25px_rgba(255,255,255,0.35)]"
+        animate={{
+          boxShadow: [
+            `0 0 18px rgba(255,255,255,0.3), 0 0 35px hsla(${baseHue},90%,65%,0.5)`,
+            `0 0 28px rgba(255,255,255,0.4), 0 0 45px hsla(${(baseHue + 90) % 360},90%,65%,0.65)`,
+            `0 0 20px rgba(255,255,255,0.25), 0 0 55px hsla(${(baseHue + 180) % 360},90%,60%,0.6)`,
+          ],
+          background: [
+            `radial-gradient(circle at 30% 30%, hsla(${baseHue},85%,65%,0.9), rgba(8,12,22,0.2) 70%)`,
+            `radial-gradient(circle at 70% 70%, hsla(${(baseHue + 120) % 360},80%,60%,0.9), rgba(8,12,22,0.25) 70%)`,
+            `radial-gradient(circle at 50% 50%, hsla(${(baseHue + 240) % 360},80%,62%,0.92), rgba(8,12,22,0.2) 70%)`,
+          ],
+        }}
+        transition={{ duration: 7, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+      >
+        <span className="text-base font-black tracking-[0.35em] uppercase text-white drop-shadow-[0_6px_22px_rgba(0,0,0,0.65)]">
+          Lore
+        </span>
+      </motion.div>
     </motion.div>
   );
 }
@@ -1286,7 +1083,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
       )}
       {!!(c.tags || []).length && (
         <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers3 size={12}/> Tags</div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><TagGlyph size={12} /> Tags</div>
           <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
         </div>
       )}
@@ -1380,18 +1177,25 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
 }
 
 /** -------------------- App -------------------- */
-export default function App() {
+export default function LoremakerPage({ buildInfo }) {
   const { data, loading, error, refetch } = useCharacters();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({});
   const [combineAND, setCombineAND] = useState(false);
   const [openFilters, setOpenFilters] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(null);
   const [sortMode, setSortMode] = useState("default");
   const [selectedIds, setSelectedIds] = useState([]);
 
-  const onOpen = (c) => { setActive(c); setOpen(true); };
+  const buildLabel = buildInfo?.label || null;
+  const buildCommitShort = buildInfo?.commit ? buildInfo.commit.slice(0, 7) : null;
+  const buildTitle = buildInfo?.builtAt ? `Build generated ${buildInfo.label}` : undefined;
+
+  const onOpen = (c) => {
+    if (!c) return;
+    const slug = c.slug || toSlug(c.name || c.id || "");
+    router.push(`/loremaker/${slug}`);
+  };
 
   // if both slots full and user adds a third, replace the oldest
   const onUseInSim = (id) => {
@@ -1443,15 +1247,34 @@ export default function App() {
   const clearAll = () => { setQuery(""); setFilters({}); };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <Aurora />
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <LoreLayout>
+      <div className="relative overflow-hidden">
+        <Aurora className="opacity-80" />
+        <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <LoreGlyph />
-            <div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight">Loremaker Universe</div>
-              <div className="text-xs uppercase tracking-widest text-white/80 font-bold">Welcome to the official home of all the Loremaker universe and characters created by Menelek Makonnen</div>
+            <div className="space-y-2">
+              <div className="text-2xl md:text-3xl font-black tracking-tight text-white drop-shadow-[0_8px_20px_rgba(7,10,18,0.35)]">Loremaker Universe</div>
+              <p className="text-sm md:text-base text-white/75 leading-relaxed max-w-xl">
+                Explore every storyline, faction, and mythic ability woven through Menelek Makonnen’s expanding cosmos. Filter the archive, dive into detailed dossiers, and summon characters into the Arena without losing your place.
+              </p>
+              {buildLabel && (
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-white/60">
+                  <span className="tracking-[0.35em] uppercase">Updated</span>
+                  <span className="tracking-wide" title={buildTitle}>
+                    {buildLabel}
+                  </span>
+                  {buildCommitShort && (
+                    <span
+                      className="px-2 py-1 rounded-full border border-white/20 bg-white/10 tracking-[0.3em] uppercase text-white/70"
+                      title={`Deployed from commit ${buildCommitShort}`}
+                    >
+                      {buildCommitShort}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="hidden md:flex items-center gap-2">
@@ -1485,17 +1308,32 @@ export default function App() {
         </div>
 
         <div className="mt-6">
-          <CharacterGrid data={sorted.filter((c) => !selectedIds.includes(c.id))} onOpen={onOpen} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={onUseInSim} />
+          <CharacterGrid
+            data={sorted.filter((c) => !selectedIds.includes(c.id))}
+            onOpen={onOpen}
+            onFacet={(kv) =>
+              setFilters((f) => ({
+                ...f,
+                [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])],
+              }))
+            }
+            onUseInSim={onUseInSim}
+          />
         </div>
       </div>
-
-      <CharacterModal open={open} onClose={() => setOpen(false)} c={active} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={(id) => { onUseInSim(id); setOpen(false); }} />
-
-      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} />
-
-      <BackToTop />
     </div>
-  );
+
+    <FiltersDrawer
+      open={openFilters}
+      onClose={() => setOpenFilters(false)}
+      values={allValues}
+      filters={filters}
+      setFilters={setFilters}
+    />
+
+    <BackToTop />
+  </LoreLayout>
+);
 }
 
 /** -------------------- Minimal runtime tests (console) -------------------- */
