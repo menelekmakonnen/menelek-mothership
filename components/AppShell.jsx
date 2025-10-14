@@ -20,7 +20,6 @@ import {
   Minimize2,
   Maximize2,
   Loader2,
-  Expand,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -68,10 +67,14 @@ const SHEETS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
 
 const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
-const CHATBOT_ENDPOINTS = { trackVisit: null, chatbot: "/workflow/cQltZgIikkp4fFER" };
+const CHATBOT_ENDPOINTS = {
+  trackVisit: "/workflow/cQltZgIikkp4fFER",
+  chatbot: "/webhook/chatbot",
+};
 const CHATBOT_NAME = "Zara";
 const CHATBOT_TAGLINE = "Menelek's AI Assistant";
 const GOOGLE_PROXY_PREFIX = "https://r.jina.ai/https://";
+const INSTAGRAM_PROXY_PREFIX = "https://r.jina.ai/https://www.instagram.com/";
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
@@ -80,6 +83,26 @@ const shuffleArray = (arr) => {
   const next = [...arr];
   for (let i = next.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
+
+const createSeededRandom = (seed = 1) => {
+  let s = Math.floor(seed) % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+};
+
+const shuffleWithSeed = (arr, seed = 1) => {
+  if (!Number.isFinite(seed)) return shuffleArray(arr);
+  const random = createSeededRandom(seed);
+  const next = [...arr];
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
     [next[i], next[j]] = [next[j], next[i]];
   }
   return next;
@@ -301,6 +324,7 @@ const PROJECTS = [
     runtime: "8 min",
     summary: "Addiction & depression inside a lockdown flat.",
     url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D",
+    thumbZoom: { base: 1.36, hover: 1.58 },
   },
   {
     id: "blinded-by-magic",
@@ -318,6 +342,7 @@ const PROJECTS = [
     runtime: "120 min",
     summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.",
     url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D",
+    thumbZoom: { base: 1.34, hover: 1.56 },
   },
   {
     id: "spar-bts",
@@ -400,18 +425,69 @@ const HERO_SLIDES = [
 
 function Hero({ onOpenLinksModal }) {
   const [idx, setIdx] = useState(0);
+  const { media: mmmPhotos } = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 5, seed: 2 });
+  const { media: mmmReels } = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 5, seed: 4 });
+  const { media: loreImages } = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 5, seed: 6 });
+
+  const slides = useMemo(() => {
+    return HERO_SLIDES.map((slide) => {
+      if (slide.id === "photo" && mmmPhotos?.length) {
+        const shot = mmmPhotos[0];
+        return {
+          ...slide,
+          kind: "image",
+          src: shot.src,
+          caption: shot.caption || slide.caption,
+          credit: "@mm.m.media",
+        };
+      }
+      if (slide.id === "edit" && mmmReels?.length) {
+        const reel = mmmReels[0];
+        return {
+          ...slide,
+          kind: "image",
+          src: reel.src,
+          videoUrl: reel.videoSrc || slide.videoUrl,
+          caption: reel.caption || slide.caption,
+          credit: "@mm.m.media",
+        };
+      }
+      if (slide.id === "universe" && loreImages?.length) {
+        const lore = loreImages[0];
+        return {
+          ...slide,
+          kind: "image",
+          src: lore.src,
+          caption: lore.caption || slide.caption,
+          credit: "@lore.maker_",
+        };
+      }
+      return slide;
+    });
+  }, [mmmPhotos, mmmReels, loreImages]);
+
+  const slidesLength = slides.length || 1;
+
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);
+    const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
     return () => clearInterval(t);
-  }, []);
-  const slide = HERO_SLIDES[idx];
+  }, [slidesLength]);
+
+  useEffect(() => {
+    if (idx >= slidesLength) setIdx(0);
+  }, [idx, slidesLength]);
+
+  const goPrev = () => setIdx((i) => (i - 1 + slidesLength) % slidesLength);
+  const goNext = () => setIdx((i) => (i + 1) % slidesLength);
+
+  const slide = slides[idx];
   const openVideo = () => {
     if (slide.kind !== "video" || !slide.videoUrl) return;
     window.open(slide.videoUrl, "_blank", "noopener,noreferrer");
   };
   const imageSrc = slide.kind === "video" ? slide.thumb : slide.src;
   return (
-    <section className="relative pt-24 pb-10">
+    <section className="relative pt-24 pb-10" id="hero">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
         <div>
           <motion.h1
@@ -435,10 +511,26 @@ function Hero({ onOpenLinksModal }) {
             <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
           </div>
         </div>
-        <Card>
+        <Card className="relative overflow-hidden">
+          <div className="absolute top-4 right-4 z-20 flex gap-2">
+            <button
+              onClick={goPrev}
+              className="rounded-full bg-black/40 border border-white/20 p-1.5 text-white hover:bg-black/55"
+              aria-label="Previous showcase"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={goNext}
+              className="rounded-full bg-black/40 border border-white/20 p-1.5 text-white hover:bg-black/55"
+              aria-label="Next showcase"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
           <div className="text-sm uppercase tracking-[0.25em] text-white/60 flex items-center justify-between">
             <span>Showcase</span>
-            <div className="text-xs text-white/60">{idx + 1}/{HERO_SLIDES.length}</div>
+            <div className="text-xs text-white/60">{idx + 1}/{slidesLength}</div>
           </div>
           <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
             <AnimatePresence mode="wait">
@@ -487,6 +579,9 @@ function Hero({ onOpenLinksModal }) {
               {slide.caption}
             </motion.p>
           ) : null}
+          {slide.credit ? (
+            <div className="mt-2 text-xs text-white/60">{slide.credit}</div>
+          ) : null}
         </Card>
       </div>
     </section>
@@ -497,7 +592,7 @@ function Hero({ onOpenLinksModal }) {
 function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) {
   const [randomKey, setRandomKey] = useState(0);
   return (
-    <section className="py-12" id="work">
+    <section className="py-12" id="value-calculator">
       <div className="max-w-7xl mx-auto px-6">
         <Card>
           <div className="flex items-end justify-between mb-1">
@@ -997,8 +1092,8 @@ function useCSV(url) {
     let abort = false;
     (async () => {
       try {
-        const target = url?.includes("google") ? proxyGoogleUrl(url) : url;
-        const res = await fetch(target, { mode: "cors" });
+        const target = proxyGoogleUrl(url);
+        const res = await fetch(target);
         const text = await res.text();
         if (abort) return;
         const { rows } = parseCSV(text);
@@ -1085,6 +1180,133 @@ function useGooglePhotosAlbum(shareUrl, limit = 24) {
       abort = true;
     };
   }, [shareUrl, limit]);
+
+  return { media, loading, error };
+}
+
+function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) {
+  const [media, setMedia] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!username) {
+      setMedia([]);
+      setLoading(false);
+      setError(new Error("Missing username"));
+      return;
+    }
+
+    let abort = false;
+    const fetchProfile = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${INSTAGRAM_PROXY_PREFIX}${username}/?__a=1&__d=dis`, {
+          headers: { Accept: "application/json" },
+        });
+        const text = await res.text();
+        if (abort) return;
+        let parsed = null;
+        try {
+          parsed = JSON.parse(text);
+        } catch (err) {
+          throw new Error(`Failed to parse Instagram payload for ${username}`);
+        }
+        const user = parsed?.graphql?.user || parsed?.data?.user;
+        if (!user) throw new Error(`No Instagram data for ${username}`);
+
+        const pickNodes = (edges = []) => edges.map((edge) => edge?.node).filter(Boolean);
+        const timeline = pickNodes(user.edge_owner_to_timeline_media?.edges);
+        const reels = pickNodes(user.edge_felix_video_timeline?.edges);
+
+        const flattenNode = (node) => {
+          if (!node) return [];
+          if (node.__typename === "GraphSidecar" && node.edge_sidecar_to_children?.edges?.length) {
+            return node.edge_sidecar_to_children.edges
+              .map((edge) => edge?.node)
+              .filter(Boolean)
+              .map((child) => ({ ...child, parentId: node.id, taken_at_timestamp: child.taken_at_timestamp || node.taken_at_timestamp }));
+          }
+          return [{ ...node }];
+        };
+
+        const combined = [...timeline, ...reels].flatMap(flattenNode);
+
+        const filtered = combined.filter((node) => {
+          const isVideo = Boolean(
+            node.is_video ||
+              node.media_type === 2 ||
+              node.product_type === "clips" ||
+              node.__typename === "GraphVideo"
+          );
+          if (filter === "images") return !isVideo;
+          if (filter === "reels" || filter === "video") return isVideo;
+          return true;
+        });
+
+        const pickFirst = (...candidates) => candidates.find((c) => typeof c === "string" && c);
+
+        const mapped = filtered
+          .map((node) => {
+            const imgCandidate = pickFirst(
+              node.display_url,
+              node.thumbnail_src,
+              node.thumbnail_url,
+              node.cover_photo_url,
+              node.image_versions2?.candidates?.[0]?.url,
+              node.image_versions2?.candidates?.find((c) => c?.url)?.url
+            );
+            const videoCandidate = pickFirst(
+              node.video_url,
+              node.video_versions?.[0]?.url,
+              node.clips_metadata?.video_url,
+              node.image_versions2?.candidates?.find((c) => typeof c?.url === "string" && c.url.includes(".mp4"))?.url
+            );
+            if (!imgCandidate && !videoCandidate) return null;
+            const id = node.id || `${node.parentId || "node"}-${imgCandidate || videoCandidate}`;
+            const caption = node.edge_media_to_caption?.edges?.[0]?.node?.text || node.accessibility_caption || "";
+            const takenAt = node.taken_at_timestamp || node.taken_at || 0;
+            return {
+              id,
+              src: imgCandidate || videoCandidate,
+              preview: imgCandidate || videoCandidate,
+              type: videoCandidate ? "video" : "image",
+              videoSrc: videoCandidate || null,
+              caption,
+              takenAt,
+            };
+          })
+          .filter(Boolean);
+
+        const deduped = [];
+        const seen = new Set();
+        for (const item of mapped) {
+          if (seen.has(item.id)) continue;
+          seen.add(item.id);
+          deduped.push(item);
+        }
+
+        deduped.sort((a, b) => (b.takenAt || 0) - (a.takenAt || 0));
+        const source = seed !== undefined ? shuffleWithSeed(deduped, seed) : deduped;
+        const limited = source.slice(0, limit);
+
+        setMedia(limited);
+        setError(null);
+      } catch (err) {
+        if (!abort) {
+          setMedia([]);
+          setError(err);
+        }
+      } finally {
+        if (!abort) setLoading(false);
+      }
+    };
+
+    fetchProfile();
+    return () => {
+      abort = true;
+    };
+  }, [username, limit, filter, seed]);
 
   return { media, loading, error };
 }
@@ -1458,23 +1680,29 @@ function parseCSV(text) {
 // ========= Featured Universe ========= //
 function FeaturedUniverse() {
   const { rows } = useCSV(SHEETS_CSV_URL);
+  const [seed, setSeed] = useState(0);
 
   const picks = useMemo(() => {
     if (!rows?.length) return [];
-    const want = Math.min(6, Math.max(3, Math.floor(Math.random() * 4) + 3)); // 3–6
-    const idx = new Set();
-    while (idx.size < Math.min(want, rows.length)) idx.add(Math.floor(Math.random() * rows.length));
-    return [...idx].map((i) => rows[i]);
-  }, [rows]);
+    const shuffled = shuffleWithSeed(rows, seed + 1);
+    return shuffled.slice(0, Math.min(3, shuffled.length));
+  }, [rows, seed]);
 
   return (
-    <section className="py-12">
+    <section className="py-12" id="loremaker">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-3">
-          <h2 className="text-2xl sm:text-3xl font-bold">Featured from the Loremaker Universe</h2>
-          <span className="text-white/70 text-sm">A living, expanding canon</span>
+        <div className="flex items-end justify-between mb-3 gap-3 flex-wrap">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold">Featured from the Loremaker Universe</h2>
+            <span className="text-white/70 text-sm">A living, expanding canon</span>
+          </div>
+          <Button onClick={() => setSeed((s) => s + 1)} variant="ghost" icon={Shuffle} className="shrink-0">
+            Randomise
+          </Button>
         </div>
-        <p className="text-white/75 max-w-2xl mb-4">A few signals from a much larger world. Power balances shift, alliances fracture, and ordinary people are forced to choose a side.</p>
+        <p className="text-white/75 max-w-2xl mb-4">
+          A few signals from a much larger world. Power balances shift, alliances fracture, and ordinary people are forced to choose a side.
+        </p>
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
           {picks.length ? (
             picks.map((r, i) => <CharacterCard key={`${r.Char_ID || r.id || r["Character"] || i}`} row={r} />)
@@ -1496,36 +1724,45 @@ function FeaturedUniverse() {
 const MMM_ALBUMS = [
   {
     id: "mmm-photos",
-    title: "MMM Photos",
-    shareUrl: "https://photos.app.goo.gl/syCYDJW3Ks3BrWGi6",
+    title: "MMM Photo Belt",
+    username: "mm.m.media",
     description: "On-set stills, lookbook pulls, and documentary frames from recent commissions.",
+    filter: "images",
+    seed: 3,
   },
   {
     id: "mmm-epic-edits",
-    title: "Epic Edits Gallery",
-    shareUrl: "https://photos.app.goo.gl/syCYDJW3Ks3BrWGi6",
-    description: "Cinematic key art, AI-assisted composites, and surreal lore beats.",
-    seed: 9,
+    title: "Epic Edit Reels",
+    username: "mm.m.media",
+    description: "Cinematic reels and motion teasers that keep the feed glowing.",
+    filter: "reels",
+    seed: 11,
   },
   {
-    id: "mmm-videos",
-    title: "MMM Video Highlights",
-    shareUrl: "https://photos.app.goo.gl/6mLydwc1VsX2zPa96",
-    description: "Delivered spots, teasers, and BTS motion selects straight from the edit suite.",
-    kind: "video",
+    id: "mmm-ai-stills",
+    title: "AI Image Lab",
+    username: "mr.mikaelgabriel",
+    description: "Lore experiments, AI stills, and concept beats for future worlds.",
+    filter: "images",
+    seed: 7,
   },
   {
     id: "mmm-ai-videos",
     title: "AI Video Lab",
-    shareUrl: "https://photos.app.goo.gl/kticmQ8LupL1LmZi7",
+    username: "mr.mikaelgabriel",
     description: "Experimental AI motion tests, previs experiments, and stylised loops.",
-    kind: "video",
+    filter: "reels",
     seed: 5,
   },
 ];
 
 function MMMBelt({ album, onOpen }) {
-  const { media, loading, error } = useGooglePhotosAlbum(album.shareUrl, 48);
+  const { media, loading, error } = useInstagramMedia({
+    username: album.username,
+    filter: album.filter,
+    limit: 48,
+    seed: album.seed,
+  });
   const [hovered, setHovered] = useState(null);
 
   const duplicated = media.length ? [...media, ...media] : [];
@@ -1548,7 +1785,7 @@ function MMMBelt({ album, onOpen }) {
               <span>Syncing media…</span>
             </>
           ) : error && !media.length ? (
-            <span className="text-rose-200/80">Album temporarily unavailable.</span>
+            <span className="text-rose-200/80">Feed temporarily unavailable.</span>
           ) : null}
         </div>
       </div>
@@ -1557,7 +1794,7 @@ function MMMBelt({ album, onOpen }) {
           <motion.div
             className="flex gap-4"
             animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: album.kind === "video" ? 48 : 56, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: album.filter === "reels" ? 42 : 54, repeat: Infinity, ease: "linear" }}
           >
             {duplicated.map((item, idx) => {
               const baseIndex = idx % media.length;
@@ -1575,9 +1812,9 @@ function MMMBelt({ album, onOpen }) {
                   )}
                   title="Open lightbox"
                 >
-                  {item.type === "video" ? (
+                  {item.type === "video" && item.videoSrc ? (
                     <video
-                      src={item.src}
+                      src={item.videoSrc}
                       className="w-full h-full object-cover"
                       autoPlay
                       muted
@@ -1618,10 +1855,10 @@ function GalleryLightbox({ album, media, startIndex = 0, onClose }) {
   return (
     <Modal open={true} onClose={onClose} title={album?.title || "Gallery"}>
       <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
-        {item?.type === "video" ? (
+        {item?.type === "video" && (item?.videoSrc || item?.src) ? (
           <video
-            key={item.src}
-            src={item.src}
+            key={item.videoSrc || item.src}
+            src={item.videoSrc || item.src}
             className="w-full h-full object-contain bg-black"
             controls
             autoPlay
@@ -1670,7 +1907,7 @@ function MMMGalleries() {
   const [lightbox, setLightbox] = useState(null);
 
   return (
-    <section className="py-12">
+    <section className="py-12" id="galleries">
       <div className="max-w-7xl mx-auto px-6 space-y-6">
         <div className="flex items-end justify-between">
           <h2 className="text-2xl sm:text-3xl font-bold">MMM Galleries</h2>
@@ -1746,12 +1983,12 @@ function Portfolio() {
   const embedSrc = useMemo(() => {
     if (!modal || modal.type !== "watch") return null;
     const id = getYouTubeId(modal?.p?.url || "");
-    if (id) return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
+    if (id) return `https://www.youtube.com/embed/${id}?rel=0`;
     if (!modal?.p?.url) return null;
     return modal.p.url.includes("shorts/") ? modal.p.url.replace("shorts/", "embed/") : modal.p.url;
   }, [modal]);
   return (
-    <section className="py-12" id="featured-projects">
+    <section className="py-12" id="featured">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-1">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
@@ -1800,6 +2037,7 @@ function Portfolio() {
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
               />
             </div>
@@ -1828,7 +2066,7 @@ function Blog() {
     { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
   ];
   return (
-    <section className="py-12">
+    <section className="py-12" id="blog">
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Blog</h2>
         <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
@@ -1927,6 +2165,15 @@ function LogoMark() {
   );
 }
 
+const SECTION_LINKS = [
+  { id: "featured", label: "Featured" },
+  { id: "galleries", label: "Galleries" },
+  { id: "loremaker", label: "Loremaker" },
+  { id: "value-calculator", label: "Client Value Calculator" },
+  { id: "contact", label: "Contact Form" },
+  { id: "blog", label: "Blog" },
+];
+
 const MENU = [
   { key: "home", label: "Home" },
   { key: "bio", label: "Biography" },
@@ -1957,6 +2204,40 @@ function FloatingButtons({ onOpenContact }) {
           <ArrowUp className="h-5 w-5" />
         </button>
       </div>
+    </div>
+  );
+}
+
+function SectionNav({ variant = "floating", className = "" }) {
+  const onNavigate = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const containerClasses = cn(
+    "flex flex-wrap items-center gap-2 px-4 py-3",
+    variant === "floating"
+      ? "rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+      : "rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
+  );
+  const buttonClasses =
+    variant === "floating"
+      ? "px-3 py-1.5 text-sm rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors"
+      : "px-3 py-1.5 text-sm rounded-full border border-white/15 bg-white/10 hover:bg-white/15 transition-colors";
+
+  return (
+    <div className={cn(containerClasses, className)}>
+      {SECTION_LINKS.map((link) => (
+        <button
+          key={link.id}
+          type="button"
+          onClick={() => onNavigate(link.id)}
+          className={buttonClasses}
+          title={`Jump to ${link.label}`}
+        >
+          {link.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -2057,12 +2338,15 @@ export default function AppShell() {
         {route === "home" && (
           <>
             <Hero onOpenLinksModal={() => setLinksOpen(true)} />
+            <div className="max-w-7xl mx-auto px-6 -mt-6">
+              <SectionNav />
+            </div>
             <Portfolio />
             <MMMGalleries />
             <FeaturedUniverse />
-            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
-            <section className="py-6"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
             <Blog />
+            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
+            <section className="py-6" id="contact"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
           </>
         )}
         {route === "bio" && <Biography />}
@@ -2084,6 +2368,9 @@ export default function AppShell() {
           <div className="md:col-span-2 text-white/70 text-sm">
             © {new Date().getFullYear()} Loremaker • ICUNI. All rights reserved.
           </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-6 pb-8">
+          <SectionNav variant="footer" />
         </div>
       </footer>
 
