@@ -63,9 +63,15 @@ const LINKS = {
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
-// Publish the Characters tab to the web and set the correct gid
-const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+  workflow: "/workflow/cQltZgIikkp4fFER",
+};
+const CHATBOT_NAME = "Zara";
+const CHATBOT_TAGLINE = "Menelek's AI Assistant";
 
 const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
 const CHATBOT_ENDPOINTS = {
@@ -119,45 +125,6 @@ const shuffleArray = (arr) => {
   }
   return next;
 };
-
-function useIsTouchDevice() {
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const update = () => {
-      const touchCapable =
-        "ontouchstart" in window ||
-        (navigator?.maxTouchPoints ?? 0) > 0 ||
-        (navigator?.msMaxTouchPoints ?? 0) > 0;
-      setIsTouch(touchCapable);
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return isTouch;
-}
-
-async function fetchWithProxy(url, { signal, headers = {} } = {}) {
-  const attempts = [url, `${GOOGLE_PROXY_PREFIX}${url}`];
-  let lastError = null;
-  for (const attempt of attempts) {
-    try {
-      const res = await fetch(attempt, { headers, signal, mode: "cors" });
-      if (!res.ok) {
-        lastError = new Error(`Request failed with status ${res.status}`);
-        continue;
-      }
-      return res;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  if (lastError) throw lastError;
-  throw new Error("No response received");
-}
 
 const createSeededRandom = (seed = 1) => {
   let s = Math.floor(seed) % 2147483647;
@@ -449,35 +416,6 @@ const PROJECTS = [
   },
 ];
 
-const SOCIAL_TRUST_LOGOS = [
-  { name: "Netflix", label: "Netflix Incubator" },
-  { name: "Channel 4", label: "Channel 4" },
-  { name: "ICUNI", label: "ICUNI" },
-  { name: "Nike", label: "Nike" },
-];
-
-const SOCIAL_METRICS = [
-  { value: "70+", label: "projects delivered" },
-  { value: "1.2M+", label: "organic views" },
-  { value: "89%", label: "client retention" },
-];
-
-const TESTIMONIALS = [
-  {
-    quote:
-      "Menelek takes abstract prompts and returns campaigns that feel inevitable. Our clients ask for him by name now.",
-    author: "L. Mensah — Creative Director, ICUNI",
-  },
-  {
-    quote: "His notes in the edit suite are surgical. We wrapped under schedule and the final cut still feels electric.",
-    author: "A. Grant — Producer, Left Hook Gym",
-  },
-  {
-    quote: "He worldbuilds on the fly—scripts, shotlists, lore. Working with him is like plugging into a larger universe.",
-    author: "R. Owusu — Showrunner, Loremaker",
-  },
-];
-
 function getYouTubeId(url) {
   try {
     const u = new URL(url);
@@ -497,142 +435,21 @@ function youtubeThumb(url) {
 }
 
 // ========= HERO ========= //
-const HERO_SLIDES = [
-  {
-    id: "reel",
-    type: "video",
-    title: "2024 Showreel",
-    caption: "Latest film, commercial, and AI-assisted highlights.",
-    videoUrl: "https://www.youtube.com/watch?v=A8cGpNe2JAE",
-    thumb: youtubeThumb("https://www.youtube.com/watch?v=A8cGpNe2JAE"),
-  },
-  {
-    id: "mmm-photo",
-    type: "instagram-image",
-    username: "mm.m.media",
-    filter: "images",
-    title: "Signature Production Still",
-    caption: "On-set stills that sell the scale and the soul.",
-    credit: "@mm.m.media",
-  },
-  {
-    id: "mmm-reel",
-    type: "instagram-video",
-    username: "mm.m.media",
-    filter: "reels",
-    title: "Epic Edit Spotlight",
-    caption: "Cinematic reel moments with hybrid VFX and AI polish.",
-    credit: "@mm.m.media",
-  },
-  {
-    id: "lore-art",
-    type: "instagram-image",
-    username: "lore.maker_",
-    filter: "images",
-    title: "Loremaker Universe Cover",
-    caption: "Afrofuturist mythos, glyphs, and the heroes defending each realm.",
-    credit: "@lore.maker_",
-  },
-];
-
-const HERO_PLACEHOLDERS = {
-  "mmm-photo": {
-    preview: "https://i.imgur.com/9YI6z1g.jpg",
-  },
-  "mmm-reel": {
-    preview: "https://i.imgur.com/N7w7LGz.jpg",
-  },
-  "lore-art": {
-    preview: "https://i.imgur.com/Va6S3P4.jpg",
-  },
-};
+const HERO_SLIDES = PROJECTS.slice(0, 4).map((project) => ({
+  id: project.id,
+  kind: "video",
+  title: project.title,
+  caption: project.summary,
+  videoUrl: project.url,
+  preview: youtubeThumb(project.url),
+  credit: project.role,
+}));
 
 function Hero({ onOpenLinksModal }) {
   const [idx, setIdx] = useState(0);
-  const photoMedia = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 10, seed: 2 });
-  const reelMedia = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 10, seed: 4 });
-  const loreMedia = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 10, seed: 6 });
-  const [fallbackReady, setFallbackReady] = useState(false);
-  const scrollToSection = (id) => (event) => {
-    if (event) event.preventDefault();
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const instagramResolved = !photoMedia.loading && !reelMedia.loading && !loreMedia.loading;
-  const instagramCount =
-    (photoMedia.media?.length || 0) + (reelMedia.media?.length || 0) + (loreMedia.media?.length || 0);
-  const fallbackActive = fallbackReady || photoMedia.error || reelMedia.error || loreMedia.error;
-
-  useEffect(() => {
-    if (instagramResolved && instagramCount > 0) return;
-    const timer = setTimeout(() => setFallbackReady(true), 5000);
-    return () => clearTimeout(timer);
-  }, [instagramResolved, instagramCount]);
-
-  const slides = useMemo(() => {
-    const computed = [];
-    HERO_SLIDES.forEach((entry) => {
-      if (entry.type === "video") {
-        computed.push({
-          ...entry,
-          kind: "video",
-          preview: entry.thumb,
-        });
-        return;
-      }
-
-      let pool = [];
-      if (entry.username === "mm.m.media" && entry.filter === "images") pool = photoMedia.media;
-      if (entry.username === "mm.m.media" && entry.filter === "reels") pool = reelMedia.media;
-      if (entry.username === "lore.maker_") pool = loreMedia.media;
-
-      const mediaItem = pool?.[0];
-      if (mediaItem && !fallbackActive) {
-        computed.push({
-          id: entry.id,
-          kind: mediaItem.type === "video" ? "video" : "image",
-          title: entry.title,
-          caption: mediaItem.caption || entry.caption,
-          preview: mediaItem.preview || mediaItem.src,
-          credit: entry.credit,
-          videoUrl:
-            entry.type === "instagram-video"
-              ? mediaItem.permalink || mediaItem.videoSrc
-              : mediaItem.videoSrc || null,
-        });
-        return;
-      }
-
-      const placeholder = HERO_PLACEHOLDERS[entry.id];
-      if (placeholder && fallbackActive) {
-        computed.push({
-          id: entry.id,
-          kind: "image",
-          title: entry.title,
-          caption: entry.caption,
-          preview: placeholder.preview,
-          credit: entry.credit,
-          videoUrl: null,
-        });
-      } else if (!fallbackActive) {
-        computed.push({
-          id: `${entry.id}-loading`,
-          kind: "image",
-          title: entry.title,
-          caption: entry.caption,
-          preview: placeholder?.preview || "",
-          credit: entry.credit,
-          videoUrl: null,
-          pending: true,
-        });
-      }
-    });
-    return computed;
-  }, [fallbackActive, fallbackReady, photoMedia.media, reelMedia.media, loreMedia.media]);
-
+  const slides = HERO_SLIDES;
   const slidesLength = slides.length || 1;
-  const awaitingSlides = slidesLength < HERO_SLIDES.length;
+  const awaitingSlides = slidesLength === 0;
 
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
@@ -651,24 +468,23 @@ function Hero({ onOpenLinksModal }) {
   const activeSlide = slide || {
     id: baseSlide.id,
     title: baseSlide.title,
-    preview: baseSlide.thumb,
+    preview: baseSlide.preview,
     videoUrl: baseSlide.videoUrl,
     caption: baseSlide.caption,
     credit: baseSlide.credit,
   };
-  const pendingSlide = Boolean(activeSlide?.pending);
   const openVideo = () => {
-    if (!activeSlide?.videoUrl || pendingSlide) return;
+    if (!activeSlide?.videoUrl || activeSlide.kind === "loading") return;
     window.open(activeSlide.videoUrl, "_blank", "noopener,noreferrer");
   };
   const imageSrc = activeSlide?.preview || activeSlide?.thumb || activeSlide?.src || "";
-  const ctaLabel = pendingSlide
-    ? "Loading media"
-    : activeSlide?.videoUrl
-      ? activeSlide.videoUrl.includes("instagram.com")
-        ? "View on Instagram"
-        : "Watch reel"
-      : "";
+  const ctaLabel = activeSlide?.videoUrl
+    ? activeSlide.videoUrl.includes("instagram.com")
+      ? "View on Instagram"
+      : activeSlide.videoUrl.includes("youtube.com") || activeSlide.videoUrl.includes("youtu.be")
+        ? "Watch on YouTube"
+        : "Open video"
+    : "";
   return (
     <section className="relative pt-24 pb-10" id="hero">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
@@ -689,19 +505,9 @@ function Hero({ onOpenLinksModal }) {
           </motion.h1>
           <div className="mt-2 text-xl text-white/85 select-none">Worldbuilder. Filmmaker. Storyteller.</div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              href="#featured"
-              onClick={scrollToSection("featured")}
-              variant="accent"
-            >
-              View My Work
-            </Button>
-            <Button href={LINKS.loremakerSite} icon={ExternalLink} target="_blank" rel="noreferrer" variant="ghost">
-              Explore Loremaker
-            </Button>
-            <Button href="#value-calculator" onClick={scrollToSection("value-calculator")} variant="ghost">
-              Get a Free Quote
-            </Button>
+            <Button href={LINKS.loremakerSite} icon={ExternalLink}>Explore the Loremaker Universe</Button>
+            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
+            <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
           </div>
         </div>
         <Card className="relative overflow-hidden">
@@ -709,11 +515,29 @@ function Hero({ onOpenLinksModal }) {
             <span>Showcase</span>
             <div className="flex items-center gap-2 text-xs text-white/60">
               <span>{awaitingSlides ? "Loading…" : `${idx + 1}/${slidesLength}`}</span>
+              {slidesLength > 1 ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={goPrev}
+                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
+                    aria-label="Previous showcase"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={goNext}
+                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
+                    aria-label="Next showcase"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
-          <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
-            <AnimatePresence mode="wait">
-              <motion.div
+            <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
+              <AnimatePresence mode="wait">
+                <motion.div
                   key={activeSlide.id}
                   className="absolute inset-0"
                   initial={{ opacity: 0, scale: 1.02 }}
@@ -721,7 +545,11 @@ function Hero({ onOpenLinksModal }) {
                   exit={{ opacity: 0, scale: 1.02 }}
                   transition={{ duration: 0.6 }}
                 >
-                {imageSrc ? (
+                {activeSlide.kind === "loading" ? (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70 text-sm">
+                    Loading showcase…
+                  </div>
+                ) : imageSrc ? (
                   <img
                     src={imageSrc}
                     alt={activeSlide.title}
@@ -733,7 +561,7 @@ function Hero({ onOpenLinksModal }) {
                     {activeSlide.title}
                   </div>
                 )}
-                {!pendingSlide && activeSlide.videoUrl ? (
+                {activeSlide.videoUrl && activeSlide.kind !== "loading" ? (
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
                     <button
                       onClick={openVideo}
@@ -742,32 +570,10 @@ function Hero({ onOpenLinksModal }) {
                       <Play className="h-4 w-4" /> {ctaLabel || "Play"}
                     </button>
                   </div>
-                ) : pendingSlide ? (
-                  <div className="absolute inset-0 grid place-items-center bg-black/30 text-xs uppercase tracking-[0.3em] text-white/60">
-                    Loading media
-                  </div>
                 ) : null}
               </motion.div>
             </AnimatePresence>
           </div>
-          {slidesLength > 1 ? (
-            <div className="absolute bottom-4 right-4 flex items-center gap-2">
-              <button
-                onClick={goPrev}
-                className="rounded-full bg-black/30 border border-white/20 p-2 text-white hover:bg-black/50"
-                aria-label="Previous showcase"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={goNext}
-                className="rounded-full bg-black/30 border border-white/20 p-2 text-white hover:bg-black/50"
-                aria-label="Next showcase"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          ) : null}
           {slide.caption ? (
             <motion.p
               key={`${activeSlide.id}-caption`}
@@ -891,6 +697,7 @@ function ContactInline({ calendarState }) {
       const payload = {
         ...form,
         otherDetail: form.subtype === "Other" ? form.otherDetail : "",
+        recTier: form.subtype === "Other" ? "" : form.recTier || "Starter",
         service: "Director for Hire",
         calendar: calendarState,
         sendCopy: true,
@@ -926,18 +733,10 @@ function ContactInline({ calendarState }) {
       otherDetail: s === "Other" ? f.otherDetail : "",
       fitScore: s === "Other" ? "" : f.fitScore,
       recTier: s === "Other" ? "" : f.recTier || "Starter",
+      scope: s === "Other" ? "" : f.scope,
     }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
-  const autoSummary = form.fitScore || form.scope || form.recTier ? (
-    <div className="rounded-2xl border border-white/15 bg-black/30 px-3 py-2 text-xs text-white/65">
-      <div className="font-semibold text-white/80 text-sm mb-1">Auto insights</div>
-      <ul className="space-y-1">
-        {form.fitScore ? <li>Fit score: {form.fitScore}</li> : null}
-        {form.recTier ? <li>Recommended package: {form.recTier}</li> : null}
-        {form.scope ? <li>Budget • timeline: {form.scope}</li> : null}
-      </ul>
-    </div>
-  ) : null;
+  const showFitFields = form.subtype && form.subtype !== "Other";
 
   return (
     <Card id="contact-inline">
@@ -960,6 +759,40 @@ function ContactInline({ calendarState }) {
             <div>
               <label className="text-white/70 text-sm mb-1 block">Other service</label>
               <input value={form.otherDetail} onChange={(e) => setForm({ ...form, otherDetail: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+            </div>
+          ) : null}
+
+          {showFitFields ? (
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
+                <input
+                  value={form.fitScore}
+                  onChange={(e) => setForm({ ...form, fitScore: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
+                <select
+                  value={form.recTier || "Starter"}
+                  onChange={(e) => setForm({ ...form, recTier: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
+                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                >
+                  {["Starter", "Signature", "Cinema+"].map((x) => (
+                    <option key={x} className="text-black">{x}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
+                <input
+                  value={form.scope}
+                  onChange={(e) => setForm({ ...form, scope: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
             </div>
           ) : null}
 
@@ -1016,14 +849,11 @@ function ContactInline({ calendarState }) {
 // ========= Calculator (CVC) with days/weeks modes & no Distribution ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
-  useEffect(() => {
-    if (serviceProp) setService(serviceProp);
-  }, [serviceProp]);
-  const [budget, setBudget] = useState(5000);
-  const [ambition, setAmbition] = useState(7);
+  useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
+  const [budget, setBudget] = useState(2000);
+  const [ambition, setAmbition] = useState(6);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [total, setTotal] = useState(6);
-  const [showSchedule, setShowSchedule] = useState(false);
+  const [total, setTotal] = useState(6); // weeks
 
   const RULES = {
     "Feature Film": { base: 40000, budgetRange: [15000, 250000], ambitionIdeal: [7, 10], durationIdeal: 16, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
@@ -1036,19 +866,26 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   };
   const cfg = RULES[service] || RULES["Short Film"];
   const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
-  const durationScoreFor = (svc, weeks) => {
+  const durationScoreFor = (svc, tot) => {
     const ideal = RULES[svc].durationIdeal;
     return norm(1 - Math.abs(weeks - ideal) / ideal, [0, 1]);
   };
-  const scoreFor = (svc, bgt, amb, weeks) => {
+  const scoreFor = (svc, bgt, amb, tot) => {
     const r = RULES[svc];
     const budgetScore = norm(bgt, r.budgetRange);
     const ambitionScore = norm(amb, r.ambitionIdeal);
-    const durationScore = durationScoreFor(svc, weeks);
+    const durationScore = durationScoreFor(svc, tot);
     const raw = r.weights.budget * budgetScore + r.weights.ambition * ambitionScore + r.weights.duration * durationScore;
     return Math.round(clamp(raw, 0, 1) * 100);
   };
 
+  const score = scoreFor(service, budget, ambition, total);
+  const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
+  const coverage = budget / cfg.base;
+  const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
+  const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
+
+  // No distribution phase. Split across: Development / Pre‑Production / Production / Post‑Production
   const SPLIT = [0.22, 0.33, 0.22, 0.23];
   const KEYS = ["development", "pre", "production", "post"];
   const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
@@ -1113,29 +950,6 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     });
   }, [total]);
 
-  const calendarSummary = useMemo(() => buildCalendarStateOverlapping(phases, projectDate), [phases, projectDate]);
-  const totalDurationDays = useMemo(() => {
-    if (!calendarSummary?.start || !calendarSummary?.end) return Math.max(1, Math.round(total * 7));
-    const start = new Date(`${calendarSummary.start}T00:00:00Z`);
-    const end = new Date(`${calendarSummary.end}T00:00:00Z`);
-    const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(1, diff || Math.round(total * 7));
-  }, [calendarSummary, total]);
-  const timelineWeeks = Math.max(1, totalDurationDays / 7);
-  const timelineWeeksRounded = Math.max(1, Math.round(timelineWeeks));
-  const totalLabel = totalDurationDays <= 14 ? `${totalDurationDays} days` : `${timelineWeeks.toFixed(1)} weeks`;
-
-  const score = scoreFor(service, budget, ambition, timelineWeeksRounded);
-  const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
-  const coverage = budget / cfg.base;
-  const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
-  const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
-  const phaseSummaries = calendarSummary?.phases || [];
-  const formatPhaseLength = (phase) => {
-    const days = Math.max(1, Math.round((phase.weeks || 0) * 7));
-    return totalDurationDays <= 14 ? `${days} days` : `${(phase.weeks || 0).toFixed(1)} wks`;
-  };
-
   useEffect(() => {
     onCalendarChange?.(calendarSummary);
     window.dispatchEvent(
@@ -1170,6 +984,14 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     setShowSchedule(false);
   }, [randomizeKey]);
 
+  const totalSpanDays = phases.reduce((acc, p) => {
+    const durationDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+    return Math.max(acc, p.startDays + durationDays);
+  }, 0);
+  const totalLabel = totalSpanDays <= 14
+    ? `${Math.max(1, totalSpanDays)} days`
+    : `${(totalSpanDays / 7).toFixed(1)} weeks`;
+
   return (
     <div>
       <div className="grid md:grid-cols-4 gap-4">
@@ -1178,79 +1000,30 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           <div className="px-3 py-2 rounded-xl border border-white/20 bg-white/10">{service}</div>
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
-            <span>Budget (£{budget.toLocaleString()})</span>
-            <Info className="h-3.5 w-3.5 text-white/60" title="Estimated production budget in GBP." />
-          </div>
+          <div className="text-white/70 text-sm mb-1">Budget (£{budget.toLocaleString()})</div>
           <input aria-label="Budget" type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
-            <span>Ambition ({ambition})</span>
-            <Info className="h-3.5 w-3.5 text-white/60" title="How bold the visuals, VFX, and narrative beats should feel." />
-          </div>
+          <div className="text-white/70 text-sm mb-1">Ambition ({ambition})</div>
           <input aria-label="Ambition" type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
-            <span>Proposed Project Start</span>
-            <Info className="h-3.5 w-3.5 text-white/60" title="When we’d begin pre-production." />
-          </div>
+          <div className="text-white/70 text-sm mb-1">Proposed Project Start</div>
           <input aria-label="Project start" type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
         </div>
       </div>
-      <div className="mt-6 space-y-3">
-        <div className="flex items-center justify-between text-white/70 text-sm">
-          <span>Fit Score</span>
-          <span>{descriptor}</span>
-        </div>
-        <div className="rounded-3xl border border-white/15 bg-gradient-to-br from-white/12 to-white/5 p-4 shadow-[0_10px_45px_rgba(0,0,0,0.45)]">
-          <div className="h-3 rounded-full bg-white/15 overflow-hidden">
-            <div className="h-full" style={{ width: `${score}%`, background: barColor }} aria-hidden="true" />
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
-            <span>Recommended: <span className="font-semibold text-white">{suggestedTier}</span></span>
-            <span>Timeline: {totalLabel}</span>
-          </div>
+      <div className="mt-5">
+        <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
+        <div className="rounded-2xl p-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
+          <svg viewBox="0 0 110 6" className="w-full block" aria-label={`Fit score ${score}%`}>
+            <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
+            <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
+          </svg>
+          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalLabel}</div>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-white/70">
-        <button
-          type="button"
-          onClick={() => setShowSchedule((v) => !v)}
-          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 hover:bg-white/15 transition"
-        >
-          {showSchedule ? "Hide schedule ▲" : "Customize schedule ▼"}
-        </button>
-        <div className="text-xs text-white/60">Slider: {total} wks • Actual: {totalLabel}</div>
-      </div>
-      {showSchedule ? (
-        <TimelineGrid
-          phases={phases}
-          onChange={setPhases}
-          total={total}
-          onTotalChange={setTotal}
-          startDate={projectDate}
-        />
-      ) : (
-        <div className="mt-4 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/75 space-y-2">
-          {phaseSummaries.length ? (
-            phaseSummaries.map((phase) => (
-              <div key={phase.key} className="flex items-center justify-between">
-                <span>{phase.label}</span>
-                <span className="text-white/60">{formatPhaseLength(phase)}</span>
-              </div>
-            ))
-          ) : (
-            <div>No schedule generated yet.</div>
-          )}
-        </div>
-      )}
-      <div className="mt-4 flex gap-2">
-        <Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">
-          Book this Scope
-        </Button>
-      </div>
+      <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
+      <div className="mt-4 flex gap-2"><Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button></div>
     </div>
   );
 }
@@ -1328,43 +1101,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     }
     onChange(next.map(clampPhase));
   };
-  const onPointerUp = () => {
-    dragRef.current = null;
-  };
+  const onPointerUp = () => { dragRef.current = null; };
   const cal = buildCalendarStateOverlapping(phases, startDate);
-  const sliderLabel = total <= 2 ? `${total * 7} days` : `${total} weeks`;
-
-  if (isTouch) {
-    return (
-      <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4 space-y-3">
-        <div className="flex items-center justify-between text-white/70 text-sm">
-          <span>Total duration</span>
-          <span className="text-xs text-white/60">{sliderLabel}</span>
-        </div>
-        <input
-          aria-label="Total duration weeks"
-          type="range"
-          min={1}
-          max={26}
-          step={1}
-          value={total}
-          onChange={(e) => onTotalChange(parseInt(e.target.value))}
-        />
-        <div className="space-y-2 text-sm text-white/75">
-          {cal.phases.map((phase) => (
-            <div key={phase.key} className="flex items-center justify-between">
-              <span>{phase.label}</span>
-              <span className="text-white/60">
-                {total <= 2 ? `${Math.max(1, Math.round(phase.weeks * 7))} days` : `${phase.weeks.toFixed(1)} wks`}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="text-xs text-white/60">Detailed bar adjustments are available on desktop.</div>
-      </div>
-    );
-  }
-
   const showDays = total <= 2;
   return (
     <div className="mt-6">
@@ -1373,15 +1111,15 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
           <input
-            aria-label="Total duration weeks"
+            aria-label="Total duration"
             type="range"
             min={1}
             max={26}
             step={1}
             value={total}
-            onChange={(e) => onTotalChange(parseInt(e.target.value))}
+            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
           />
-          <span className="text-white/70 text-xs">{sliderLabel}</span>
+          <span className="text-white/70 text-xs">{showDays ? `${totalDays} d` : `${total} wks`}</span>
         </div>
       </div>
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
@@ -1406,18 +1144,25 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
           </div>
         </div>
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => (
-            <div key={p.key} className="flex items-center gap-3">
-              <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-10 flex-1">
-                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
-                <div className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]" style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}>
-                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
-                  <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                  <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {total <= 2 ? `${Math.ceil(p.weeks * 7)}d` : `${Math.round(p.weeks * 10) / 10}w`}
+          {phases.map((p, idx) => {
+            const visibleDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+            const widthDays = p.weeks <= 0 ? 0.75 : visibleDays;
+            return (
+              <div key={p.key} className="flex items-center gap-3">
+                <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
+                <div className="relative h-10 flex-1">
+                  <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
+                    style={{ left: pct(p.startDays), width: pct(widthDays) }}
+                  >
+                    <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
+                    <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                      <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {total <= 2 ? `${visibleDays}d` : `${Math.round(p.weeks * 10) / 10}w`}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1429,263 +1174,6 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
       </div>
     </div>
   );
-}
-// ========= CSV helper ========= //
-// ========= CSV helper ========= //
-function useCSV(url) {
-  const [rows, setRows] = useState([]);
-  useEffect(() => {
-    let abort = false;
-    (async () => {
-      try {
-        const target = proxyGoogleUrl(url);
-        const attempts = [target];
-        if (url && url !== target) attempts.push(url);
-        const text = await fetchTextWithFallback(attempts, {
-          headers: { Accept: "text/csv,application/csv,text/plain;q=0.9,*/*;q=0.8" },
-        });
-        if (abort) return;
-        const { rows } = parseCSV(text);
-        setRows(rows.filter((r) => Object.values(r).some((v) => (v || "").toString().trim())));
-      } catch (e) {
-        setRows([]);
-      }
-    })();
-    return () => { abort = true; };
-  }, [url]);
-  return { rows };
-}
-
-const normalizePhotoUrl = (src) => {
-  if (!src) return src;
-  let out = src;
-  out = out.replace(/=w\d+-h\d+(-no)?/g, "=w1600-h900-no");
-  out = out.replace(/=s\d+-c/g, "=w1600-h900-no");
-  if (!out.includes("=w") && !out.includes("=m") && !out.includes("=mp4")) {
-    out = `${out}=w1600-h900-no`;
-  }
-  return out;
-};
-
-function proxyGoogleUrl(url) {
-  if (!url) return url;
-  if (url.startsWith("https://r.jina.ai/")) return url;
-  if (url.startsWith("https://")) return `${GOOGLE_PROXY_PREFIX}${url.slice("https://".length)}`;
-  return `${GOOGLE_PROXY_PREFIX}${url}`;
-}
-
-async function fetchTextWithFallback(urls, init = {}) {
-  const attempts = ensureArray(urls);
-  let lastError = null;
-  for (const target of attempts) {
-    if (!target) continue;
-    try {
-      const res = await fetch(target, init);
-      if (!res.ok) {
-        lastError = new Error(`Status ${res.status}`);
-        continue;
-      }
-      return await res.text();
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  if (lastError) throw lastError;
-  throw new Error("No URL succeeded");
-}
-
-function extractGooglePhotosMedia(html) {
-  if (!html) return [];
-  const matches = html.matchAll(/"(https:\/\/lh3\.googleusercontent\.com\/[^"\\]+)"/g);
-  const seen = new Set();
-  const media = [];
-  for (const m of matches) {
-    const raw = m[1];
-    if (!raw) continue;
-    if (/=s\d+-c/.test(raw) && !/=w\d+/.test(raw)) continue;
-    if (!/=w\d+/.test(raw) && !/=m\d+/.test(raw) && !raw.includes("=mp4")) continue;
-    const normalized = normalizePhotoUrl(raw);
-    if (seen.has(normalized)) continue;
-    seen.add(normalized);
-    const type = /=m\d+/.test(raw) || raw.includes("=mp4") ? "video" : "image";
-    media.push({ src: normalized, type });
-  }
-  return media;
-}
-
-function useGooglePhotosAlbum(shareUrl, limit = 24) {
-  const [media, setMedia] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!shareUrl) {
-      setMedia([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let abort = false;
-    const run = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(proxyGoogleUrl(shareUrl));
-        const text = await res.text();
-        if (abort) return;
-        const parsed = shuffleArray(extractGooglePhotosMedia(text)).slice(0, limit);
-        setMedia(parsed);
-        setError(null);
-      } catch (err) {
-        if (!abort) {
-          setMedia([]);
-          setError(err);
-        }
-      } finally {
-        if (!abort) setLoading(false);
-      }
-    };
-    run();
-    return () => {
-      abort = true;
-    };
-  }, [shareUrl, limit]);
-
-  return { media, loading, error };
-}
-
-function useInstagramMedia({ username, limit = 24, filter = "all", seed } = {}) {
-  const [media, setMedia] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!username) {
-      setMedia([]);
-      setLoading(false);
-      setError(new Error("Missing username"));
-      return;
-    }
-
-    let abort = false;
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        const url = `${INSTAGRAM_PROXY_PREFIX}api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
-        const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "Mozilla/5.0";
-        const res = await fetch(url, {
-          headers: { Accept: "application/json", "User-Agent": userAgent },
-        });
-        const text = await res.text();
-        if (abort) return;
-        let parsed = null;
-        try {
-          parsed = JSON.parse(text);
-        } catch (err) {
-          throw new Error(`Failed to parse Instagram payload for ${username}`);
-        }
-        const user = parsed?.graphql?.user || parsed?.data?.user;
-        if (!user) throw new Error(`No Instagram data for ${username}`);
-
-        const pickNodes = (edges = []) => edges.map((edge) => edge?.node).filter(Boolean);
-        const timeline = pickNodes(user.edge_owner_to_timeline_media?.edges);
-        const felix = pickNodes(user.edge_felix_video_timeline?.edges);
-
-        const flattenNode = (node) => {
-          if (!node) return [];
-          if (node.__typename === "GraphSidecar" && node.edge_sidecar_to_children?.edges?.length) {
-            return node.edge_sidecar_to_children.edges
-              .map((edge) => edge?.node)
-              .filter(Boolean)
-              .map((child) => ({
-                ...child,
-                parentId: node.id,
-                taken_at_timestamp: child.taken_at_timestamp || node.taken_at_timestamp,
-                shortcode: node.shortcode || child.shortcode,
-              }));
-          }
-          return [{ ...node }];
-        };
-
-        const combined = [...timeline, ...felix].flatMap(flattenNode);
-
-        const filtered = combined.filter((node) => {
-          const isVideo = Boolean(
-            node.is_video ||
-              node.media_type === 2 ||
-              node.product_type === "clips" ||
-              node.__typename === "GraphVideo"
-          );
-          if (filter === "images") return !isVideo;
-          if (filter === "reels" || filter === "video") return isVideo;
-          return true;
-        });
-
-        const pickFirst = (...candidates) => candidates.find((c) => typeof c === "string" && c);
-
-        const mapped = filtered
-          .map((node) => {
-            const imgCandidate = pickFirst(
-              node.display_url,
-              node.thumbnail_src,
-              node.thumbnail_url,
-              node.cover_photo_url,
-              node.image_versions2?.candidates?.find((c) => c?.url && !c.url.endsWith(".mp4"))?.url
-            );
-            const videoCandidate = pickFirst(
-              node.video_url,
-              node.video_versions?.[0]?.url,
-              node.clips_metadata?.video_url,
-              node.image_versions2?.candidates?.find((c) => typeof c?.url === "string" && c.url.includes(".mp4"))?.url
-            );
-            if (!imgCandidate && !videoCandidate) return null;
-            const id = node.id || `${node.parentId || "node"}-${imgCandidate || videoCandidate}`;
-            const caption = node.edge_media_to_caption?.edges?.[0]?.node?.text || node.accessibility_caption || "";
-            const takenAt = node.taken_at_timestamp || node.taken_at || 0;
-            const permalink = node.shortcode ? `https://www.instagram.com/p/${node.shortcode}/` : node.permalink || null;
-            return {
-              id,
-              src: imgCandidate || videoCandidate,
-              preview: imgCandidate || videoCandidate,
-              type: videoCandidate ? "video" : "image",
-              videoSrc: videoCandidate || null,
-              caption,
-              takenAt,
-              permalink,
-            };
-          })
-          .filter(Boolean);
-
-        const deduped = [];
-        const seen = new Set();
-        for (const item of mapped) {
-          if (seen.has(item.id)) continue;
-          seen.add(item.id);
-          deduped.push(item);
-        }
-
-        deduped.sort((a, b) => (b.takenAt || 0) - (a.takenAt || 0));
-        const source = seed !== undefined ? shuffleWithSeed(deduped, seed) : deduped;
-        const limited = source.slice(0, limit);
-
-        setMedia(limited);
-        setError(null);
-      } catch (err) {
-        if (!abort) {
-          setMedia([]);
-          setError(err);
-        }
-      } finally {
-        if (!abort) setLoading(false);
-      }
-    };
-
-    fetchProfile();
-    return () => {
-      abort = true;
-    };
-  }, [username, limit, filter, seed]);
-
-  return { media, loading, error };
 }
 
 // ========= Chatbot ========= //
@@ -1908,7 +1396,7 @@ function ChatbotWidget() {
     return (
       <button
         onClick={toggleOpen}
-        className="relative rounded-full px-4 py-3 bg-white/10 border border-white/20 backdrop-blur-xl text-left shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/15 w-44 sm:w-48"
+        className="relative rounded-full px-4 py-3 bg-white/10 border border-white/20 backdrop-blur-xl text-left shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/15 w-48"
         title="Open chat"
       >
         <div className="flex items-center gap-3">
@@ -1934,7 +1422,7 @@ function ChatbotWidget() {
   };
 
   return (
-    <div className="w-full max-w-[320px] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+    <div className="w-[320px] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
       <div
         className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer select-none"
         onClick={onHeaderClick}
@@ -2020,267 +1508,194 @@ function ChatbotWidget() {
   );
 }
 
-function parseCSV(text) {
-  const lines = [];
-  let cur = [];
-  let val = "";
-  let inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const n = text[i + 1];
-    if (inQ) {
-      if (c === '"' && n === '"') { val += '"'; i++; }
-      else if (c === '"') { inQ = false; }
-      else { val += c; }
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',') { cur.push(val); val = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (val !== "" || cur.length) {
-          cur.push(val);
-          lines.push(cur);
-          cur = [];
-          val = "";
-        }
-      } else val += c;
-    }
-  }
-  if (val !== "" || cur.length) { cur.push(val); lines.push(cur); }
-  if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0];
-  const rows = lines.slice(1).map((arr) => Object.fromEntries(headers.map((h, i) => [h, arr[i] ?? ""])));
-  return { headers, rows };
-}
-
-// ========= Featured Universe ========= //
-function FeaturedUniverse() {
-  const { rows } = useCSV(SHEETS_CSV_URL);
-  const [seed, setSeed] = useState(0);
-
-  const picks = useMemo(() => {
-    if (!rows?.length) return [];
-    const shuffled = shuffleWithSeed(rows, seed + 1);
-    return shuffled.slice(0, Math.min(3, shuffled.length));
-  }, [rows, seed]);
-
-  return (
-    <section className="py-12" id="loremaker">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-3 gap-3 flex-wrap">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">Featured from the Loremaker Universe</h2>
-            <span className="text-white/70 text-sm">A living, expanding canon</span>
-          </div>
-          <Button onClick={() => setSeed((s) => s + 1)} variant="ghost" icon={Shuffle} className="shrink-0">
-            Randomise
-          </Button>
-        </div>
-        <p className="text-white/75 max-w-2xl mb-4">
-          A few signals from a much larger world. Power balances shift, alliances fracture, and ordinary people are forced to choose a side.
-        </p>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {picks.length ? (
-            picks.map((r, i) => <CharacterCard key={`${r.Char_ID || r.id || r["Character"] || i}`} row={r} />)
-          ) : (
-            [0, 1, 2].map((i) => (
-              <Card key={i}>
-                <div className="animate-pulse h-40 rounded-xl bg-white/5 border border-white/10" />
-                <div className="mt-3 h-5 w-2/3 bg-white/10 rounded" />
-                <div className="mt-2 h-4 w-1/2 bg-white/10 rounded" />
-              </Card>
-            ))
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-const MMM_ALBUMS = [
+const INSTAGRAM_VIDEO_COLLECTIONS = [
   {
-    id: "mmm-photos",
-    title: "MMM Photo Belt",
-    username: "mm.m.media",
-    description: "On-set stills, lookbook pulls, and documentary frames from recent commissions.",
-    filter: "images",
+    id: "epic-edits",
+    title: "Epic Edits",
+    description: "Signature reels with cinematic pacing, VFX and colour stories.",
+    fallbackThumb: "https://i.imgur.com/N7w7LGz.jpg",
     seed: 3,
+    urls: [
+      "https://www.instagram.com/p/DMKpVGwoOC2/",
+      "https://www.instagram.com/p/C7TX-jlqQFB/",
+      "https://www.instagram.com/reel/C8rQp-kq5PG/",
+      "https://www.instagram.com/reel/C8kNL16KIZc/",
+      "https://www.instagram.com/reel/C8z0DAtKq8B/",
+      "https://www.instagram.com/reel/DFPiXCOo220/",
+      "https://www.instagram.com/reel/CIDASf-n6mv/",
+    ],
   },
   {
-    id: "mmm-epic-edits",
-    title: "Epic Edit Reels",
-    username: "mm.m.media",
-    description: "Cinematic reels and motion teasers that keep the feed glowing.",
-    filter: "reels",
+    id: "beauty-travel",
+    title: "Beauty & Travel",
+    description: "Luxe portraiture and destination vignettes shot for brands and creators.",
+    fallbackThumb: "https://i.imgur.com/1xqQwBn.jpg",
     seed: 11,
+    urls: [
+      "https://www.instagram.com/reel/C6YtlD2Kbd6/",
+      "https://www.instagram.com/reel/C3sDA4AqP5z/",
+      "https://www.instagram.com/reel/C-VzUiFqfkm/",
+      "https://www.instagram.com/reel/DIx8Dkao7wR/",
+      "https://www.instagram.com/reel/DJZC9tpIIOF/",
+      "https://www.instagram.com/reel/DEPpHmFIGAl/",
+      "https://www.instagram.com/reel/DLfna4ao-z-/",
+      "https://www.instagram.com/reel/C7BdCzwqgKo/",
+      "https://www.instagram.com/reel/C6JjwNGIKni/",
+      "https://www.instagram.com/reel/C5N9JhvK9to/",
+      "https://www.instagram.com/reel/C4yA5RKK0zg/",
+      "https://www.instagram.com/reel/C4YBtJdqoWr/",
+      "https://www.instagram.com/reel/C4LBUi7K9wr/",
+      "https://www.instagram.com/reel/C3igTEsqyam/",
+      "https://www.instagram.com/reel/DLDh5OUt9mQ/",
+      "https://www.instagram.com/reel/DKZRaYntlpH/",
+      "https://www.instagram.com/reel/DGwLruRtP9F/",
+      "https://www.instagram.com/reel/C5BqJyMKBeD/",
+      "https://www.instagram.com/reel/C1ZHmHbKt4u/",
+    ],
   },
   {
-    id: "mmm-ai-stills",
-    title: "AI Image Lab",
-    username: "mr.mikaelgabriel",
-    description: "Lore experiments, AI stills, and concept beats for future worlds.",
-    filter: "images",
+    id: "bts",
+    title: "BTS & Production Diaries",
+    description: "Behind the scenes momentum from boxing docs to commercial sets.",
+    fallbackThumb: "https://i.imgur.com/dg9lQbH.jpg",
     seed: 7,
+    urls: [
+      "https://www.instagram.com/reel/CthPmc7OKK5/",
+      "https://www.instagram.com/reel/CtjWyXJNxwY/",
+      "https://www.instagram.com/reel/Ctlc7--veax/",
+      "https://www.instagram.com/reel/Ctn4hRENjQW/",
+      "https://www.instagram.com/reel/Cttvmy2AdWU/",
+      "https://www.instagram.com/reel/Cue_nHag-QS/",
+      "https://www.instagram.com/reel/CuhtdZYMwWj/",
+      "https://www.instagram.com/reel/C69G68OPF5N/",
+      "https://www.instagram.com/reel/C7KeP-sIHBk/",
+      "https://www.instagram.com/reel/DFNRIRqoFH_/",
+      "https://www.instagram.com/reel/DFPiY-Do1z0/",
+    ],
   },
   {
-    id: "mmm-ai-videos",
-    title: "AI Video Lab",
-    username: "mr.mikaelgabriel",
-    description: "Experimental AI motion tests, previs experiments, and stylised loops.",
-    filter: "reels",
+    id: "ai-edu",
+    title: "AI Lab & Learning",
+    description: "AI-driven experiments plus educational reels that deconstruct the craft.",
+    fallbackThumb: "https://i.imgur.com/2h2x3sC.jpg",
     seed: 5,
+    urls: [
+      "https://www.instagram.com/reel/DK1bY8couuK/",
+      "https://www.instagram.com/reel/DK4gIZtNB-U/",
+      "https://www.instagram.com/reel/DIvxSY9tQio/",
+      "https://www.instagram.com/reel/DLAbo5mtbC2/",
+      "https://www.instagram.com/reel/C5oZNM5KF77/",
+      "https://www.instagram.com/reel/C5fciTUqXBR/",
+      "https://www.instagram.com/reel/C5c74nYKdI2/",
+      "https://www.instagram.com/reel/DMzghyEtXu1/",
+    ],
   },
 ];
 
-const MMM_FALLBACKS = {
-  "mmm-photos": [
-    { id: "mmm-photos-f1", src: "https://i.imgur.com/1lFvlPj.jpg", preview: "https://i.imgur.com/1lFvlPj.jpg", type: "image" },
-    { id: "mmm-photos-f2", src: "https://i.imgur.com/sS1Zt8Y.jpg", preview: "https://i.imgur.com/sS1Zt8Y.jpg", type: "image" },
-    { id: "mmm-photos-f3", src: "https://i.imgur.com/xqY7EwA.jpg", preview: "https://i.imgur.com/xqY7EwA.jpg", type: "image" },
-    { id: "mmm-photos-f4", src: "https://i.imgur.com/9xvXh3o.jpg", preview: "https://i.imgur.com/9xvXh3o.jpg", type: "image" },
-  ],
-  "mmm-epic-edits": [
-    { id: "mmm-epic-f1", src: "https://i.imgur.com/4w30rYd.jpg", preview: "https://i.imgur.com/4w30rYd.jpg", type: "image" },
-    { id: "mmm-epic-f2", src: "https://i.imgur.com/Jh3VFX5.jpg", preview: "https://i.imgur.com/Jh3VFX5.jpg", type: "image" },
-    { id: "mmm-epic-f3", src: "https://i.imgur.com/3YDN8Yp.jpg", preview: "https://i.imgur.com/3YDN8Yp.jpg", type: "image" },
-    { id: "mmm-epic-f4", src: "https://i.imgur.com/av1CkSq.jpg", preview: "https://i.imgur.com/av1CkSq.jpg", type: "image" },
-  ],
-  "mmm-ai-stills": [
-    { id: "mmm-ai-stills-f1", src: "https://i.imgur.com/WFvxi4A.jpg", preview: "https://i.imgur.com/WFvxi4A.jpg", type: "image" },
-    { id: "mmm-ai-stills-f2", src: "https://i.imgur.com/0u5HnF2.jpg", preview: "https://i.imgur.com/0u5HnF2.jpg", type: "image" },
-    { id: "mmm-ai-stills-f3", src: "https://i.imgur.com/MV1tFUS.jpg", preview: "https://i.imgur.com/MV1tFUS.jpg", type: "image" },
-    { id: "mmm-ai-stills-f4", src: "https://i.imgur.com/6E0KxhQ.jpg", preview: "https://i.imgur.com/6E0KxhQ.jpg", type: "image" },
-  ],
-  "mmm-ai-videos": [
-    { id: "mmm-ai-videos-f1", src: "https://i.imgur.com/H9Lt1J3.jpg", preview: "https://i.imgur.com/H9Lt1J3.jpg", type: "image" },
-    { id: "mmm-ai-videos-f2", src: "https://i.imgur.com/zpB2lOf.jpg", preview: "https://i.imgur.com/zpB2lOf.jpg", type: "image" },
-    { id: "mmm-ai-videos-f3", src: "https://i.imgur.com/DrjOIx1.jpg", preview: "https://i.imgur.com/DrjOIx1.jpg", type: "image" },
-    { id: "mmm-ai-videos-f4", src: "https://i.imgur.com/L1VvYkD.jpg", preview: "https://i.imgur.com/L1VvYkD.jpg", type: "image" },
-  ],
-};
+function getInstagramCodeFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i] === "p" || segments[i] === "reel") {
+        return segments[i + 1] || null;
+      }
+    }
+    return segments[segments.length - 1] || null;
+  } catch (error) {
+    return null;
+  }
+}
 
-function MMMBelt({ album, onOpen }) {
-  const { media, loading, error } = useInstagramMedia({
-    username: album.username,
-    filter: album.filter,
-    limit: 48,
-    seed: album.seed,
-  });
+function instagramThumbnailFromUrl(url, fallback) {
+  const code = getInstagramCodeFromUrl(url);
+  if (!code) return fallback || "";
+  return `https://www.instagram.com/p/${code}/media/?size=l`;
+}
+
+function instagramEmbedFromUrl(url) {
+  const code = getInstagramCodeFromUrl(url);
+  if (!code) return url;
+  return url.includes("/reel/")
+    ? `https://www.instagram.com/reel/${code}/embed/`
+    : `https://www.instagram.com/p/${code}/embed/`;
+}
+
+function MMMBelt({ collection, onOpen }) {
   const [hovered, setHovered] = useState(null);
-  const [fallbackReady, setFallbackReady] = useState(false);
-  const isTouch = useIsTouchDevice();
+  const picks = useMemo(() => {
+    const pool = collection.urls || [];
+    const randomized = shuffleWithSeed(pool, collection.seed || Date.now());
+    return randomized.slice(0, Math.min(randomized.length, 10));
+  }, [collection.urls, collection.seed]);
 
-  useEffect(() => {
-    if (media.length) {
-      setFallbackReady(false);
-      return;
-    }
-    if (!loading) {
-      setFallbackReady(true);
-      return;
-    }
-    const timer = setTimeout(() => setFallbackReady(true), 5000);
-    return () => clearTimeout(timer);
-  }, [media.length, loading]);
+  const media = picks.map((url) => ({
+    id: getInstagramCodeFromUrl(url) || url,
+    url,
+    thumbnail: instagramThumbnailFromUrl(url, collection.fallbackThumb),
+    embedUrl: instagramEmbedFromUrl(url),
+  }));
+  const duplicated = media.length ? [...media, ...media] : [];
 
-  const fallbackMedia = MMM_FALLBACKS[album.id] || [];
-  const activeMedia = media.length ? media : fallbackReady ? fallbackMedia : [];
-  const duplicated = activeMedia.length ? [...activeMedia, ...activeMedia] : [];
   const openAt = (index) => {
-    if (!activeMedia.length) return;
-    onOpen?.({ album, media: activeMedia, initialIndex: index % activeMedia.length });
+    if (!media.length) return;
+    onOpen?.({ collection, media, initialIndex: index % media.length });
   };
 
   return (
     <div className="rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 overflow-hidden">
       <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
         <div>
-          <div className="text-lg font-semibold">{album.title}</div>
-          <p className="text-white/70 text-sm max-w-2xl">{album.description}</p>
+          <div className="text-lg font-semibold">{collection.title}</div>
+          <p className="text-white/70 text-sm max-w-2xl">{collection.description}</p>
         </div>
         <div className="flex items-center gap-2 text-white/65 text-xs">
-          {loading && !activeMedia.length ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Syncing media…</span>
-            </>
-          ) : error && !activeMedia.length ? (
-            <span className="text-rose-200/80">Feed temporarily unavailable.</span>
-          ) : null}
+          {!media.length ? <span>Loading Instagram previews…</span> : null}
         </div>
       </div>
       <div className="relative overflow-hidden">
         {duplicated.length ? (
-          isTouch ? (
-            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2">
-              {duplicated.map((item, idx) => {
-                const baseIndex = idx % activeMedia.length;
-                return (
-                  <button
-                    key={`${album.id}-${idx}`}
-                    onClick={() => openAt(baseIndex)}
-                    className="relative h-40 w-64 shrink-0 snap-center overflow-hidden rounded-2xl border border-white/15"
-                    title="Open lightbox"
-                  >
-                    <img
-                      src={item.preview || item.src}
-                      alt={`${album.title} still`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <motion.div
-              className="flex gap-4"
-              animate={{ x: ["0%", "-50%"] }}
-              transition={{ duration: album.filter === "reels" ? 42 : 54, repeat: Infinity, ease: "linear" }}
-            >
-              {duplicated.map((item, idx) => {
-                const baseIndex = idx % activeMedia.length;
-                const isActive = hovered === baseIndex;
-                const isDimmed = hovered !== null && !isActive;
-                return (
-                  <button
-                    key={`${album.id}-${idx}`}
-                    onMouseEnter={() => setHovered(baseIndex)}
-                    onMouseLeave={() => setHovered(null)}
-                    onClick={() => openAt(baseIndex)}
-                    className={cn(
-                      "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
-                      isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
-                    )}
-                    title="Open lightbox"
-                  >
-                    {item.type === "video" && item.videoSrc ? (
-                      <video
-                        src={item.videoSrc}
-                        className="w-full h-full object-cover"
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                      />
-                    ) : (
-                      <img
-                        src={item.preview || item.src}
-                        alt={`${album.title} still`}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
-                    <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
-                  </button>
-                );
-              })}
-            </motion.div>
-          )
+          <motion.div
+            className="flex gap-4"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
+          >
+            {duplicated.map((item, idx) => {
+              const baseIndex = idx % media.length;
+              const isActive = hovered === baseIndex;
+              const isDimmed = hovered !== null && !isActive;
+              return (
+                <button
+                  key={`${collection.id}-${idx}`}
+                  onMouseEnter={() => setHovered(baseIndex)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => openAt(baseIndex)}
+                  className={cn(
+                    "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                    isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                  )}
+                  title="Open lightbox"
+                >
+                  <img
+                    src={item.thumbnail || collection.fallbackThumb}
+                    alt={`${collection.title} preview`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      if (collection.fallbackThumb && e.currentTarget.src !== collection.fallbackThumb) {
+                        e.currentTarget.src = collection.fallbackThumb;
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                </button>
+              );
+            })}
+          </motion.div>
         ) : (
           <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
-            {loading && !fallbackReady ? "Loading gallery…" : "No media pulled yet."}
+            Pulling reel thumbnails…
           </div>
         )}
       </div>
@@ -2288,7 +1703,7 @@ function MMMBelt({ album, onOpen }) {
   );
 }
 
-function GalleryLightbox({ album, media, startIndex = 0, onClose }) {
+function GalleryLightbox({ collection, media, startIndex = 0, onClose }) {
   const [index, setIndex] = useState(startIndex);
 
   useEffect(() => {
@@ -2301,27 +1716,26 @@ function GalleryLightbox({ album, media, startIndex = 0, onClose }) {
   const goNext = () => setIndex((i) => (i + 1) % media.length);
 
   return (
-    <Modal open={true} onClose={onClose} title={album?.title || "Gallery"}>
+    <Modal open={true} onClose={onClose} title={collection?.title || "Gallery"}>
       <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
-        {item?.type === "video" && (item?.videoSrc || item?.src) ? (
-          <video
-            key={item.videoSrc || item.src}
-            src={item.videoSrc || item.src}
-            className="w-full h-full object-contain bg-black"
-            controls
-            autoPlay
-            loop
-            muted
-            playsInline
+        {item?.embedUrl ? (
+          <iframe
+            key={item.embedUrl}
+            src={item.embedUrl}
+            className="w-full h-full"
+            loading="lazy"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title={collection?.title || "Instagram reel"}
           />
-        ) : (
+        ) : item?.thumbnail ? (
           <img
-            key={item?.src}
-            src={item?.src}
-            alt={`${album?.title || "Gallery"} frame`}
+            key={item.thumbnail}
+            src={item.thumbnail}
+            alt={`${collection?.title || "Gallery"} frame`}
             className="w-full h-full object-contain bg-black"
           />
-        )}
+        ) : null}
         {media.length > 1 ? (
           <>
             <button
@@ -2342,10 +1756,13 @@ function GalleryLightbox({ album, media, startIndex = 0, onClose }) {
         ) : null}
       </div>
       <div className="mt-3 flex items-center justify-between text-white/70 text-sm">
-        <span>{album?.description}</span>
+        <span>{collection?.description}</span>
         <span>
           {index % media.length + 1} / {media.length}
         </span>
+      </div>
+      <div className="mt-2 text-right text-xs text-white/60">
+        <a href={item?.url} target="_blank" rel="noreferrer" className="underline">Open on Instagram</a>
       </div>
     </Modal>
   );
@@ -2362,17 +1779,17 @@ function MMMGalleries() {
           <span className="text-white/70 text-sm">Hover to magnify • tap to open lightbox</span>
         </div>
         <p className="text-white/75 max-w-3xl">
-          Four belts of living media from MMM Media—photos, edits, and AI experiments gliding endlessly. Hover to spotlight a frame; click to open the lightbox and scroll through every pull without leaving the site.
+          Four belts of Instagram reels spanning epic edits, beauty work, BTS, and AI experiments. Hover to spotlight a frame; click to open the lightbox and keep watching without leaving the site.
         </p>
         <div className="space-y-5">
-          {MMM_ALBUMS.map((album) => (
-            <MMMBelt key={album.id} album={album} onOpen={(payload) => setLightbox(payload)} />
+          {INSTAGRAM_VIDEO_COLLECTIONS.map((collection) => (
+            <MMMBelt key={collection.id} collection={collection} onOpen={(payload) => setLightbox(payload)} />
           ))}
         </div>
       </div>
       {lightbox ? (
         <GalleryLightbox
-          album={lightbox.album}
+          collection={lightbox.collection}
           media={lightbox.media}
           startIndex={lightbox.initialIndex || 0}
           onClose={() => setLightbox(null)}
@@ -2382,48 +1799,6 @@ function MMMGalleries() {
   );
 }
 
-
-function CharacterCard({ row }) {
-  const name = row["Character"] || row["Name"] || row["Title"] || "Unnamed";
-  const alias = row["Alias"] || row["AKA"] || "";
-  const alignment = row["Alignment"] || row["Faction"] || "";
-  const location = row["Location"] || row["Base"] || "";
-  const short = row["Short Description"] || row["Summary"] || row["Bio"] || "";
-  const img = (row["Cover Image"] || row["Image"] || "").replace(/open\?id=/, "uc?export=view&id=");
-  const long = row["Long Description"] || row["Bio"] || "";
-  const powers = row["Powers"] || row["Abilities"] || "";
-  const role = row["Role"] || row["Type"] || "";
-  const status = row["Status"] || "";
-  return (
-    <Card>
-      <div className="aspect-[16/10] rounded-xl bg-black/45 border border-white/10 overflow-hidden grid place-items-center group">
-        {img ? (
-          <img src={img} alt={name} className="w-full h-full object-cover object-center scale-[1.12] group-hover:scale-[1.18] transition-transform duration-700" />
-        ) : (
-          <div className="text-white/50 text-sm">Art / Poster</div>
-        )}
-      </div>
-      <div className="mt-3 font-semibold">{name}{alias ? <span className="text-white/60 font-normal"> — {alias}</span> : null}</div>
-      <div className="text-white/70 text-sm flex flex-wrap gap-1 items-center">
-        {alignment ? <span>{alignment}</span> : null}
-        {location ? <span>• {location}</span> : null}
-        {role ? <span>• {role}</span> : null}
-        {status ? <span>• {status}</span> : null}
-      </div>
-      {short ? <p className="mt-2 text-white/80 text-sm">{short}</p> : null}
-      {(powers || long) ? (
-        <details className="mt-2 text-white/75 text-sm">
-          <summary className="cursor-pointer hover:underline">Character breakdown</summary>
-          {powers ? <p className="mt-1"><span className="text-white/60">Abilities:</span> {powers}</p> : null}
-          {long ? <p className="mt-1">{long}</p> : null}
-        </details>
-      ) : null}
-      <div className="mt-4 flex gap-2">
-        <Button href={LINKS.loremakerSite} className="bg-white/10" icon={ExternalLink}>Read more</Button>
-      </div>
-    </Card>
-  );
-}
 
 // ========= Portfolio ========= //
 function SocialProof() {
@@ -2671,7 +2046,6 @@ const SECTION_LINKS = [
   { id: "value-calculator", label: "Client Value Calculator" },
   { id: "galleries", label: "Galleries" },
   { id: "contact", label: "Contact Form" },
-  { id: "loremaker", label: "Loremaker" },
   { id: "blog", label: "Blog" },
 ];
 
@@ -2685,9 +2059,9 @@ const MENU = [
 
 function FloatingButtons({ onOpenContact }) {
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3">
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
       <ChatbotWidget />
-      <div className="flex flex-col items-end gap-2">
+      <div className="flex items-center gap-2">
         <button
           onClick={onOpenContact}
           className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
@@ -2716,7 +2090,7 @@ function SectionNav({ variant = "floating", className = "" }) {
   };
 
   const containerClasses = cn(
-    "flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 px-4 py-3 justify-center",
+    "flex flex-wrap items-center gap-2 px-4 py-3",
     variant === "floating"
       ? "rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
       : "rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
@@ -2728,41 +2102,17 @@ function SectionNav({ variant = "floating", className = "" }) {
 
   return (
     <div className={cn(containerClasses, className)}>
-      <div className="w-full sm:hidden">
-        <label className="sr-only" htmlFor={`section-nav-${variant}`}>Jump to section</label>
-        <select
-          id={`section-nav-${variant}`}
-          className="w-full rounded-2xl border border-white/20 bg-black/40 px-3 py-2 text-sm"
-          defaultValue=""
-          onChange={(e) => {
-            if (!e.target.value) return;
-            onNavigate(e.target.value);
-            e.target.value = "";
-          }}
+      {SECTION_LINKS.map((link) => (
+        <button
+          key={link.id}
+          type="button"
+          onClick={() => onNavigate(link.id)}
+          className={buttonClasses}
+          title={`Jump to ${link.label}`}
         >
-          <option value="" disabled>
-            Navigate to…
-          </option>
-          {SECTION_LINKS.map((link) => (
-            <option key={link.id} value={link.id}>
-              {link.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="hidden w-full sm:flex sm:flex-wrap sm:justify-center sm:gap-2">
-        {SECTION_LINKS.map((link) => (
-          <button
-            key={link.id}
-            type="button"
-            onClick={() => onNavigate(link.id)}
-            className={buttonClasses}
-            title={`Jump to ${link.label}`}
-          >
-            {link.label}
-          </button>
-        ))}
-      </div>
+          {link.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -2776,13 +2126,6 @@ function runSelfTests() {
     console.assert(getYouTubeId("https://youtu.be/xyz789") === "xyz789", "youtu.be failed");
     console.assert(getYouTubeId("https://www.youtube.com/shorts/QQ11WW22") === "QQ11WW22", "shorts failed");
     console.assert(getYouTubeId("https://www.youtube.com/embed/IDID") === "IDID", "embed failed");
-
-    // parseCSV quoted commas
-    const sample = 'Name,Desc\n"Alpha, Beta","Line one, line two"\nGamma,Plain';
-    const parsed = parseCSV(sample);
-    console.assert(parsed.rows.length === 2, "CSV rows length");
-    console.assert(parsed.rows[0].Name === "Alpha, Beta", "CSV quoted field parse");
-    console.assert(parsed.rows[0].Desc.includes("line two"), "CSV multi");
 
     // calendar calc
     const phases = [
@@ -2798,7 +2141,7 @@ function runSelfTests() {
     console.assert(Array.isArray(HERO_SLIDES) && HERO_SLIDES.length >= 4, "hero slides configured");
     console.assert(typeof ChatbotWidget === "function", "chatbot widget present");
     console.assert(typeof WorkWithMe === "function", "work with me component present");
-    console.assert(Array.isArray(MMM_ALBUMS) && MMM_ALBUMS.length === 4, "MMM albums configured");
+    console.assert(Array.isArray(INSTAGRAM_VIDEO_COLLECTIONS) && INSTAGRAM_VIDEO_COLLECTIONS.length === 4, "MMM collections configured");
 
     console.groupEnd();
   } catch (e) {
@@ -2921,7 +2264,6 @@ export default function AppShell() {
             <div className="max-w-7xl mx-auto px-6 -mt-6">
               <SectionNav />
             </div>
-            <SocialProof />
             <Portfolio />
             <WorkWithMe
               currentService={currentService}
@@ -2935,7 +2277,6 @@ export default function AppShell() {
                 <ContactInline calendarState={calendarState} />
               </div>
             </section>
-            <FeaturedUniverse />
             <Blog />
             <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
             <section className="py-6" id="contact"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
@@ -2985,7 +2326,6 @@ export default function AppShell() {
           <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
         </div>
       </Modal>
-      </div>
-    </>
+    </div>
   );
 }
