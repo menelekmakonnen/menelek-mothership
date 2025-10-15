@@ -478,6 +478,16 @@ const HERO_PLACEHOLDERS = {
   },
 };
 
+const heroLoadingSlide = (base) => ({
+  id: `${base.id}-loading`,
+  kind: "loading",
+  title: base.title,
+  caption: base.caption,
+  preview: base.thumb,
+  credit: base.credit,
+  videoUrl: base.videoUrl || null,
+});
+
 function Hero({ onOpenLinksModal }) {
   const [idx, setIdx] = useState(0);
   const photoMedia = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 10, seed: 2 });
@@ -496,15 +506,15 @@ function Hero({ onOpenLinksModal }) {
   }, [instagramResolved, instagramCount]);
 
   const slides = useMemo(() => {
-    const computed = [];
-    HERO_SLIDES.forEach((entry) => {
+    if (!HERO_SLIDES.length) return [];
+
+    return HERO_SLIDES.map((entry) => {
       if (entry.type === "video") {
-        computed.push({
+        return {
           ...entry,
           kind: "video",
           preview: entry.thumb,
-        });
-        return;
+        };
       }
 
       let pool = [];
@@ -514,7 +524,7 @@ function Hero({ onOpenLinksModal }) {
 
       const mediaItem = pool?.[0];
       if (mediaItem && !fallbackReady) {
-        computed.push({
+        return {
           id: entry.id,
           kind: mediaItem.type === "video" ? "video" : "image",
           title: entry.title,
@@ -525,13 +535,12 @@ function Hero({ onOpenLinksModal }) {
             entry.type === "instagram-video"
               ? mediaItem.permalink || mediaItem.videoSrc
               : mediaItem.videoSrc || null,
-        });
-        return;
+        };
       }
 
       const placeholder = HERO_PLACEHOLDERS[entry.id];
       if (placeholder) {
-        computed.push({
+        return {
           id: entry.id,
           kind: "image",
           title: entry.title,
@@ -539,14 +548,15 @@ function Hero({ onOpenLinksModal }) {
           preview: placeholder.preview,
           credit: entry.credit,
           videoUrl: null,
-        });
+        };
       }
+
+      return heroLoadingSlide(entry);
     });
-    return computed;
   }, [fallbackReady, photoMedia.media, reelMedia.media, loreMedia.media]);
 
   const slidesLength = slides.length || 1;
-  const awaitingSlides = slidesLength < HERO_SLIDES.length;
+  const awaitingSlides = slidesLength < HERO_SLIDES.length || slides.some((slide) => slide.kind === "loading");
 
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
@@ -571,7 +581,7 @@ function Hero({ onOpenLinksModal }) {
     credit: baseSlide.credit,
   };
   const openVideo = () => {
-    if (!activeSlide?.videoUrl) return;
+    if (!activeSlide?.videoUrl || activeSlide.kind === "loading") return;
     window.open(activeSlide.videoUrl, "_blank", "noopener,noreferrer");
   };
   const imageSrc = activeSlide?.preview || activeSlide?.thumb || activeSlide?.src || "";
@@ -640,7 +650,11 @@ function Hero({ onOpenLinksModal }) {
                   exit={{ opacity: 0, scale: 1.02 }}
                   transition={{ duration: 0.6 }}
                 >
-                {imageSrc ? (
+                {activeSlide.kind === "loading" ? (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70 text-sm">
+                    Syncing Instagram…
+                  </div>
+                ) : imageSrc ? (
                   <img
                     src={imageSrc}
                     alt={activeSlide.title}
@@ -652,7 +666,7 @@ function Hero({ onOpenLinksModal }) {
                     {activeSlide.title}
                   </div>
                 )}
-                {activeSlide.videoUrl ? (
+                {activeSlide.videoUrl && activeSlide.kind !== "loading" ? (
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
                     <button
                       onClick={openVideo}
@@ -822,10 +836,11 @@ function ContactInline({ calendarState }) {
       subtype: s,
       otherDetail: s === "Other" ? f.otherDetail : "",
       fitScore: s === "Other" ? "" : f.fitScore,
-      recTier: s === "Other" ? "" : f.recTier || "Starter",
+      recTier: s === "Other" ? "Starter" : f.recTier || "Starter",
+      scope: s === "Other" ? "" : f.scope,
     }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
-  const showFitFields = form.subtype !== "Other";
+  const showFitFields = form.subtype && form.subtype !== "Other";
 
   return (
     <Card id="contact-inline">
