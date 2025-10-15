@@ -70,6 +70,7 @@ const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
 const CHATBOT_ENDPOINTS = {
   trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
   chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
   workflow: "/workflow/cQltZgIikkp4fFER",
 };
 const CHATBOT_NAME = "Zara";
@@ -94,6 +95,7 @@ async function postJSONWithFallback(paths, payload, { headers = {}, signal } = {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify(payload),
+        mode: "cors",
         signal,
       });
       if (!res.ok) {
@@ -253,12 +255,18 @@ function DiamondsCanvas({ className }) {
     };
 
     scale();
+    console.debug("DiamondsCanvas mounted", {
+      width: canvas.offsetWidth,
+      height: canvas.offsetHeight,
+      dpr: typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1,
+    });
 
     const cell = 9;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.018;
+    const baseAlpha = 0.08;
     const auraR = 90;
-    const size = 2.0;
+    const size = 3.5;
+    const defaultGlow = 0.12;
 
     const draw = () => {
       const w = canvas.offsetWidth;
@@ -299,7 +307,7 @@ function DiamondsCanvas({ className }) {
           ctx.fillStyle = `rgba(255,255,255,${baseAlpha})`;
           ctx.fillRect(-size / 2, -size / 2, size, size);
 
-          const a = Math.min(0.6, hoverK * 0.5 + clickGlow * 0.85);
+          const a = Math.min(0.7, defaultGlow + hoverK * 0.5 + clickGlow * 0.85);
           if (a > 0) {
             const grad = ctx.createRadialGradient(0, 0, 0.2, 0, 0, 10);
             grad.addColorStop(0, `rgba(255,255,255,${a})`);
@@ -458,11 +466,34 @@ const HERO_SLIDES = [
   },
 ];
 
+const HERO_PLACEHOLDERS = {
+  "mmm-photo": {
+    preview: "https://i.imgur.com/9YI6z1g.jpg",
+  },
+  "mmm-reel": {
+    preview: "https://i.imgur.com/N7w7LGz.jpg",
+  },
+  "lore-art": {
+    preview: "https://i.imgur.com/Va6S3P4.jpg",
+  },
+};
+
 function Hero({ onOpenLinksModal }) {
   const [idx, setIdx] = useState(0);
   const photoMedia = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 10, seed: 2 });
   const reelMedia = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 10, seed: 4 });
   const loreMedia = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 10, seed: 6 });
+  const [fallbackReady, setFallbackReady] = useState(false);
+
+  const instagramResolved = !photoMedia.loading && !reelMedia.loading && !loreMedia.loading;
+  const instagramCount =
+    (photoMedia.media?.length || 0) + (reelMedia.media?.length || 0) + (loreMedia.media?.length || 0);
+
+  useEffect(() => {
+    if (instagramResolved && instagramCount > 0) return;
+    const timer = setTimeout(() => setFallbackReady(true), 5000);
+    return () => clearTimeout(timer);
+  }, [instagramResolved, instagramCount]);
 
   const slides = useMemo(() => {
     const computed = [];
@@ -481,22 +512,41 @@ function Hero({ onOpenLinksModal }) {
       if (entry.username === "mm.m.media" && entry.filter === "reels") pool = reelMedia.media;
       if (entry.username === "lore.maker_") pool = loreMedia.media;
 
-      if (!pool?.length) return;
-      const item = pool[0];
-      computed.push({
-        id: entry.id,
-        kind: "image",
-        title: entry.title,
-        caption: item.caption || entry.caption,
-        preview: item.preview || item.src,
-        credit: entry.credit,
-        videoUrl: entry.type === "instagram-video" ? item.permalink || item.videoSrc : item.videoSrc || null,
-      });
+      const mediaItem = pool?.[0];
+      if (mediaItem && !fallbackReady) {
+        computed.push({
+          id: entry.id,
+          kind: mediaItem.type === "video" ? "video" : "image",
+          title: entry.title,
+          caption: mediaItem.caption || entry.caption,
+          preview: mediaItem.preview || mediaItem.src,
+          credit: entry.credit,
+          videoUrl:
+            entry.type === "instagram-video"
+              ? mediaItem.permalink || mediaItem.videoSrc
+              : mediaItem.videoSrc || null,
+        });
+        return;
+      }
+
+      const placeholder = HERO_PLACEHOLDERS[entry.id];
+      if (placeholder) {
+        computed.push({
+          id: entry.id,
+          kind: "image",
+          title: entry.title,
+          caption: entry.caption,
+          preview: placeholder.preview,
+          credit: entry.credit,
+          videoUrl: null,
+        });
+      }
     });
     return computed;
-  }, [photoMedia.media, reelMedia.media, loreMedia.media]);
+  }, [fallbackReady, photoMedia.media, reelMedia.media, loreMedia.media]);
 
   const slidesLength = slides.length || 1;
+  const awaitingSlides = slidesLength < HERO_SLIDES.length;
 
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
@@ -559,7 +609,7 @@ function Hero({ onOpenLinksModal }) {
           <div className="text-sm uppercase tracking-[0.25em] text-white/60 flex items-center justify-between">
             <span>Showcase</span>
             <div className="flex items-center gap-2 text-xs text-white/60">
-              <span>{idx + 1}/{slidesLength}</span>
+              <span>{awaitingSlides ? "Loading…" : `${idx + 1}/${slidesLength}`}</span>
               {slidesLength > 1 ? (
                 <div className="flex items-center gap-1">
                   <button
@@ -580,16 +630,16 @@ function Hero({ onOpenLinksModal }) {
               ) : null}
             </div>
           </div>
-          <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
-            <AnimatePresence mode="wait">
+            <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
+              <AnimatePresence mode="wait">
                 <motion.div
                   key={activeSlide.id}
                   className="absolute inset-0"
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.6 }}
-              >
+                  initial={{ opacity: 0, scale: 1.02 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.6 }}
+                >
                 {imageSrc ? (
                   <img
                     src={imageSrc}
@@ -697,7 +747,17 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
 
 // ========= Contact ========= //
 function ContactInline({ calendarState }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subtype: "",
+    otherDetail: "",
+    message: "",
+    fitScore: "",
+    recTier: "Starter",
+    scope: "",
+  });
   useEffect(() => {
     const handlerSubtype = (e) => { if (e.detail && e.detail.subtype !== undefined) setForm((f) => ({ ...f, subtype: e.detail.subtype })); };
     const handlerFit = (e) => {
@@ -712,17 +772,49 @@ function ContactInline({ calendarState }) {
 
   const [agree, setAgree] = useState(false);
   const [ok, setOk] = useState(false);
-  const submit = () => {
-    if (!agree) return alert("Please agree to the Privacy Policy.");
-    if (!form.name || !form.email) return alert("Name and Email are required.");
-    const key = "mm_contact_submissions";
-    const list = JSON.parse(localStorage.getItem(key) || "[]");
-    list.push({ ...form, service: "Director for Hire", calendar: calendarState, ts: new Date().toISOString() });
-    localStorage.setItem(key, JSON.stringify(list));
-    setOk(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const submit = async () => {
+    if (submitting) return;
+    setError(null);
+    if (!agree) return setError("Please agree to the Privacy Policy before sending.");
+    if (!form.name.trim() || !form.email.trim()) return setError("Name and email are required.");
+    if (!form.subtype?.trim()) return setError("Pick the service that best fits your project.");
+    if (!form.message.trim()) return setError("Tell me a little about the project scope.");
+
+    try {
+      setSubmitting(true);
+      const payload = {
+        ...form,
+        otherDetail: form.subtype === "Other" ? form.otherDetail : "",
+        service: "Director for Hire",
+        calendar: calendarState,
+        sendCopy: true,
+        submittedAt: new Date().toISOString(),
+      };
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, payload);
+      setOk(true);
+    } catch (err) {
+      console.error("Contact submission failed", err);
+      setError("Couldn't send just now—try again in a moment or email hello@menelekmakonnen.com.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const clear = () => setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const clear = () =>
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      subtype: "",
+      otherDetail: "",
+      message: "",
+      fitScore: "",
+      recTier: "Starter",
+      scope: "",
+    });
 
   const choose = (s) =>
     setForm((f) => ({
@@ -742,6 +834,7 @@ function ContactInline({ calendarState }) {
       <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the chat bubble at bottom‑right and leave a short brief.</p>
       {!ok ? (
         <div className="grid gap-3 mt-4">
+          {error ? <div className="text-sm text-rose-300">{error}</div> : null}
           <div>
             <label className="text-white/70 text-sm mb-2 block">Select a service</label>
             <div className="flex flex-wrap gap-2">
@@ -758,41 +851,39 @@ function ContactInline({ calendarState }) {
             </div>
           ) : null}
 
-          <div className={cn("grid gap-3", showFitFields ? "sm:grid-cols-3" : "")}>
-            {showFitFields ? (
-              <>
-                <div>
-                  <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-                  <input
-                    value={form.fitScore}
-                    onChange={(e) => setForm({ ...form, fitScore: e.target.value })}
-                    className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-                  />
-                </div>
-                <div>
-                  <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-                  <select
-                    value={form.recTier || "Starter"}
-                    onChange={(e) => setForm({ ...form, recTier: e.target.value })}
-                    className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
-                    style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-                  >
-                    {["Starter", "Signature", "Cinema+"].map((x) => (
-                      <option key={x} className="text-black">{x}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : null}
-            <div className={showFitFields ? "" : "sm:col-span-1"}>
-              <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-              <input
-                value={form.scope}
-                onChange={(e) => setForm({ ...form, scope: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-              />
+          {showFitFields ? (
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
+                <input
+                  value={form.fitScore}
+                  onChange={(e) => setForm({ ...form, fitScore: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
+                <select
+                  value={form.recTier || "Starter"}
+                  onChange={(e) => setForm({ ...form, recTier: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
+                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                >
+                  {["Starter", "Signature", "Cinema+"].map((x) => (
+                    <option key={x} className="text-black">{x}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
+                <input
+                  value={form.scope}
+                  onChange={(e) => setForm({ ...form, scope: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
@@ -824,9 +915,17 @@ function ContactInline({ calendarState }) {
             <a href="#" onClick={(e) => { e.preventDefault(); alert("Privacy policy modal placeholder."); }} className="underline">Privacy Policy</a>.
           </label>
           <div className="flex gap-2">
-            <Button onClick={submit} icon={ShieldCheck}>Send Inquiry</Button>
+            <Button onClick={submit} icon={ShieldCheck} disabled={submitting}>
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                </span>
+              ) : (
+                "Send Inquiry"
+              )}
+            </Button>
             <Button href={SOCIALS.email} icon={Mail} variant="ghost">Email Instead</Button>
-            <Button onClick={clear} variant="ghost">Clear Form</Button>
+            <Button onClick={clear} variant="ghost" disabled={submitting}>Clear Form</Button>
           </div>
         </div>
       ) : (
