@@ -17,9 +17,10 @@ import {
   Library,
   Crown,
   Swords,
+  Sparkles,
   MessageCircle,
   Send,
-  Sparkles,
+  Bot,
 } from "lucide-react";
 
 /**
@@ -106,6 +107,20 @@ const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM";
 const SHEET_NAME = "Characters";
 const GVIZ_URL = (sheetName) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+
+const CHATBOT_WEBHOOK =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK || ""
+    : window?.__NEXT_DATA__?.props?.pageProps?.chatbotWebhook ||
+      process.env.NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK ||
+      "";
+
+const TRACK_VISIT_WEBHOOK =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK || ""
+    : window?.__NEXT_DATA__?.props?.pageProps?.trackVisitWebhook ||
+      process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK ||
+      "";
 
 const COL_ALIAS = {
   id: ["id", "char_id", "character id", "code"],
@@ -276,17 +291,17 @@ const dailyInt = (seed, min = 1, max = 10) => {
   const rand = seededRandom(`${seed}|${todayKey()}`)();
   return Math.floor(rand * (max - min + 1)) + min;
 };
-function fillDailyPowers(char) {
-  const powers = (char.powers || []).map((power, index) => {
-    const base = Number.isFinite(power.level) && power.level > 0 ? power.level : 5;
-    const seeded = dailyInt(`${char.name}|${power.name}|${index}`, 3, 10);
-    const blended = Math.round((base * 0.4 + seeded * 0.6) * 10) / 10;
-    return { ...power, level: Math.min(10, Math.max(1, blended)) };
+function fillDailyPowers(c) {
+  const seed = c.id || c.name || "character";
+  const powers = (c.powers || []).map((p, idx) => {
+    const label = p.name || `Power ${idx + 1}`;
+    const base = Math.max(0, Math.min(10, Number(p.level) || 0));
+    const min = base ? Math.max(3, base - 2) : 3;
+    const max = base ? Math.min(10, base + 2) : 9;
+    const level = dailyInt(`${seed}|${label}`, min, max);
+    return { ...p, level };
   });
-  if (!powers.length) {
-    powers.push({ name: "Untapped Potential", level: dailyInt(`${char.name}|fallback`, 4, 9) });
-  }
-  return { ...char, powers };
+  return { ...c, powers };
 }
 
 function useCharacters() {
@@ -453,204 +468,91 @@ function FacetChip({ active, onClick, children }) {
   );
 }
 
-function matchesFilters(char, filters, combineAND, query) {
-  const terms = (query || "").toLowerCase().split(/\s+/).filter(Boolean);
-  const haystack = [
-    char.name,
-    ...(char.alias || []),
-    ...(char.locations || []),
-    ...(char.tags || []),
-    ...(char.faction || []),
-    ...(char.powers || []).map((p) => p.name),
-    char.shortDesc,
-    char.longDesc,
-  ]
-    .join(" ")
-    .toLowerCase();
-  const searchMatches = terms.every((term) => haystack.includes(term));
-
-  const checks = [];
-  if (filters.gender) checks.push((char.gender || "").toLowerCase() === filters.gender.toLowerCase());
-  if (filters.alignment) checks.push((char.alignment || "").toLowerCase() === filters.alignment.toLowerCase());
-  if (filters.locations?.length)
-    checks.push(filters.locations.every((loc) => char.locations.map((value) => value.toLowerCase()).includes(loc.toLowerCase())));
-  if (filters.faction?.length)
-    checks.push(filters.faction.every((value) => (char.faction || []).map((item) => item.toLowerCase()).includes(value.toLowerCase())));
-  if (filters.tags?.length)
-    checks.push(filters.tags.every((value) => (char.tags || []).map((item) => item.toLowerCase()).includes(value.toLowerCase())));
-  if (filters.era?.length)
-    checks.push(filters.era.some((value) => (char.era || "").toLowerCase() === value.toLowerCase()));
-  if (filters.status?.length)
-    checks.push(filters.status.some((value) => (char.status || "").toLowerCase() === value.toLowerCase()));
-  if (filters.stories?.length)
-    checks.push(filters.stories.every((value) => (char.stories || []).map((item) => item.toLowerCase()).includes(value.toLowerCase())));
-  if (filters.alias?.length)
-    checks.push(filters.alias.some((value) => (char.alias || []).map((item) => item.toLowerCase()).includes(value.toLowerCase())));
-  if (filters.powers?.length)
-    checks.push(filters.powers.every((value) => (char.powers || []).map((item) => item.name.toLowerCase()).includes(value.toLowerCase())));
-
-  const filterMatch = combineAND ? checks.every(Boolean) : checks.length === 0 || checks.some(Boolean);
-  return searchMatches && filterMatch;
-}
-
-function pickDaily(items, salt = "") {
-  if (!items.length) return null;
-  const rng = seededRandom(`${todayKey()}|${salt}`);
-  return items[Math.floor(rng() * items.length)] || items[0];
-}
-
-function HeroSection({ data, onOpen, onFacet }) {
-  const character = useMemo(() => pickDaily(data, "character"), [data]);
-  const allFactions = useMemo(() => Array.from(new Set(data.flatMap((item) => item.faction || []))), [data]);
-  const allLocations = useMemo(() => Array.from(new Set(data.flatMap((item) => item.locations || []))), [data]);
-  const allPowers = useMemo(() => Array.from(new Set(data.flatMap((item) => (item.powers || []).map((p) => p.name)))), [data]);
-  const featuredFaction = useMemo(() => pickDaily(allFactions, "faction"), [allFactions]);
-  const featuredLocation = useMemo(() => pickDaily(allLocations, "location"), [allLocations]);
-  const featuredPower = useMemo(() => pickDaily(allPowers, "power"), [allPowers]);
-
-  const slides = [];
-  if (character) {
-    slides.push({
-      type: "Character",
-      render: () => (
-        <div className="grid h-72 grid-cols-1 overflow-hidden rounded-3xl md:grid-cols-2">
-          <ImageSafe
-            src={character.cover || character.gallery[0]}
-            alt={character.name}
-            fallbackLabel={character.name}
-            className="h-72 w-full object-cover"
-          />
-          <div className="flex h-full flex-col gap-3 bg-gradient-to-br from-black/55 via-indigo-900/40 to-transparent p-6 text-white">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.3em]">
-              <Clock size={14} /> Today’s Featured Character
-            </div>
-            <div className="text-3xl font-black leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">{character.name}</div>
-            <div className="text-sm font-semibold text-white/85 line-clamp-4">{character.shortDesc || character.longDesc}</div>
-            <div className="mt-auto flex gap-3">
-              <Button variant="gradient" onClick={() => onOpen(character)}>
-                Meet {character.name.split(" ")[0]} <ArrowRight className="h-4 w-4" />
-              </Button>
-              {character.faction?.[0] && (
-                <Button variant="subtle" onClick={() => onFacet({ key: "faction", value: character.faction[0] })}>
-                  Visit {character.faction[0]}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      ),
-    });
-  }
-  if (featuredFaction) {
-    slides.push({
-      type: "Faction",
-      render: () => (
-        <div className="flex h-72 flex-col justify-between gap-4 bg-gradient-to-br from-indigo-700/35 via-fuchsia-600/20 to-transparent p-6 text-white">
-          <div className="flex items-center gap-4">
-            <Insignia label={String(featuredFaction)} size={64} variant="faction" />
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.3em]">Featured Faction</div>
-              <div className="text-3xl font-black">{String(featuredFaction)}</div>
-            </div>
-          </div>
-          <Button variant="gradient" onClick={() => onFacet({ key: "faction", value: String(featuredFaction) })}>
-            View Members
-          </Button>
-        </div>
-      ),
-    });
-  }
-  if (featuredLocation) {
-    slides.push({
-      type: "Location",
-      render: () => (
-        <div className="flex h-72 flex-col justify-between gap-4 bg-gradient-to-br from-amber-400/25 via-rose-300/12 to-transparent p-6 text-white">
-          <div className="flex items-center gap-4">
-            <Insignia label={String(featuredLocation)} size={64} />
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.3em]">Featured Location</div>
-              <div className="text-3xl font-black">{String(featuredLocation)}</div>
-            </div>
-          </div>
-          <Button variant="gradient" onClick={() => onFacet({ key: "locations", value: String(featuredLocation) })}>
-            Explore Residents
-          </Button>
-        </div>
-      ),
-    });
-  }
-  if (featuredPower) {
-    slides.push({
-      type: "Power",
-      render: () => (
-        <div className="flex h-72 flex-col justify-between gap-4 bg-gradient-to-br from-cyan-400/25 via-emerald-400/10 to-transparent p-6 text-white">
-          <div className="flex items-center gap-4">
-            <Insignia label={String(featuredPower)} size={64} />
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.3em]">Featured Power</div>
-              <div className="text-3xl font-black">{String(featuredPower)}</div>
-            </div>
-          </div>
-          <Button variant="gradient" onClick={() => onFacet({ key: "powers", value: String(featuredPower) })}>
-            View Wielders
-          </Button>
-        </div>
-      ),
-    });
-  }
-
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    setIndex(0);
-  }, [slides.length]);
-
-  useEffect(() => {
-    const handler = (event) => {
-      if (slides.length < 2) return;
-      if (event.key === "ArrowLeft") setIndex((i) => (i - 1 + slides.length) % slides.length);
-      if (event.key === "ArrowRight") setIndex((i) => (i + 1) % slides.length);
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [slides.length]);
-
-  if (!slides.length) return null;
-
+/** -------------------- Character Card / Modal -------------------- */
+function CharacterCard({ c, onOpen, onFacet, onUseInSim, highlight }) {
+  const [pulse, setPulse] = useState(false);
+  const openProfile = () => onOpen(c);
+  const triggerSim = () => {
+    setPulse(true);
+    onUseInSim(c.id);
+    setTimeout(() => setPulse(false), 480);
+  };
   return (
-    <Card className="overflow-hidden border-white/20 bg-gradient-to-tr from-indigo-700/22 via-fuchsia-600/12 to-amber-500/12 text-white">
-      <CardHeader className="flex items-center justify-between border-b border-white/15 pb-3">
-        <div className="text-sm font-extrabold uppercase tracking-[0.3em]">Daily Features</div>
-        <div className="text-xs font-bold uppercase tracking-[0.3em] text-white/70">
-          {slides[index].type} • {todayKey()}
-        </div>
-      </CardHeader>
-      <div className="relative">
-        {slides[index].render()}
-        {slides.length > 1 && (
-          <>
-            <button
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65"
-              onClick={() => setIndex((i) => (i - 1 + slides.length) % slides.length)}
-              aria-label="Previous feature"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65"
-              onClick={() => setIndex((i) => (i + 1) % slides.length)}
-              aria-label="Next feature"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </>
+    <motion.div
+      animate={pulse || highlight ? { scale: 1.02 } : { scale: 1 }}
+      transition={{ type: "spring", stiffness: 240, damping: 20 }}
+      className="group"
+    >
+      <Card
+        className={cx(
+          "hover:shadow-2xl hover:shadow-fuchsia-500/15 transition overflow-hidden",
+          pulse || highlight
+            ? "ring-2 ring-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.35)]"
+            : ""
         )}
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
-          {slides.map((_, idx) => (
-            <span key={idx} className={cx("h-1.5 w-6 rounded-full", idx === index ? "bg-white" : "bg-white/40")} />
-          ))}
+      >
+        <div className="relative">
+          <button onClick={openProfile} className="block text-left w-full">
+            <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-56 w-full object-cover" />
+          </button>
+          <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
+            <div onClick={openProfile} className="cursor-pointer">
+              <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
+            </div>
+            <motion.button
+              onClick={triggerSim}
+              whileTap={{ scale: 0.95 }}
+              className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-extrabold bg-amber-300 text-black shadow border border-black/10"
+              aria-label="Use in Simulator"
+              title="Load into Battle Arena"
+            >
+              <Swords size={14} /> Simulate
+            </motion.button>
+          </div>
         </div>
-      </div>
-    </Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-3">
+            <Insignia label={c.faction?.[0] || c.name} size={32} variant={c.faction?.length ? "faction" : "character"} />
+            <CardTitle role="button" onClick={openProfile} className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-amber-200">{c.name}</span>
+            </CardTitle>
+          </div>
+          <CardDescription className="line-clamp-2 font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {c.gender && <FacetChip onClick={() => onFacet({ key: "gender", value: c.gender })}>{c.gender}</FacetChip>}
+            {c.alignment && <FacetChip onClick={() => onFacet({ key: "alignment", value: c.alignment })}>{c.alignment}</FacetChip>}
+            {c.locations?.slice(0, 2).map((loc) => (
+              <FacetChip key={loc} onClick={() => onFacet({ key: "locations", value: loc })}>
+                {loc}
+              </FacetChip>
+            ))}
+            {c.faction?.slice(0, 1).map((f) => (
+              <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
+                {f}
+              </FacetChip>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between">
+          <div className="w-full">
+            {c.powers?.slice(0, 1).map((p) => (
+              <div key={p.name} className="text-xs mb-1 flex items-center justify-between text-white font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
+            ))}
+            <PowerMeter level={c.powers?.[0]?.level ?? 0} />
+          </div>
+          <div className="flex gap-2 ml-3">
+            <Button variant="secondary" className="font-bold" onClick={openProfile}>
+              Read <ArrowRight className="ml-1" size={16} />
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -957,7 +859,7 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
             )}
             {!!(char.tags || []).length && (
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
+                <div className="text-sm mb-2 font-bold flex items-center gap-2">
                   <Layers size={14} /> Tags
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -998,8 +900,98 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
                   ))}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          ),
+        },
+      ]
+    : [])
+    .concat(
+      faction
+        ? [
+            {
+              type: "Faction",
+              render: () => (
+                <div className="h-72 p-6 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-4">
+                    <Insignia label={String(faction)} size={56} variant="faction" />
+                    <div>
+                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
+                      <div className="text-2xl font-extrabold">{String(faction)}</div>
+                    </div>
+                  </div>
+                  <Button variant="secondary" onClick={() => onFacet({ key: "faction", value: String(faction) })} className="font-bold">
+                    View Members
+                  </Button>
+                </div>
+              ),
+            },
+          ]
+        : []
+    )
+    .concat(
+      location
+        ? [
+            {
+              type: "Location",
+              render: () => (
+                <div className="h-72 p-6 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-4">
+                    <Insignia label={String(location)} size={56} />
+                    <div>
+                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
+                      <div className="text-2xl font-extrabold">{String(location)}</div>
+                    </div>
+                  </div>
+                  <Button variant="secondary" onClick={() => onFacet({ key: "locations", value: String(location) })} className="font-bold">
+                    View Residents
+                  </Button>
+                </div>
+              ),
+            },
+          ]
+        : []
+    )
+    .concat(
+      power
+        ? [
+            {
+              type: "Power",
+              render: () => (
+                <div className="h-72 p-6 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-4">
+                    <Insignia label={String(power)} size={56} />
+                    <div>
+                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
+                      <div className="text-2xl font-extrabold">{String(power)}</div>
+                    </div>
+                  </div>
+                  <Button variant="secondary" onClick={() => onFacet({ key: "powers", value: String(power) })} className="font-bold">
+                    View Wielders
+                  </Button>
+                </div>
+              ),
+            },
+          ]
+        : []
+    );
+  const [idx, setIdx] = useState(0);
+  const handleKey = (e) => {
+    if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
+    if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
+  };
+  useEffect(() => {
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [slides.length]);
+  if (!slides.length) return null;
+  return (
+    <Card className="bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 border-white/20 backdrop-blur-xl overflow-hidden text-white">
+      <div className="flex items-center justify-between px-4 pt-3">
+        <div className="flex items-center gap-2 text-sm font-extrabold tracking-[0.35em] uppercase">
+          <Sparkles size={16} /> Today’s Featured
+        </div>
+        <div className="flex gap-2 text-xs font-bold">
+          <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
         </div>
       </div>
     </div>
@@ -1022,15 +1014,15 @@ function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
   }, [data.length]);
   const slice = data.slice(0, page * PAGE_SIZE);
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-      {slice.map((char) => (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 pb-24">
+      {slice.map((c) => (
         <CharacterCard
-          key={char.id}
-          char={char}
+          key={c.id}
+          c={c}
           onOpen={onOpen}
           onFacet={onFacet}
           onUseInSim={onUseInSim}
-          highlight={highlightId === char.id}
+          highlight={highlightId === c.id}
         />
       ))}
       {!slice.length && <div className="text-lg font-black text-white">No characters match your filters… yet.</div>}
@@ -1038,61 +1030,95 @@ function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
   );
 }
 
-function descriptorPowerMultiplier(char) {
-  const baseString = [char.era, char.status, ...(char.tags || []), char.longDesc, char.shortDesc]
-    .join(" ")
-    .toLowerCase();
-  let multiplier = 1;
-  if (/ancient god|god|goddess|deity|primordial/.test(baseString)) multiplier += 0.65;
-  if (/celestial|cosmic|divine|angelic/.test(baseString)) multiplier += 0.35;
-  if (/alien|extraterrestrial|martian|xeno/.test(baseString)) multiplier += 0.25;
-  if (/demi-god|demigod|demi/.test(baseString)) multiplier += 0.2;
-  if (/spirit|spectral|ethereal|astral/.test(baseString)) multiplier += 0.15;
-  if (/enhanced|augmented|super soldier|meta-human|mutant/.test(baseString)) multiplier += 0.12;
-  if (/human/.test(baseString)) multiplier -= 0.1;
-  if (/ordinary human|civilian/.test(baseString)) multiplier -= 0.2;
-  multiplier = Math.max(0.55, multiplier);
-  return multiplier;
+/** -------------------- Battle Arena++ -------------------- */
+function scoreCharacter(c) {
+  const base = (c.powers || []).reduce((s, p) => s + (isFinite(p.level) ? p.level : 0), 0);
+  const elite = (c.tags || []).some((t) => /leader|legend|mythic|prime/i.test(t)) ? 3 : 0;
+  const eraMod = /old gods|ancient/i.test(c.era || "") ? 1.07 : 1;
+  const origin = powerOriginProfile(c);
+  const withBias = (base + elite) * origin.multiplier * eraMod;
+  return Math.round(withBias);
+}
+function rngLuck(max) {
+  const r = (Math.random() * 2 - 1) * 0.2 * max; // ±20%
+  return Math.round(r);
+}
+function powerOriginProfile(c) {
+  const text = [
+    (c.tags || []).join(" "),
+    (c.alias || []).join(" "),
+    c.longDesc || "",
+    c.shortDesc || "",
+  ].join(" ").toLowerCase();
+  // crude but effective class detection
+  const isGod = /(god|goddess|deity|divine|celestial|primordial)/i.test(text) || /old gods|ancient gods/i.test(c.era || "");
+  const isAlien = /(alien|extraterrestrial|offworld|cosmic)/i.test(text);
+  const isMythic = /(demon|spirit|ethereal|eldritch|angel)/i.test(text);
+  const isMeta = /(meta|mutant|enhanced|super soldier|augment)/i.test(text) || (c.powers || []).some((p) => p.level >= 7);
+  if (isGod) return { label: "Divine", multiplier: 1.6 };
+  if (isAlien) return { label: "Alien", multiplier: 1.28 };
+  if (isMythic) return { label: "Mythic", multiplier: 1.24 };
+  if (isMeta) return { label: "Enhanced", multiplier: 1.14 };
+  if (/human|civilian/.test(text)) return { label: "Human", multiplier: 1.0 };
+  return { label: "Legend", multiplier: 1.08 };
 }
 
-function scoreCharacter(char) {
-  const base = (char.powers || []).reduce((sum, power) => sum + (Number(power.level) || 0), 0);
-  const elite = (char.tags || []).some((tag) => /legend|mythic|prime|eternal|apex/.test(tag.toLowerCase())) ? 6 : 0;
-  const multiplier = descriptorPowerMultiplier(char);
-  return Math.round((base + elite) * multiplier);
-}
-
-function computeBattleTimeline(charA, charB) {
-  const rng = seededRandom(`${charA.id}|${charB.id}|${todayKey()}`);
-  const baseA = scoreCharacter(charA);
-  const baseB = scoreCharacter(charB);
-  const timeline = [];
-  let healthA = 100;
-  let healthB = 100;
-  for (let round = 1; round <= 3; round++) {
-    const luckA = (rng() * 2 - 1) * 0.22 * Math.max(baseA, baseB, 1);
-    const luckB = (rng() * 2 - 1) * 0.22 * Math.max(baseA, baseB, 1);
-    const strikeA = baseA + luckA + rng() * 12;
-    const strikeB = baseB + luckB + rng() * 12;
-    const total = strikeA + strikeB || 1;
-    const damageA = Math.max(0, (strikeB / total) * 28 + rng() * 4);
-    const damageB = Math.max(0, (strikeA / total) * 28 + rng() * 4);
-    healthA = Math.max(0, healthA - damageA);
-    healthB = Math.max(0, healthB - damageB);
-    timeline.push({
-      round,
-      strikeA: Math.round(strikeA),
-      strikeB: Math.round(strikeB),
-      luckA: Math.round(luckA),
-      luckB: Math.round(luckB),
-      healthA: Math.round(healthA),
-      healthB: Math.round(healthB),
+function duel(c1, c2) {
+  const s1 = scoreCharacter(c1);
+  const s2 = scoreCharacter(c2);
+  const origin1 = powerOriginProfile(c1);
+  const origin2 = powerOriginProfile(c2);
+  const maxBase = Math.max(s1, s2) || 1;
+  const swings = 3;
+  let h1 = 100;
+  let h2 = 100;
+  const logs = [];
+  for (let i = 0; i < swings; i += 1) {
+    const luck1 = rngLuck(maxBase);
+    const luck2 = rngLuck(maxBase);
+    const offensive1 = s1 + luck1;
+    const offensive2 = s2 + luck2;
+    const shield1 = s1 * 0.35;
+    const shield2 = s2 * 0.35;
+    const delta1 = Math.max(0, offensive1 - shield2);
+    const delta2 = Math.max(0, offensive2 - shield1);
+    const combined = Math.max(1, delta1 + delta2);
+    const dmg1 = Math.round((delta1 / combined) * 48);
+    const dmg2 = Math.round((delta2 / combined) * 48);
+    h2 = Math.max(0, h2 - dmg1);
+    h1 = Math.max(0, h1 - dmg2);
+    logs.push({
+      swing: i + 1,
+      luck1,
+      luck2,
+      offensive1,
+      offensive2,
+      dmg1,
+      dmg2,
+      h1,
+      h2,
     });
   }
-  const finalScoreA = baseA + timeline.reduce((sum, phase) => sum + phase.luckA, 0);
-  const finalScoreB = baseB + timeline.reduce((sum, phase) => sum + phase.luckB, 0);
-  const winner = finalScoreA === finalScoreB ? (rng() > 0.5 ? charA : charB) : finalScoreA > finalScoreB ? charA : charB;
-  return { timeline, winner, loser: winner.id === charA.id ? charB : charA, baseA, baseB, finalScoreA, finalScoreB };
+  let winner;
+  if (h1 === h2) {
+    winner = s1 === s2 ? (Math.random() > 0.5 ? c1 : c2) : s1 > s2 ? c1 : c2;
+  } else {
+    winner = h1 > h2 ? c1 : c2;
+  }
+  const loser = winner === c1 ? c2 : c1;
+  return {
+    winner,
+    loser,
+    h1,
+    h2,
+    logs,
+    breakdown: {
+      s1,
+      s2,
+      origin1,
+      origin2,
+    },
+  };
 }
 
 function ArenaCard({ char, position, onRelease, onOpen, health, isWinner, showX }) {
@@ -1550,112 +1576,108 @@ function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-40">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            className="mb-3 w-80 rounded-3xl border border-white/15 bg-black/70 p-4 text-white backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
-                <MessageCircle className="text-amber-300" size={16} /> Chat Console
-              </div>
-              <button onClick={() => setOpen(false)} aria-label="Close chat" className="text-white/70 hover:text-white">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-2 text-sm">
-              {messages.map((message, idx) => (
-                <div
-                  key={idx}
-                  className={cx(
-                    "rounded-2xl px-3 py-2",
-                    message.role === "user" ? "bg-gradient-to-r from-amber-300 to-fuchsia-400 text-black" : message.role === "assistant" ? "bg-white/10 text-white" : "text-white/60"
-                  )}
-                >
-                  {message.text}
-                </div>
-              ))}
-              {pending && <div className="text-xs text-white/60">Consulting the archives…</div>}
-            </div>
-            <form onSubmit={sendMessage} className="mt-3 flex gap-2">
-              <Input ref={inputRef} placeholder="Ask the Loremaker…" disabled={pending} />
-              <Button type="submit" disabled={pending} variant="gradient" size="sm">
-                <Send size={14} />
-              </Button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <motion.button
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-fuchsia-400 to-indigo-500 text-black shadow-lg"
-        whileTap={{ scale: 0.92 }}
-        animate={{ y: open ? [0, -5, 0] : 0, boxShadow: open ? "0 20px 45px rgba(251,191,36,0.35)" : "0 12px 35px rgba(251,191,36,0.25)" }}
-        aria-label="Toggle Lore chat"
-      >
-        <MessageCircle />
-      </motion.button>
-    </div>
+    <>
+      {showTop && (
+        <motion.button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          whileHover={{ scale: 1.08, rotate: [-2, 2, 0] }}
+          whileTap={{ scale: 0.95, rotate: 0 }}
+          animate={{ y: [0, -6, 0], boxShadow: [
+            "0 0 0 rgba(0,0,0,0.2)",
+            "0 12px 24px rgba(251,191,36,0.35)",
+            "0 0 0 rgba(0,0,0,0.2)",
+          ] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          className="fixed bottom-5 right-5 z-40 rounded-full border border-amber-300/60 bg-black/80 p-3 text-white shadow-xl"
+          aria-label="Back to top"
+          title="Back to top"
+        >
+          <ArrowUp />
+        </motion.button>
+      )}
+      {showBottom && (
+        <motion.button
+          onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
+          whileHover={{ scale: 1.08, rotate: [2, -2, 0] }}
+          whileTap={{ scale: 0.95, rotate: 0 }}
+          animate={{ y: [0, 6, 0], boxShadow: [
+            "0 0 0 rgba(0,0,0,0.2)",
+            "0 -12px 24px rgba(148,163,184,0.35)",
+            "0 0 0 rgba(0,0,0,0.2)",
+          ] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          className="fixed bottom-5 right-24 z-40 rounded-full border border-white/30 bg-black/80 p-3 text-white shadow-xl"
+          aria-label="Back to bottom"
+          title="Back to bottom"
+        >
+          <ArrowDown />
+        </motion.button>
+      )}
+    </>
   );
 }
 
-function FloatingScrollControls({ showTop, showBottom }) {
+function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
-      <AnimatePresence>
-        {showTop && (
-          <motion.button
-            key="top"
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: [1, 1.08, 1], y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-300 via-fuchsia-400 to-indigo-500 px-4 py-2 text-sm font-extrabold text-black shadow-[0_20px_60px_rgba(251,191,36,0.35)]"
-          >
-            <Sparkles size={16} /> Top
-          </motion.button>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showBottom && (
-          <motion.button
-            key="bottom"
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
-            className="flex items-center gap-2 rounded-2xl bg-white/15 px-4 py-2 text-sm font-extrabold text-white backdrop-blur"
-          >
-            <ArrowDown size={16} /> Bottom
-          </motion.button>
-        )}
-      </AnimatePresence>
+    <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+      <div className="flex-1">
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value)}
+          className="rounded-xl border border-amber-300/60 bg-gradient-to-r from-black/80 via-slate-900/80 to-black/70 px-3 py-2 text-sm font-black text-amber-200"
+        >
+          <option value="default">Default</option>
+          <option value="random">Random</option>
+          <option value="faction">By Faction</option>
+          <option value="az">A-Z</option>
+          <option value="za">Z-A</option>
+          <option value="most">From Most Powerful</option>
+          <option value="least">From Least Powerful</option>
+        </select>
+        <Button variant="outline" onClick={() => setOpenFilters(true)} className="font-bold border-amber-300 bg-amber-300/20 text-amber-200">
+          <Filter className="mr-1" size={16} /> Filters
+        </Button>
+        <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
+        <Button variant="secondary" onClick={onJumpArena} className="font-bold">Arena</Button>
+      </div>
     </div>
   );
 }
 
-function useTrackVisits() {
+function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
+  const [animating, setAnimating] = useState(false);
+  const [hp, setHp] = useState({ left: 100, right: 100 });
+  const [shake, setShake] = useState(false);
+  const [phase, setPhase] = useState(-1);
+  const [battle, setBattle] = useState(null);
+  const [winner, setWinner] = useState(null);
+  const [loser, setLoser] = useState(null);
+  const [explosion, setExplosion] = useState(false);
+  const [loserMark, setLoserMark] = useState(false);
+
+  const left = data.find((c) => c.id === selectedIds[0]);
+  const right = data.find((c) => c.id === selectedIds[1]);
+  const canFight = !!left && !!right && !animating;
+  const originLeft = left ? powerOriginProfile(left) : null;
+  const originRight = right ? powerOriginProfile(right) : null;
+
   useEffect(() => {
-    if (!TRACK_WEBHOOK) return;
-    const payload = {
-      path: typeof window !== "undefined" ? window.location.pathname : "/loremaker",
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "server",
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      timestamp: new Date().toISOString(),
-    };
-    fetch(TRACK_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).catch((err) => console.warn("Visit tracking failed", err));
-  }, []);
-}
+    if (selectedIds.length) {
+      setShake(true);
+      const t = setTimeout(() => setShake(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [selectedIds.join("|")]);
+
+  useEffect(() => {
+    if (!pulse) return undefined;
+    setShake(true);
+    const t = setTimeout(() => setShake(false), 600);
+    return () => clearTimeout(t);
+  }, [pulse]);
 
 export default function LoremakerApp() {
   const { data, loading, error, refetch } = useCharacters();
@@ -1673,100 +1695,537 @@ export default function LoremakerApp() {
   const [showTop, setShowTop] = useState(false);
   const [showBottom, setShowBottom] = useState(false);
 
-  useTrackVisits();
-  useEffect(() => runDevTests(), []);
+  const randomise = () => {
+    if (data.length < 2) return;
+    const r1 = Math.floor(Math.random() * data.length);
+    let r2 = Math.floor(Math.random() * data.length);
+    if (r2 === r1) r2 = (r2 + 1) % data.length;
+    setSelectedIds([data[r1].id, data[r2].id]);
+    setHp({ left: 100, right: 100 });
+    setWinner(null);
+    setLoser(null);
+    setBattle(null);
+  };
+
+  const runFight = () => {
+    if (!left || !right) return;
+    setAnimating(true);
+    setWinner(null);
+    setLoser(null);
+    setLoserMark(false);
+    setExplosion(false);
+    setPhase(-1);
+    setHp({ left: 100, right: 100 });
+    const outcome = duel(left, right);
+    setBattle(outcome);
+    outcome.logs.forEach((step, idx) => {
+      setTimeout(() => {
+        setPhase(idx);
+        setHp({ left: step.h1, right: step.h2 });
+      }, 600 * (idx + 1));
+    });
+    const blastAt = 600 * outcome.logs.length + 200;
+    setTimeout(() => setExplosion(true), blastAt);
+    setTimeout(() => setExplosion(false), blastAt + 480);
+    setTimeout(() => {
+      setWinner(outcome.winner);
+      setLoser(outcome.loser);
+      setLoserMark(true);
+      setAnimating(false);
+      setTimeout(() => setLoserMark(false), 1100);
+    }, blastAt + 520);
+  };
+
+  const StatBlock = ({ c }) => (
+    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+      <div className="flex flex-wrap gap-2">
+        {(c.alias || []).map((a) => (
+          <Badge key={a} className="bg-white/10 border border-white/20">
+            {a}
+          </Badge>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-[12px]">
+        {c.gender && (
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Gender</div>
+            <div className="font-extrabold">{c.gender}</div>
+          </div>
+        )}
+        {c.alignment && (
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Alignment</div>
+            <div className="font-extrabold">{c.alignment}</div>
+          </div>
+        )}
+        {c.status && (
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Status</div>
+            <div className="font-extrabold">{c.status}</div>
+          </div>
+        )}
+        {c.era && (
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Era</div>
+            <div className="font-extrabold">{c.era}</div>
+          </div>
+        )}
+        {c.firstAppearance && (
+          <div className="col-span-2 rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">First Appearance</div>
+            <div className="font-extrabold">{c.firstAppearance}</div>
+          </div>
+        )}
+      </div>
+      {!!(c.locations || []).length && (
+        <div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <MapPin size={12} /> Locations
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.locations.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {!!(c.faction || []).length && (
+        <div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <Crown size={12} /> Factions
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.faction.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {!!(c.tags || []).length && (
+        <div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <Layers size={12} /> Tags
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.tags.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {!!(c.stories || []).length && (
+        <div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <LibraryBig size={12} /> Stories
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.stories.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      <div>
+        <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+          <Atom size={12} /> Powers
+        </div>
+        <div className="space-y-1.5">
+          {(c.powers || []).map((p) => (
+            <div key={p.name}>
+              <div className="flex items-center justify-between text-[12px] font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
+              <PowerMeter level={p.level} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const Slot = ({ label, character, health, origin }) => {
+    if (!character)
+      return (
+        <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/60">
+          {label} empty. Choose a character.
+        </div>
+      );
+    const isWinner = winner?.id === character.id;
+    const isLoser = loser?.id === character.id;
+    return (
+      <motion.div
+        animate={isWinner ? { scale: 1.05 } : { scale: 1 }}
+        transition={{ type: "spring", stiffness: 220, damping: 18 }}
+        className={cx(
+          "relative rounded-2xl border border-white/15 bg-white/5 p-3",
+          isWinner ? "shadow-[0_0_30px_rgba(251,191,36,0.35)]" : ""
+        )}
+      >
+        <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/70">
+          <span>{label}</span>
+          <span>{origin?.label || "Origin"}</span>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-white/15">
+          <ImageSafe
+            src={character.cover || character.gallery?.[0]}
+            alt={character.name}
+            fallbackLabel={character.name}
+            className="h-32 w-full object-cover"
+          />
+          <AnimatePresence>
+            {loserMark && isLoser && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 flex items-center justify-center bg-red-600/40"
+              >
+                <span className="text-4xl font-black text-red-200">✕</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="text-sm font-extrabold">{character.name}</div>
+          <Badge className="bg-white/10 border border-white/20 text-[10px]">
+            {origin?.label || "Unknown"}
+          </Badge>
+        </div>
+        <div className="mt-2">
+          <HealthBar value={health} />
+        </div>
+        <div className="mt-2 text-[12px] text-white/80">
+          {character.shortDesc || character.longDesc}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button variant="ghost" onClick={() => onOpen(character)}>
+            Read More
+          </Button>
+          <Button variant="outline" onClick={() => release(character.id)}>
+            Release
+          </Button>
+        </div>
+        <div className="mt-3">
+          <StatBlock c={character} />
+        </div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <Card
+      className={cx(
+        "mt-6 bg-white/5 p-4 text-white backdrop-blur-xl md:p-6",
+        shake || pulse ? "ring-2 ring-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.25)]" : "",
+        animating ? "animate-[pulse_2s_ease-in-out_infinite]" : ""
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Swords />
+          <div className="text-lg font-black tracking-tight">Battle Arena</div>
+          <Badge className="bg-amber-300 text-black">Live</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={randomise} className="font-bold">
+            <RefreshCcw size={16} className="mr-1" /> Randomise
+          </Button>
+          <Button onClick={runFight} disabled={!canFight} className="font-black">
+            {animating ? "Simulating…" : "Fight"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
+        <Slot label="Fighter A" character={left} health={hp.left} origin={originLeft} />
+        <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden">
+          <motion.div
+            animate={
+              animating
+                ? {
+                    rotate: [0, -18, 22, -14, 14, 0],
+                    scale: [1, 1.08, 1],
+                    boxShadow: [
+                      "0 0 0px rgba(255,255,255,0.2)",
+                      "0 0 25px rgba(251,191,36,0.6)",
+                      "0 0 0px rgba(255,255,255,0.2)",
+                    ],
+                  }
+                : { rotate: 0, scale: 1, boxShadow: "0 0 0 rgba(0,0,0,0)" }
+            }
+            transition={{ duration: 0.6, repeat: animating ? Infinity : 0, ease: "easeInOut" }}
+            className="relative rounded-full border border-white/20 bg-white/10 p-4"
+          >
+            <Swords size={36} />
+            <AnimatePresence>
+              {explosion && (
+                <motion.span
+                  initial={{ scale: 0, opacity: 0.6 }}
+                  animate={{ scale: [0, 1.4, 1.8], opacity: [0.6, 0.35, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-amber-400/60 via-fuchsia-400/40 to-indigo-400/30"
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
+          {battle && (
+            <div className="text-center text-[11px] font-semibold text-white/70">
+              Phase {phase + 1}/{battle.logs.length}
+            </div>
+          )}
+          {winner && (
+            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-200 shadow-lg">
+              {winner.name}
+            </div>
+          )}
+        </div>
+        <Slot label="Fighter B" character={right} health={hp.right} origin={originRight} />
+      </div>
+
+      {battle && (
+        <div className="mt-4 grid gap-3 rounded-2xl border border-white/15 bg-white/5 p-4 text-xs md:grid-cols-2">
+          <div className="space-y-1">
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Power Spread</div>
+            <div className="font-bold text-white">{left?.name}: {battle.breakdown.s1} • {battle.breakdown.origin1.label}</div>
+            <div className="font-bold text-white">{right?.name}: {battle.breakdown.s2} • {battle.breakdown.origin2.label}</div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Luck Timeline</div>
+            <ul className="space-y-1 font-semibold">
+              {battle.logs.map((step) => (
+                <li key={step.swing}>
+                  Round {step.swing}: {left?.name} luck {step.luck1 >= 0 ? "+" : ""}{step.luck1}, {right?.name} luck {step.luck2 >= 0 ? "+" : ""}{step.luck2}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ChatDock() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      role: "bot",
+      text: "Welcome to the Loremaker concierge. Ask about characters, battles, or request spreadsheet syncs!",
+      ts: Date.now(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const trailRef = useRef(null);
 
   useEffect(() => {
-    const onScroll = () => {
-      const { scrollTop, clientHeight, scrollHeight } = document.documentElement;
-      setShowTop(scrollTop > 120 || Object.keys(filters).length > 0);
-      setShowBottom(scrollTop + clientHeight < scrollHeight - 200);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [filters]);
+    if (open) trailRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [open, messages]);
 
-  const arenaIds = useMemo(() => new Set([arenaSlots.left, arenaSlots.right].filter(Boolean)), [arenaSlots]);
-
-  const filtered = useMemo(() => {
-    let result = data.filter((char) => matchesFilters(char, filters, combineAND, query));
-    switch (sortOption) {
-      case "random": {
-        const rng = seededRandom(`sort|${todayKey()}`);
-        result = [...result].sort(() => rng() - 0.5);
-        break;
-      }
-      case "faction": {
-        result = [...result].sort((a, b) => (a.faction?.[0] || "").localeCompare(b.faction?.[0] || ""));
-        break;
-      }
-      case "az": {
-        result = [...result].sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      }
-      case "za": {
-        result = [...result].sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      }
-      case "power": {
-        result = [...result].sort((a, b) => scoreCharacter(b) - scoreCharacter(a));
-        break;
-      }
-      case "power-low": {
-        result = [...result].sort((a, b) => scoreCharacter(a) - scoreCharacter(b));
-        break;
-      }
-      default: {
-        result = [...result].sort((a, b) => (__SOURCE_ORDER.get(a.id) ?? 0) - (__SOURCE_ORDER.get(b.id) ?? 0));
-      }
-    }
-    return result.filter((char) => !arenaIds.has(char.id));
-  }, [data, filters, combineAND, query, sortOption, arenaIds]);
-
-  const handleFacet = (facet) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      const key = facet.key;
-      if (["locations", "faction", "tags", "era", "status", "stories", "alias", "powers"].includes(String(key))) {
-        const set = new Set([...(next[key] || []), facet.value]);
-        next[key] = Array.from(set);
+  const sendMessage = async () => {
+    const content = input.trim();
+    if (!content) return;
+    setMessages((prev) => [...prev, { role: "user", text: content, ts: Date.now() }]);
+    setInput("");
+    setSending(true);
+    try {
+      if (!CHATBOT_WEBHOOK) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "bot",
+            text: "Chatbot webhook is not configured yet. Please add NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK.",
+            ts: Date.now(),
+          },
+        ]);
       } else {
-        next[key] = facet.value;
+        const payload = {
+          message: content,
+          timestamp: new Date().toISOString(),
+          source: "loremaker",
+        };
+        const res = await fetch(CHATBOT_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        let reply = "Our lore AI has received your message!";
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          reply = data?.reply || data?.message || reply;
+        }
+        setMessages((prev) => [...prev, { role: "bot", text: reply, ts: Date.now() }]);
       }
-      return next;
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "We couldn't reach the chatbot right now. Please try again shortly.",
+          ts: Date.now(),
+        },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 left-6 z-50 text-white">
+      <motion.button
+        onClick={() => setOpen((v) => !v)}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.94 }}
+        className="flex items-center gap-2 rounded-full border border-white/30 bg-black/70 px-4 py-2 font-bold shadow-lg"
+      >
+        <MessageCircle size={16} /> {open ? "Hide" : "Chat"}
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: "spring", stiffness: 220, damping: 26 }}
+            className="mt-3 w-72 rounded-2xl border border-white/20 bg-black/80 p-3 backdrop-blur"
+          >
+            <div className="mb-2 flex items-center gap-2 text-sm font-extrabold">
+              <Bot size={16} /> Loremaker Live Chat
+            </div>
+            <div className="mb-3 max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
+              {messages.map((msg) => (
+                <div
+                  key={msg.ts + msg.role}
+                  className={cx(
+                    "rounded-xl border px-3 py-2",
+                    msg.role === "user"
+                      ? "ml-8 border-amber-300/40 bg-amber-300/10 text-amber-100"
+                      : "mr-8 border-white/20 bg-white/10 text-white"
+                  )}
+                >
+                  {msg.text}
+                </div>
+              ))}
+              <div ref={trailRef} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Send a message to the lore team"
+                className="flex-1 border-white/30 bg-white/10"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+              />
+              <Button onClick={sendMessage} disabled={sending} className="px-3">
+                <Send size={16} />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** -------------------- App -------------------- */
+export default function App() {
+  const { data, loading, error, refetch } = useCharacters();
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({});
+  const [combineAND, setCombineAND] = useState(false);
+  const [openFilters, setOpenFilters] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(null);
+  const [sortMode, setSortMode] = useState("default");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const [arenaPulse, setArenaPulse] = useState(false);
+  const visitTracked = useRef(false);
+
+  const onOpen = (c) => { setActive(c); setOpen(true); };
+
+  // if both slots full and user adds a third, replace the oldest
+  const onUseInSim = (id) => {
+    setSelectedIds((ids) => {
+      if (ids.includes(id)) return ids;
+      if (ids.length < 2) return [...ids, id];
+      return [ids[1], id]; // replace oldest
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setHighlightedId(id);
+    setArenaPulse(true);
+    setTimeout(() => setHighlightedId(null), 900);
+    setTimeout(() => setArenaPulse(false), 900);
+    // scroll to arena
+    const anchor = document.getElementById("arena-anchor");
+    if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const clearFilters = () => setFilters({});
+  const allValues = useMemo(() => ({
+    gender: Array.from(new Set(data.map((d) => d.gender).filter(Boolean))),
+    alignment: Array.from(new Set(data.map((d) => d.alignment).filter(Boolean))),
+    faction: Array.from(new Set(data.flatMap((d) => d.faction || []))),
+    locations: Array.from(new Set(data.flatMap((d) => d.locations || []))),
+    era: Array.from(new Set(data.map((d) => d.era).filter(Boolean))),
+    status: Array.from(new Set(data.map((d) => d.status).filter(Boolean))),
+    tags: Array.from(new Set(data.flatMap((d) => d.tags || []))),
+    powers: Array.from(new Set(data.flatMap((d) => d.powers.map((p) => p.name)))),
+  }), [data]);
 
-  const openCharacter = (char) => {
-    setCurrent(char);
-    setOpenModal(true);
-  };
+  const filtered = useMemo(() => data.filter((c) => matchesFilters(c, filters, combineAND, query)), [data, filters, combineAND, query]);
 
-  const closeCharacter = () => {
-    setOpenModal(false);
-  };
-
-  const useInSim = (id) => {
-    setArenaSlots((prev) => {
-      if (prev.left === id || prev.right === id) return prev;
-      if (!prev.left) return { ...prev, left: id };
-      if (!prev.right) return { ...prev, right: id };
-      return { left: id, right: prev.left };
-    });
-    setHighlightCard(id);
-    setArenaPulseKey(Date.now());
-    setShowArena(true);
-    setTimeout(() => setHighlightCard(null), 900);
-  };
-
-  const charactersForGrid = filtered;
-  const currentCharacter = current ? data.find((item) => item.id === current.id) : null;
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sortMode) {
+      case "random":
+        return arr.sort(() => Math.random() - 0.5);
+      case "faction":
+        return arr.sort((a, b) => String(a.faction?.[0] || "").localeCompare(String(b.faction?.[0] || "")));
+      case "az":
+        return arr.sort((a, b) => a.name.localeCompare(b.name));
+      case "za":
+        return arr.sort((a, b) => b.name.localeCompare(a.name));
+      case "most":
+        return arr.sort((a, b) => scoreCharacter(b) - scoreCharacter(a));
+      case "least":
+        return arr.sort((a, b) => scoreCharacter(a) - scoreCharacter(b));
+      default:
+        return arr;
+    }
+  }, [filtered, sortMode]);
 
   const hasStories = useMemo(() => data.some((item) => (item.stories || []).length), [data]);
+
+  useEffect(() => {
+    if (visitTracked.current) return;
+    if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
+    if (!data.length) return;
+    visitTracked.current = true;
+    fetch(TRACK_VISIT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        characters: data.length,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [data.length]);
 
   return (
     <div className="relative min-h-screen bg-[#070813] text-white">
@@ -1808,26 +2267,22 @@ export default function LoremakerApp() {
       <main className="mx-auto max-w-7xl space-y-10 px-4 py-8">
         <HeroSection data={data} onOpen={openCharacter} onFacet={handleFacet} />
 
-        <AnimatePresence>{showArena && (
-          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}>
-            <BattleArena
-              characters={data}
-              slots={arenaSlots}
-              setSlots={setArenaSlots}
-              onOpenCharacter={(char) => openCharacter(char)}
-              pulseKey={arenaPulseKey}
-            />
-          </motion.div>
-        )}</AnimatePresence>
+        {/* Arena pinned right under Hero */}
+        <div id="arena-anchor">
+          <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
+        </div>
 
-        {hasStories && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-[0.3em] text-white/70">
-              <Library size={14} /> Stories
-            </div>
-            <StoryChips data={data} onFacet={handleFacet} />
-          </section>
-        )}
+        <div className="mt-6">
+          <Controls
+            query={query}
+            setQuery={setQuery}
+            setOpenFilters={setOpenFilters}
+            sortMode={sortMode}
+            setSortMode={setSortMode}
+            onClear={clearAll}
+            onJumpArena={() => document.getElementById("arena-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          />
+        </div>
 
         <section className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
@@ -1836,8 +2291,16 @@ export default function LoremakerApp() {
           <SortBar option={sortOption} setOption={setSortOption} />
         </section>
 
-        {loading && <div className="text-lg font-black text-white">Loading characters from Google Sheets…</div>}
-        {error && <div className="text-lg font-black text-rose-200">{error}</div>}
+        <div className="mt-6">
+          <CharacterGrid
+            data={sorted.filter((c) => !selectedIds.includes(c.id))}
+            onOpen={onOpen}
+            onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))}
+            onUseInSim={onUseInSim}
+            highlightId={highlightedId}
+          />
+        </div>
+      </div>
 
         <CharacterGrid
           data={charactersForGrid}
@@ -1856,42 +2319,8 @@ export default function LoremakerApp() {
         onUseInSim={useInSim}
       />
 
-      {showFilters && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilters(false)} />
-          <motion.aside
-            initial={{ x: 420 }}
-            animate={{ x: 0 }}
-            exit={{ x: 420 }}
-            transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="absolute right-0 top-0 h-full w-[360px] overflow-y-auto border-l border-white/15 bg-black/60 backdrop-blur-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 text-white">
-              <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
-                <Filter className="text-amber-300" /> Filters
-              </div>
-              <Button variant="subtle" size="sm" onClick={() => setShowFilters(false)}>
-                Close
-              </Button>
-            </div>
-            <SidebarFilters
-              data={data}
-              filters={filters}
-              setFilters={setFilters}
-              combineAND={combineAND}
-              setCombineAND={setCombineAND}
-              onClear={clearFilters}
-            />
-          </motion.aside>
-        </div>
-      )}
-
-      <FloatingScrollControls showTop={showTop} showBottom={showBottom} />
-      <ChatWidget />
-
-      <footer className="mt-16 bg-gradient-to-r from-indigo-600/25 via-fuchsia-500/20 to-amber-300/25 py-10 text-center text-xs font-semibold text-white/60">
-        © {new Date().getFullYear()} Loremaker Universe — Powered by imagination and spreadsheets.
-      </footer>
+      <BackToTop />
+      <ChatDock />
     </div>
   );
 }
