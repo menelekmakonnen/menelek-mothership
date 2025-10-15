@@ -47,9 +47,9 @@ function Button({ variant = "solid", size = "md", className = "", children, as: 
     ghost: "text-white/80 hover:bg-white/10",
     gradient: "bg-gradient-to-r from-amber-400 via-fuchsia-400 to-indigo-500 text-black shadow-lg hover:brightness-110",
     destructive: "bg-red-600 text-white hover:bg-red-500",
-    outline: "border border-white/40 text-white hover:bg-white/10",
-    dark: "bg-black/70 text-white hover:bg-black",
-  };
+    radiant:
+      "bg-gradient-to-r from-amber-300 via-rose-400 to-fuchsia-500 text-black shadow-[0_10px_24px_rgba(251,191,36,0.35)] border border-amber-200/70 hover:brightness-110",
+  }[variant];
   return (
     <Tag className={cx(base, sizes[size], variants[variant] || variants.solid, className)} {...props}>
       {children}
@@ -548,154 +548,6 @@ function CharacterCard({ c, onOpen, onFacet, onUseInSim, highlight }) {
           <div className="flex gap-2 ml-3">
             <Button variant="secondary" className="font-bold" onClick={openProfile}>
               Read <ArrowRight className="ml-1" size={16} />
-            </Button>
-          </div>
-        </CardFooter>
-      </Card>
-    </motion.div>
-  );
-}
-
-function StoryChips({ data, onFacet }) {
-  const stories = useMemo(() => {
-    const counts = new Map();
-    for (const char of data) {
-      (char.stories || []).forEach((story) => counts.set(story, (counts.get(story) || 0) + 1));
-    }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([story]) => story);
-  }, [data]);
-  if (!stories.length) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {stories.map((story) => (
-        <FacetChip key={story} onClick={() => onFacet({ key: "stories", value: story })}>
-          {story}
-        </FacetChip>
-      ))}
-    </div>
-  );
-}
-
-const SORT_OPTIONS = [
-  { value: "default", label: "Default" },
-  { value: "random", label: "Random" },
-  { value: "faction", label: "By Faction" },
-  { value: "az", label: "A-Z" },
-  { value: "za", label: "Z-A" },
-  { value: "power", label: "From Most Powerful" },
-  { value: "power-low", label: "From Least Powerful" },
-];
-
-function SortBar({ option, setOption }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/15 bg-white/8 px-4 py-3">
-      <span className="text-xs font-bold uppercase tracking-wide text-white/70">Sort</span>
-      <div className="relative">
-        <select
-          value={option}
-          onChange={(event) => setOption(event.target.value)}
-          className="appearance-none rounded-xl border border-white/30 bg-black/70 px-4 py-2 pr-10 text-sm font-bold text-white shadow-inner focus:outline-none"
-        >
-          {SORT_OPTIONS.map((item) => (
-            <option key={item.value} value={item.value} className="bg-black text-white">
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <ArrowDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
-      </div>
-    </div>
-  );
-}
-
-function CharacterCard({ char, onOpen, onFacet, onUseInSim, highlight }) {
-  const [pulse, setPulse] = useState(false);
-  useEffect(() => {
-    if (!highlight) return;
-    setPulse(true);
-    const timer = setTimeout(() => setPulse(false), 900);
-    return () => clearTimeout(timer);
-  }, [highlight]);
-  const triggerSim = () => {
-    setPulse(true);
-    onUseInSim(char.id);
-    setTimeout(() => setPulse(false), 700);
-  };
-  return (
-    <motion.div
-      layout
-      animate={pulse ? { rotate: [0, -2, 2, -1, 1, 0], scale: [1, 1.02, 0.98, 1.01, 1] } : { rotate: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 230, damping: 18 }}
-    >
-      <Card className={cx("overflow-hidden bg-white/8", highlight ? "ring-2 ring-amber-300" : "")}
-        >
-        <div className="relative">
-          <button onClick={() => onOpen(char)} className="block h-56 w-full overflow-hidden">
-            <ImageSafe
-              src={char.cover || char.gallery[0]}
-              alt={char.name}
-              fallbackLabel={char.name}
-              className="h-56 w-full object-cover transition-transform duration-500 hover:scale-105"
-            />
-          </button>
-          <div className="absolute left-4 top-4 flex flex-col gap-2">
-            <div className="cursor-pointer" onClick={() => onOpen(char)}>
-              <Insignia label={char.faction?.[0] || char.name} size={44} variant={char.faction?.length ? "faction" : "character"} />
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              onClick={triggerSim}
-              className="rounded-full bg-gradient-to-r from-amber-300 to-rose-300 px-3 py-1 text-xs font-black text-black shadow-lg"
-            >
-              <Swords size={14} /> Simulate
-            </motion.button>
-          </div>
-        </div>
-        <CardHeader className="space-y-2">
-          <div className="flex items-center gap-3">
-            <Insignia label={char.faction?.[0] || char.name} size={32} variant={char.faction?.length ? "faction" : "character"} />
-            <CardTitle className="text-2xl text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
-              <button onClick={() => onOpen(char)} className="bg-gradient-to-r from-white via-amber-100 to-white bg-clip-text text-left text-transparent">
-                {char.name}
-              </button>
-            </CardTitle>
-          </div>
-          <CardDescription className="line-clamp-2 text-white/80">
-            {char.shortDesc || char.longDesc || "No description yet."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {char.gender && <FacetChip onClick={() => onFacet({ key: "gender", value: char.gender })}>{char.gender}</FacetChip>}
-            {char.alignment && <FacetChip onClick={() => onFacet({ key: "alignment", value: char.alignment })}>{char.alignment}</FacetChip>}
-            {(char.locations || []).slice(0, 2).map((loc) => (
-              <FacetChip key={loc} onClick={() => onFacet({ key: "locations", value: loc })}>
-                {loc}
-              </FacetChip>
-            ))}
-            {(char.faction || []).slice(0, 1).map((faction) => (
-              <FacetChip key={faction} onClick={() => onFacet({ key: "faction", value: faction })}>
-                {faction}
-              </FacetChip>
-            ))}
-          </div>
-          <div className="space-y-1 text-xs font-bold text-white">
-            {(char.powers || []).slice(0, 1).map((power) => (
-              <div key={power.name} className="flex items-center justify-between">
-                <span className="truncate pr-2">{power.name}</span>
-                <span>{power.level}/10</span>
-              </div>
-            ))}
-            <PowerMeter level={char.powers?.[0]?.level ?? 0} />
-          </div>
-        </CardContent>
-        <CardFooter className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <Button variant="gradient" size="sm" onClick={() => onOpen(char)}>
-              Read <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </CardFooter>
@@ -1618,30 +1470,36 @@ function ChatWidget() {
 }
 
 function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
+  const sortOptions = [
+    { value: "default", label: "Default" },
+    { value: "random", label: "Random" },
+    { value: "faction", label: "By Faction" },
+    { value: "az", label: "A-Z" },
+    { value: "za", label: "Z-A" },
+    { value: "most", label: "From Most Powerful" },
+    { value: "least", label: "From Least Powerful" },
+  ];
   return (
-    <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
-      <div className="flex-1">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+        <div className="flex-1">
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button variant="radiant" onClick={() => setOpenFilters(true)} className="font-black tracking-wide">
+            <Filter className="mr-1" size={16} /> Filters
+          </Button>
+          <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
+          <Button variant="secondary" onClick={onJumpArena} className="font-bold">Arena</Button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <select
-          value={sortMode}
-          onChange={(e) => setSortMode(e.target.value)}
-          className="rounded-xl border border-amber-300/60 bg-gradient-to-r from-black/80 via-slate-900/80 to-black/70 px-3 py-2 text-sm font-black text-amber-200"
-        >
-          <option value="default">Default</option>
-          <option value="random">Random</option>
-          <option value="faction">By Faction</option>
-          <option value="az">A-Z</option>
-          <option value="za">Z-A</option>
-          <option value="most">From Most Powerful</option>
-          <option value="least">From Least Powerful</option>
-        </select>
-        <Button variant="outline" onClick={() => setOpenFilters(true)} className="font-bold border-amber-300 bg-amber-300/20 text-amber-200">
-          <Filter className="mr-1" size={16} /> Filters
-        </Button>
-        <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
-        <Button variant="secondary" onClick={onJumpArena} className="font-bold">Arena</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs uppercase tracking-widest font-extrabold text-white/70">Sort:</span>
+        {sortOptions.map((opt) => (
+          <FacetChip key={opt.value} active={sortMode === opt.value} onClick={() => setSortMode(opt.value)}>
+            {opt.label}
+          </FacetChip>
+        ))}
       </div>
     </div>
   );
@@ -1671,6 +1529,13 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
       return () => clearTimeout(t);
     }
   }, [selectedIds.join("|")]);
+
+  useEffect(() => {
+    if (!pulse) return undefined;
+    setShake(true);
+    const t = setTimeout(() => setShake(false), 600);
+    return () => clearTimeout(t);
+  }, [pulse]);
 
   useEffect(() => {
     if (!pulse) return undefined;
@@ -2210,6 +2075,22 @@ export default function App() {
   }, [filtered, sortMode]);
 
   const hasStories = useMemo(() => data.some((item) => (item.stories || []).length), [data]);
+
+  useEffect(() => {
+    if (visitTracked.current) return;
+    if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
+    if (!data.length) return;
+    visitTracked.current = true;
+    fetch(TRACK_VISIT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        characters: data.length,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [data.length]);
 
   useEffect(() => {
     if (visitTracked.current) return;
