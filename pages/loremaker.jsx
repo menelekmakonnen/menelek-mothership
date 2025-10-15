@@ -170,16 +170,18 @@ function normalizeDriveUrl(url) {
   if (!url) return undefined;
   try {
     const u = new URL(url);
-    if (u.hostname.includes("drive.google.com")) {
-      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
-      const id = (m && m[1]) || u.searchParams.get("id");
+    const host = u.hostname;
+    if (host.includes("drive.google.com") || host.includes("drive.usercontent.google.com")) {
+      const pathMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = (pathMatch && pathMatch[1]) || u.searchParams.get("id");
       if (id) return directDriveUrl(id);
       if (u.pathname.startsWith("/uc") && u.searchParams.get("id")) {
         u.searchParams.set("export", "view");
         return u.toString();
       }
     }
-    if (/^lh\d+\.googleusercontent\.com$/i.test(url.split("//")[1]?.split("/")[0] || "")) {
+    const immediateHost = url.split("//")[1]?.split("/")[0] || "";
+    if (/^lh\d+\.googleusercontent\.com$/i.test(immediateHost) || /drive\.googleusercontent\.com$/i.test(immediateHost)) {
       return url;
     }
     return url;
@@ -191,10 +193,10 @@ function normalizeDriveUrl(url) {
 function extractDriveImages(text) {
   if (!text) return [];
   const urls = new Set();
-  const directRx = /https?:\/\/drive\.google\.com\/(?:file\/d\/([a-zA-Z0-9_-]+)|open\?id=([a-zA-Z0-9_-]+)|uc\?(?:[^\s]*?&)?id=([a-zA-Z0-9_-]+)|thumbnail\?id=([a-zA-Z0-9_-]+))/gi;
+  const directRx = /https?:\/\/(?:drive\.google\.com|drive\.usercontent\.google\.com)\/(?:file\/d\/([a-zA-Z0-9_-]+)|open\?id=([a-zA-Z0-9_-]+)|(?:u\/\d\/)?uc\?(?:[^\s]*?&)?id=([a-zA-Z0-9_-]+)|thumbnail\?id=([a-zA-Z0-9_-]+)|download\?id=([a-zA-Z0-9_-]+))/gi;
   let match;
   while ((match = directRx.exec(text))) {
-    const id = match[1] || match[2] || match[3] || match[4];
+    const id = match[1] || match[2] || match[3] || match[4] || match[5];
     if (id) urls.add(directDriveUrl(id));
   }
   const cdnRx = /https?:\/\/lh\d+\.googleusercontent\.com\/[a-zA-Z0-9_\-\/=.]+/gi;
@@ -939,6 +941,57 @@ function HeroSection({ data, onOpen, onFacet }) {
             </div>
             <div className="text-2xl font-extrabold">{character.name}</div>
             <div className="font-bold line-clamp-3 text-white/90">{character.shortDesc || character.longDesc}</div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen(character);
+                }}
+                className="bg-white text-black hover:bg-white/90"
+              >
+                Character Profile
+              </Button>
+              {character.faction?.map((factionName) => (
+                <Button
+                  key={`hero-faction-${factionName}`}
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFacet({ key: "faction", value: factionName });
+                  }}
+                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                >
+                  {factionName}
+                </Button>
+              ))}
+              {character.gender && (
+                <Button
+                  key="hero-gender"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFacet({ key: "gender", value: character.gender });
+                  }}
+                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                >
+                  {character.gender}
+                </Button>
+              )}
+              {(character.powers || []).slice(0, 3).map((p) => (
+                <Button
+                  key={`hero-power-${p.name}`}
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFacet({ key: "powers", value: p.name });
+                  }}
+                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                >
+                  {p.name}
+                </Button>
+              ))}
+            </div>
             <div className="mt-auto text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to open profile</div>
           </div>
         </div>
@@ -958,7 +1011,16 @@ function HeroSection({ data, onOpen, onFacet }) {
               <div className="text-2xl font-extrabold">{String(faction)}</div>
             </div>
           </div>
-          <div className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to view members</div>
+          <Button
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFacet({ key: "faction", value: String(faction) });
+            }}
+            className="bg-white text-black hover:bg-white/90"
+          >
+            View Members
+          </Button>
         </div>
       ),
     });
@@ -976,7 +1038,16 @@ function HeroSection({ data, onOpen, onFacet }) {
               <div className="text-2xl font-extrabold">{String(location)}</div>
             </div>
           </div>
-          <div className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to filter residents</div>
+          <Button
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFacet({ key: "locations", value: String(location) });
+            }}
+            className="bg-white text-black hover:bg-white/90"
+          >
+            View Residents
+          </Button>
         </div>
       ),
     });
@@ -994,7 +1065,16 @@ function HeroSection({ data, onOpen, onFacet }) {
               <div className="text-2xl font-extrabold">{String(power)}</div>
             </div>
           </div>
-          <div className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to see wielders</div>
+          <Button
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFacet({ key: "powers", value: String(power) });
+            }}
+            className="bg-white text-black hover:bg-white/90"
+          >
+            View Wielders
+          </Button>
         </div>
       ),
     });
@@ -1092,6 +1172,14 @@ const SITE_MENU = [
   { label: "AI Consultancy", description: "ICUNI — intelligence crafted", href: "https://icuni.co.uk", icon: Cpu, external: true },
   { label: "Blog", description: "Latest essays and updates", href: "/#blog", icon: Newspaper },
   { label: "Loremaker Database", description: "Dive deeper into the universe", href: "/loremaker", icon: Sparkles },
+];
+
+const LORE_NAV_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "Biography", href: "/#bio" },
+  { label: "AI", href: "https://icuni.co.uk", external: true },
+  { label: "Loremaker", href: "/loremaker" },
+  { label: "Blog", href: "/#blog" },
 ];
 
 const SITE_SOCIALS = [
@@ -1350,6 +1438,35 @@ function LoreGlyph({ onRefresh }) {
   );
 }
 
+function LoreTopNav({ onRefresh }) {
+  return (
+    <nav className="rounded-2xl border border-white/15 bg-black/45 px-4 py-3 backdrop-blur">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-3">
+          <LoreGlyph onRefresh={onRefresh} />
+          <div className="hidden sm:flex flex-col leading-tight">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.4em] text-white/60">Menelek Makonnen</span>
+            <span className="text-sm font-semibold text-white/80">Universe Portal</span>
+          </div>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-4 text-sm font-semibold text-white/70">
+          {LORE_NAV_LINKS.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noreferrer" : undefined}
+              className="rounded-xl border border-white/10 px-3 py-1.5 transition hover:border-amber-300/70 hover:text-white hover:bg-white/10"
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 /** Filters Drawer */
 function FiltersDrawer({ open, onClose, values, filters, setFilters, combineAND, setCombineAND }) {
   if (!open) return null;
@@ -1380,13 +1497,16 @@ function FiltersDrawer({ open, onClose, values, filters, setFilters, combineAND,
           <div className="text-lg font-black tracking-tight">Filters</div>
           <Button variant="ghost" onClick={onClose}><X /></Button>
         </div>
-        <div className="mb-5 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-white/70">
-          <span>Mode</span>
-          <div className="flex items-center gap-2 normal-case">
-            <Badge className="bg-white/15 border border-white/25 text-[10px]">{combineAND ? "AND" : "Single"}</Badge>
-            <Switch id="and-mode" checked={combineAND} onChange={setCombineAND} />
-          </div>
-        </div>
+    <div className="mb-5 rounded-2xl border border-white/15 bg-white/5 p-3">
+      <div className="mb-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-[0.3em] text-white/70">
+        <span>Match Mode</span>
+        <Badge className="bg-white/15 border border-white/25 text-[10px]">{combineAND ? "AND" : "Single"}</Badge>
+      </div>
+      <div className="flex items-center justify-between text-xs text-white/70">
+        <span>Require all selected facets</span>
+        <Switch id="and-mode" checked={combineAND} onChange={setCombineAND} />
+      </div>
+    </div>
         <div className="space-y-5">
           {values.gender.length > 0 && <Section title="Gender" keyName="gender" items={values.gender} />}
           {values.alignment.length > 0 && <Section title="Alignment" keyName="alignment" items={values.alignment} />}
@@ -1499,7 +1619,7 @@ function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onCl
           <Button
             variant="ghost"
             onClick={() => setOpenFilters(true)}
-            className="font-black border border-amber-200 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] hover:bg-amber-200 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)] md:hidden"
+            className="font-black border border-amber-200 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] hover:bg-amber-200 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)]"
           >
             <Filter className="mr-1" size={16} /> Filters
           </Button>
@@ -1570,7 +1690,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     setHp((prev) => ({ ...prev, [side]: 100 }));
   };
 
-  const randomiseContestant = (side) => {
+  const randomiseCharacter = (side) => {
     if (!data.length) return;
     const otherId = side === "left" ? selectedIds[1] : selectedIds[0];
     const currentId = side === "left" ? selectedIds[0] : selectedIds[1];
@@ -1585,6 +1705,16 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     setLoserMark(false);
     setBattle(null);
     setPhase(-1);
+  };
+
+  const randomiseNext = () => {
+    if (!selectedIds[0]) {
+      randomiseCharacter("left");
+    } else if (!selectedIds[1]) {
+      randomiseCharacter("right");
+    } else {
+      randomiseCharacter("left");
+    }
   };
 
   const runFight = () => {
@@ -1702,7 +1832,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
       {!!(c.stories || []).length && (
         <div>
           <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
-            <LibraryBig size={12} /> Stories
+            <BookOpen size={12} /> Stories
           </div>
           <div className="flex flex-wrap gap-2">
             {c.stories.map((v) => (
@@ -1735,11 +1865,11 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
   const Slot = ({ label, side, character, health, origin }) => {
     if (!character)
       return (
-        <div className="flex flex-col gap-3 rounded-xl border border-white/15 bg-white/5 p-4 text-sm text-white/70">
+        <div className="flex flex-col gap-3 rounded-xl border border-white/15 bg-white/5 p-4 text-sm text-white/70 md:p-6">
           <div className="font-extrabold uppercase tracking-widest text-white/60">{label}</div>
-          <div>Summon a contestant from the roster or let the arena pick one for you.</div>
-          <Button variant="secondary" onClick={() => randomiseContestant(side)} className="font-black">
-            Random Contestant
+          <div>Summon a character from the roster or let the arena pick one for you.</div>
+          <Button variant="secondary" onClick={() => randomiseCharacter(side)} className="font-black">
+            Random Character
           </Button>
         </div>
       );
@@ -1750,7 +1880,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
         animate={isWinner ? { scale: 1.05 } : { scale: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 18 }}
         className={cx(
-          "relative rounded-2xl border border-white/15 bg-white/5 p-3",
+          "relative rounded-2xl border border-white/15 bg-white/5 p-3 md:p-5",
           isWinner ? "shadow-[0_0_30px_rgba(251,191,36,0.35)]" : ""
         )}
       >
@@ -1798,8 +1928,8 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
           <Button variant="outline" onClick={() => release(side)}>
             Release
           </Button>
-          <Button variant="ghost" onClick={() => randomiseContestant(side)}>
-            Random Contestant
+          <Button variant="ghost" onClick={() => randomiseCharacter(side)}>
+            Random Character
           </Button>
         </div>
         <div className="mt-3">
@@ -1824,14 +1954,17 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
             <Badge className="bg-amber-300 text-black">Live</Badge>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={randomiseNext} className="font-bold">
+              Randomise Next
+            </Button>
             <Button onClick={runFight} disabled={!canFight} className="font-black">
               {animating ? "Simulating…" : "Fight"}
             </Button>
           </div>
         </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
-        <Slot label="Contestant One" side="left" character={left} health={hp.left} origin={originLeft} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1.2fr)] md:items-stretch">
+        <Slot label="Character One" side="left" character={left} health={hp.left} origin={originLeft} />
         <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden">
           <motion.div
             animate={
@@ -1869,12 +2002,12 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
             </div>
           )}
           {winner && (
-            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-400 shadow-lg">
+            <div className="rounded-full bg-amber-300 px-4 py-1 text-sm font-black text-black shadow-lg">
               Champion: {winner.name}
             </div>
           )}
         </div>
-        <Slot label="Contestant Two" side="right" character={right} health={hp.right} origin={originRight} />
+        <Slot label="Character Two" side="right" character={right} health={hp.right} origin={originRight} />
       </div>
 
       {battle && (
@@ -2122,23 +2255,21 @@ export default function App() {
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Aurora />
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div className="flex items-start gap-3">
-            <LoreGlyph onRefresh={() => refetch()} />
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window !== "undefined") window.location.href = "/loremaker";
-                }}
-                className="text-left text-2xl md:text-3xl font-black tracking-tight text-white hover:text-amber-200 transition"
-              >
-                Loremaker Universe
-              </button>
-              <p className="mt-2 max-w-2xl text-sm text-white/80 leading-relaxed">
-                Explore every storyline, faction, and mythic ability woven through Menelek Makonnen’s expanding cosmos. Filter the archive, dive into detailed dossiers, and summon characters into the Arena.
-              </p>
-            </div>
+        <LoreTopNav onRefresh={() => refetch()} />
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") window.location.href = "/loremaker";
+              }}
+              className="text-left text-2xl md:text-3xl font-black tracking-tight text-white hover:text-amber-200 transition"
+            >
+              Loremaker Universe
+            </button>
+            <p className="mt-2 max-w-2xl text-sm text-white/80 leading-relaxed">
+              Explore every storyline, faction, and mythic ability woven through Menelek Makonnen’s expanding cosmos. Filter the archive, dive into detailed dossiers, and summon characters into the Arena.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button
