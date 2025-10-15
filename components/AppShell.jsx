@@ -1422,8 +1422,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.</div>
       </div>
@@ -2937,6 +2937,8 @@ export default function AppShell() {
             </section>
             <FeaturedUniverse />
             <Blog />
+            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
+            <section className="py-6" id="contact"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
           </>
         )}
         {route === "bio" && <Biography />}
