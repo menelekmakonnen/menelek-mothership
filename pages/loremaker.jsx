@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Search,
-  RefreshCcw,
   X,
   ArrowDown,
   ArrowRight,
@@ -150,19 +149,59 @@ const GALLERY_ALIASES = Array.from({ length: 15 }, (_, i) => i + 1).map((n) => [
 let __SOURCE_ORDER = new Map();
 
 const toSlug = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+const directDriveUrl = (id, resourceKey) => {
+  if (!id) return undefined;
+  const url = new URL("https://drive.google.com/uc");
+  url.searchParams.set("export", "view");
+  url.searchParams.set("id", id);
+  if (resourceKey) url.searchParams.set("resourcekey", resourceKey);
+  return url.toString();
+};
 function normalizeDriveUrl(url) {
   if (!url) return undefined;
+  const input = typeof url === "string" ? url.trim() : url;
+  if (!input) return undefined;
   try {
-    const u = new URL(url);
+    const u = new URL(input);
     if (u.hostname.includes("drive.google.com")) {
-      const match = u.pathname.match(/\/file\/d\/([^/]+)/);
-      const id = (match && match[1]) || u.searchParams.get("id");
-      if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = (m && m[1]) || u.searchParams.get("id") || u.searchParams.get("resid");
+      const resourceKey = u.searchParams.get("resourcekey") || undefined;
+      if (id) return directDriveUrl(id, resourceKey);
+      if (u.pathname.startsWith("/uc") && u.searchParams.get("id")) {
+        if (!u.searchParams.has("export")) {
+          u.searchParams.set("export", "view");
+        }
+        return u.toString();
+      }
+      if (u.pathname.startsWith("/thumbnail") && u.searchParams.get("id")) {
+        return directDriveUrl(u.searchParams.get("id"), resourceKey);
+      }
     }
-    return url;
+    if (/^lh\d+\.googleusercontent\.com$/i.test(u.hostname)) {
+      return u.toString();
+    }
+    return input;
   } catch {
-    return url;
+    return input;
   }
+}
+
+function extractDriveImages(text) {
+  if (!text) return [];
+  const urls = new Set();
+  const patterns = [
+    /https?:\/\/[^\s"']*drive\.google\.com[^\s"']*/gi,
+    /https?:\/\/lh\d+\.googleusercontent\.com[^\s"']*/gi,
+  ];
+  patterns.forEach((regex) => {
+    const matches = text.match(regex) || [];
+    matches.forEach((raw) => {
+      const normalized = normalizeDriveUrl(raw);
+      if (normalized) urls.add(normalized);
+    });
+  });
+  return Array.from(urls);
 }
 function splitList(raw) {
   if (!raw) return [];
@@ -269,6 +308,21 @@ function rowToCharacter(row, map) {
   for (let i = 1; i <= 15; i++) {
     const url = read(`gallery_${i}`);
     if (url) char.gallery.push(normalizeDriveUrl(url));
+  }
+  const descImages = extractDriveImages([char.shortDesc, char.longDesc, (row.map((cell) => cell?.v || cell?.f || "") || []).join(" ")].join(" \n "));
+  const uniqueGallery = new Set(char.gallery.filter(Boolean));
+  if (!char.cover && descImages.length) {
+    char.cover = descImages[0];
+    uniqueGallery.add(descImages[0]);
+  }
+  descImages.forEach((img) => {
+    if (!uniqueGallery.has(img)) {
+      uniqueGallery.add(img);
+    }
+  });
+  char.gallery = Array.from(uniqueGallery);
+  if (char.cover) {
+    char.gallery = [char.cover, ...char.gallery.filter((img) => img !== char.cover)];
   }
   return char;
 }
@@ -676,26 +730,26 @@ function CharacterCard({ char, onOpen, onFacet, onUseInSim, highlight }) {
                 {loc}
               </FacetChip>
             ))}
-            {(char.faction || []).slice(0, 1).map((faction) => (
-              <FacetChip key={faction} onClick={() => onFacet({ key: "faction", value: faction })}>
-                {faction}
+            {c.faction?.slice(0, 1).map((f) => (
+              <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
+                {f}
               </FacetChip>
             ))}
           </div>
-          <div className="space-y-1 text-xs font-bold text-white">
-            {(char.powers || []).slice(0, 1).map((power) => (
-              <div key={power.name} className="flex items-center justify-between">
-                <span className="truncate pr-2">{power.name}</span>
-                <span>{power.level}/10</span>
-              </div>
-            ))}
-            <PowerMeter level={char.powers?.[0]?.level ?? 0} />
-          </div>
         </CardContent>
         <CardFooter className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <Button variant="gradient" size="sm" onClick={() => onOpen(char)}>
-              Read <ArrowRight className="h-4 w-4" />
+          <div className="w-full">
+            {c.powers?.slice(0, 1).map((p) => (
+              <div key={p.name} className="text-xs mb-1 flex items-center justify-between text-white font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
+            ))}
+            <PowerMeter level={c.powers?.[0]?.level ?? 0} />
+          </div>
+          <div className="flex gap-2 ml-3">
+            <Button variant="secondary" className="font-bold" onClick={openProfile}>
+              Read <ArrowRight className="ml-1" size={16} />
             </Button>
           </div>
         </CardFooter>
@@ -901,97 +955,183 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
                 </div>
               </div>
             </div>
-          ),
-        },
-      ]
-    : [])
-    .concat(
-      faction
-        ? [
-            {
-              type: "Faction",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(faction)} size={56} variant="faction" />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
-                      <div className="text-2xl font-extrabold">{String(faction)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "faction", value: String(faction) })} className="font-bold">
-                    View Members
+            <div className="text-2xl font-extrabold">{character.name}</div>
+            <div className="font-bold line-clamp-3 text-white/90">{character.shortDesc || character.longDesc}</div>
+            <div className="mt-auto space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen(character);
+                  }}
+                  className="bg-white text-black hover:bg-amber-200 px-3 py-1 text-[11px] uppercase tracking-[0.25em]"
+                >
+                  Character Profile
+                </Button>
+                {character.gender && (
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFacet({ key: "gender", value: character.gender });
+                    }}
+                    className="bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white hover:bg-white/25"
+                  >
+                    {character.gender}
                   </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      location
-        ? [
-            {
-              type: "Location",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(location)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
-                      <div className="text-2xl font-extrabold">{String(location)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "locations", value: String(location) })} className="font-bold">
-                    View Residents
+                )}
+                {(character.faction || []).map((f) => (
+                  <Button
+                    key={`f-${f}`}
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFacet({ key: "faction", value: f });
+                    }}
+                    className="bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white hover:bg-white/25"
+                  >
+                    {f}
                   </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      power
-        ? [
-            {
-              type: "Power",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(power)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
-                      <div className="text-2xl font-extrabold">{String(power)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "powers", value: String(power) })} className="font-bold">
-                    View Wielders
+                ))}
+                {(character.powers || []).map((p) => (
+                  <Button
+                    key={`p-${p.name}`}
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFacet({ key: "powers", value: p.name });
+                    }}
+                    className="bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white hover:bg-white/25"
+                  >
+                    {p.name}
                   </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    );
+                ))}
+              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">Click hero or buttons to explore</div>
+            </div>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (faction) {
+    slides.push({
+      type: "Faction",
+      onClick: () => onFacet({ key: "faction", value: String(faction) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(faction)} size={56} variant="faction" />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
+              <div className="text-2xl font-extrabold">{String(faction)}</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFacet({ key: "faction", value: String(faction) });
+              }}
+              className="bg-white text-black px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.3em]"
+            >
+              View Members
+            </Button>
+            <span>Click card for the same</span>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (location) {
+    slides.push({
+      type: "Location",
+      onClick: () => onFacet({ key: "locations", value: String(location) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(location)} size={56} />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
+              <div className="text-2xl font-extrabold">{String(location)}</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFacet({ key: "locations", value: String(location) });
+              }}
+              className="bg-white text-black px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.3em]"
+            >
+              View Residents
+            </Button>
+            <span>Click card to filter</span>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (power) {
+    slides.push({
+      type: "Power",
+      onClick: () => onFacet({ key: "powers", value: String(power) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(power)} size={56} />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
+              <div className="text-2xl font-extrabold">{String(power)}</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFacet({ key: "powers", value: String(power) });
+              }}
+              className="bg-white text-black px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.3em]"
+            >
+              See Wielders
+            </Button>
+            <span>Click card to explore</span>
+          </div>
+        </div>
+      ),
+    });
+  }
   const [idx, setIdx] = useState(0);
-  const handleKey = (e) => {
-    if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
-    if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
-  };
+  const activeRef = useRef(null);
   useEffect(() => {
+    if (!slides.length) return undefined;
+    const handleKey = (e) => {
+      if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
+      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
+      if ((e.key === "Enter" || e.key === " ") && document.activeElement === activeRef.current) {
+        e.preventDefault();
+        slides[idx].onClick?.();
+      }
+    };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [slides.length]);
+  }, [slides.length, idx, slides]);
+  useEffect(() => {
+    if (idx >= slides.length) setIdx(0);
+  }, [slides.length, idx]);
   if (!slides.length) return null;
+  const activeSlide = slides[idx];
   return (
-    <Card className="bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 border-white/20 backdrop-blur-xl overflow-hidden text-white">
+    <Card className="overflow-hidden border-white/20 bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 text-white backdrop-blur-xl">
       <div className="flex items-center justify-between px-4 pt-3">
         <div className="flex items-center gap-2 text-sm font-extrabold tracking-[0.35em] uppercase">
           <Sparkles size={16} /> Today’s Featured
         </div>
         <div className="flex gap-2 text-xs font-bold">
-          <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
+          <span>{activeSlide.type}</span> <span>•</span> <span>{todayKey()}</span>
         </div>
       </div>
     </div>
@@ -1619,9 +1759,13 @@ function ChatWidget() {
 
 function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex-1">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search characters, powers, locations…"
+        />
       </div>
       <div className="flex items-center gap-2">
         <select
@@ -1665,7 +1809,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
   const originRight = right ? powerOriginProfile(right) : null;
 
   useEffect(() => {
-    if (selectedIds.length) {
+    if (selectedIds.some(Boolean)) {
       setShake(true);
       const t = setTimeout(() => setShake(false), 500);
       return () => clearTimeout(t);
@@ -1944,7 +2088,56 @@ export default function LoremakerApp() {
             {animating ? "Simulating…" : "Fight"}
           </Button>
         </div>
-      </div>
+        <div className="overflow-hidden rounded-xl border border-white/15">
+          <ImageSafe
+            src={character.cover || character.gallery?.[0]}
+            alt={character.name}
+            fallbackLabel={character.name}
+            className="h-36 w-full object-cover md:h-44"
+          />
+          <AnimatePresence>
+            {loserMark && isLoser && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 flex items-center justify-center bg-red-600/40"
+              >
+                <span className="text-4xl font-black text-red-200">✕</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="text-sm font-extrabold">{character.name}</div>
+          <Badge className="bg-white/10 border border-white/20 text-[10px]">
+            {origin?.label || "Unknown"}
+          </Badge>
+        </div>
+        <div className="mt-2">
+          <HealthBar value={health} />
+        </div>
+        <div className="mt-2 text-[12px] text-white/80">
+          {character.shortDesc || character.longDesc}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button variant="ghost" onClick={() => onOpen(character)}>
+            Read More
+          </Button>
+          <Button variant="outline" onClick={() => release(side)}>
+            Release
+          </Button>
+          <Button variant="ghost" onClick={() => randomiseCharacter(side)}>
+            Random Character
+          </Button>
+        </div>
+        <div className="mt-3">
+          <StatBlock c={character} />
+        </div>
+      </motion.div>
+    );
+  };
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
         <Slot label="Fighter A" character={left} health={hp.left} origin={originLeft} />
@@ -2163,9 +2356,14 @@ export default function App() {
   // if both slots full and user adds a third, replace the oldest
   const onUseInSim = (id) => {
     setSelectedIds((ids) => {
-      if (ids.includes(id)) return ids;
-      if (ids.length < 2) return [...ids, id];
-      return [ids[1], id]; // replace oldest
+      const next = Array.isArray(ids) && ids.length === 2 ? [...ids] : [ids[0] || null, ids[1] || null];
+      if (next.includes(id)) return next;
+      const emptyIdx = next.findIndex((slot) => !slot);
+      if (emptyIdx !== -1) {
+        next[emptyIdx] = id;
+        return next;
+      }
+      return [next[1], id];
     });
     setHighlightedId(id);
     setArenaPulse(true);
@@ -2210,6 +2408,22 @@ export default function App() {
   }, [filtered, sortMode]);
 
   const hasStories = useMemo(() => data.some((item) => (item.stories || []).length), [data]);
+
+  useEffect(() => {
+    if (visitTracked.current) return;
+    if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
+    if (!data.length) return;
+    visitTracked.current = true;
+    fetch(TRACK_VISIT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        characters: data.length,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [data.length]);
 
   useEffect(() => {
     if (visitTracked.current) return;
@@ -2280,7 +2494,8 @@ export default function App() {
             sortMode={sortMode}
             setSortMode={setSortMode}
             onClear={clearAll}
-            onJumpArena={() => document.getElementById("arena-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onToggleArena={() => setArenaVisible((v) => !v)}
+            arenaVisible={arenaVisible}
           />
         </div>
 
@@ -2300,6 +2515,8 @@ export default function App() {
             highlightId={highlightedId}
           />
         </div>
+
+        <SiteMenuSection />
       </div>
 
         <CharacterGrid
