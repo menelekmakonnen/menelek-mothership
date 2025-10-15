@@ -4,7 +4,6 @@ import {
   Search,
   RefreshCcw,
   X,
-  ArrowUp,
   ArrowDown,
   ArrowRight,
   ChevronLeft,
@@ -15,6 +14,7 @@ import {
   Layers,
   Atom,
   Clock,
+  Library,
   Crown,
   Swords,
   Sparkles,
@@ -24,93 +24,86 @@ import {
 } from "lucide-react";
 
 /**
- * LOREMAKER — Ultra build (plain JSX, no TS)
- * - Filters are a slide‑in drawer (hidden by default). No dropdowns anywhere.
- * - Bright text everywhere except Arena (high contrast as requested).
- * - Manual Hero slider (fixed height, keyboard arrows enabled). No auto-slide.
- * - Hover-only "Simulate" button near insignia on cards; tactile pulse on click.
- * - Syncs live from Google Sheets via GViz. Gallery/cover Drive links normalized.
- * - No external UI imports (shadcn). Minimal in-file UI components to avoid module errors.
+ * Ultra interactive Loremaker experience
+ * - Loads characters from Google Sheets (GViz)
+ * - Daily seeded hero carousel + power seeding
+ * - Sliding filters drawer, animated arena, chat webhook bridge
  */
 
-/** -------------------- Tiny UI kit (no external imports) -------------------- */
 function cx(...classes) {
   return classes.filter(Boolean).join(" ");
 }
-function Button({ variant = "default", className = "", children, as: Tag = "button", ...props }) {
-  const base =
-    "inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-extrabold transition active:scale-[.98] focus:outline-none focus:ring-2 focus:ring-offset-0";
-  const styles = {
-    default: "bg.white text-black hover:bg-white/90".replace(".", "-"),
-    secondary: "bg-black/70 text-white hover:bg-black",
-    outline: "border border-white/30 text-white hover:bg-white/10",
-    ghost: "text-white/90 hover:bg-white/10",
+
+function Button({ variant = "solid", size = "md", className = "", children, as: Tag = "button", ...props }) {
+  const base = "inline-flex items-center justify-center gap-2 font-extrabold rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0";
+  const sizes = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-4 py-2 text-sm",
+    lg: "px-5 py-3 text-base",
+  };
+  const variants = {
+    solid: "bg-white text-black hover:bg-white/90",
+    subtle: "bg-white/10 text-white hover:bg-white/20 border border-white/20",
+    ghost: "text-white/80 hover:bg-white/10",
+    gradient: "bg-gradient-to-r from-amber-400 via-fuchsia-400 to-indigo-500 text-black shadow-lg hover:brightness-110",
     destructive: "bg-red-600 text-white hover:bg-red-500",
     radiant:
       "bg-gradient-to-r from-amber-300 via-rose-400 to-fuchsia-500 text-black shadow-[0_10px_24px_rgba(251,191,36,0.35)] border border-amber-200/70 hover:brightness-110",
   }[variant];
   return (
-    <Tag className={cx(base, styles, className)} {...props}>
+    <Tag className={cx(base, sizes[size], variants[variant] || variants.solid, className)} {...props}>
       {children}
     </Tag>
   );
 }
+
 function Card({ className = "", children }) {
-  return <div className={cx("rounded-2xl border border-white/10 bg-white/5 backdrop-blur", className)}>{children}</div>;
+  return <div className={cx("rounded-3xl border border-white/12 bg-white/8 backdrop-blur-2xl shadow-[0_25px_80px_rgba(8,8,20,0.55)]", className)}>{children}</div>;
 }
-function CardHeader({ className = "", children }) {
-  return <div className={cx("p-4", className)}>{children}</div>;
-}
-function CardContent({ className = "", children }) {
-  return <div className={cx("p-4", className)}>{children}</div>;
-}
-function CardFooter({ className = "", children }) {
-  return <div className={cx("p-4 pt-0", className)}>{children}</div>;
-}
-function CardTitle({ className = "", children }) {
-  return <div className={cx("text-lg font-extrabold", className)}>{children}</div>;
-}
-function CardDescription({ className = "", children }) {
-  return <div className={cx("text-sm text-white/80", className)}>{children}</div>;
-}
-function Input({ className = "", ...props }) {
+const CardHeader = ({ className = "", children }) => <div className={cx("p-5", className)}>{children}</div>;
+const CardContent = ({ className = "", children }) => <div className={cx("p-5", className)}>{children}</div>;
+const CardFooter = ({ className = "", children }) => <div className={cx("px-5 pb-5", className)}>{children}</div>;
+const CardTitle = ({ className = "", children }) => <div className={cx("text-lg font-black", className)}>{children}</div>;
+const CardDescription = ({ className = "", children }) => <div className={cx("text-sm text-white/75", className)}>{children}</div>;
+
+const Input = React.forwardRef(function Input({ className = "", ...props }, ref) {
   return (
     <input
+      ref={ref}
       className={cx(
-        "w-full rounded-xl bg-white/10 text-white placeholder-white/60 border border-white/20 px-3 py-2 focus:outline-none focus:ring-2",
+        "w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white placeholder-white/50 shadow-inner focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300",
         className
       )}
       {...props}
     />
   );
-}
-function Badge({ className = "", children }) {
-  return <span className={cx("px-2 py-1 rounded-full text-xs font-extrabold", className)}>{children}</span>;
-}
-function Switch({ checked, onChange, id }) {
-  return (
-    <button
-      id={id}
-      role="switch"
-      aria-checked={!!checked}
-      onClick={() => onChange(!checked)}
-      className={cx(
-        "w-12 h-6 rounded-full relative transition border",
-        checked ? "bg-amber-300 border-amber-300" : "bg-white/10 border-white/30"
-      )}
-    >
-      <span
-        className={cx(
-          "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition",
-          checked ? "translate-x-6" : "translate-x-0"
-        )}
-      />
-    </button>
-  );
-}
+});
 
-/** -------------------- Config -------------------- */
-const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM"; // replace if needed
+const Badge = ({ className = "", children }) => (
+  <span className={cx("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide", className)}>{children}</span>
+);
+
+const Switch = ({ checked, onCheckedChange }) => (
+  <button
+    type="button"
+    onClick={() => onCheckedChange(!checked)}
+    role="switch"
+    aria-checked={checked}
+    className={cx(
+      "relative h-7 w-12 rounded-full border transition",
+      checked ? "border-amber-300 bg-amber-300/70" : "border-white/30 bg-white/12"
+    )}
+  >
+    <span
+      className={cx(
+        "absolute top-1 left-1 h-5 w-5 rounded-full bg-white transition-all",
+        checked ? "translate-x-5 shadow-lg" : "translate-x-0"
+      )}
+    />
+  </button>
+);
+
+const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM";
 const SHEET_NAME = "Characters";
 const GVIZ_URL = (sheetName) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
@@ -154,18 +147,16 @@ const GALLERY_ALIASES = Array.from({ length: 15 }, (_, i) => i + 1).map((n) => [
   `image ${n}`,
 ]);
 
-// Global cache for Alliances suggestions
-let __ALL_CHARS = [];
+let __SOURCE_ORDER = new Map();
 
-/** -------------------- Utils -------------------- */
 const toSlug = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
 function normalizeDriveUrl(url) {
   if (!url) return undefined;
   try {
     const u = new URL(url);
     if (u.hostname.includes("drive.google.com")) {
-      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
-      const id = (m && m[1]) || u.searchParams.get("id");
+      const match = u.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = (match && match[1]) || u.searchParams.get("id");
       if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
     }
     return url;
@@ -177,20 +168,22 @@ function splitList(raw) {
   if (!raw) return [];
   return raw
     .replace(/\band\b/gi, ",")
-    .replace(/[|;]/g, ",")
+    .replace(/[|;/]/g, ",")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 }
 function parseLocations(raw) {
   const items = splitList(raw);
-  const out = [];
+  const set = new Set();
   for (const item of items) {
-    const parts = item.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
-    if (parts.length > 1) out.push(...parts);
-    else out.push(item);
+    item
+      .split(/\s*,\s*/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((value) => set.add(value));
   }
-  return Array.from(new Set(out));
+  return Array.from(set);
 }
 function parsePowers(raw) {
   if (!raw) return [];
@@ -201,91 +194,92 @@ function parsePowers(raw) {
     const colon = item.match(/^(.*?)[=:]\s*(\d{1,2})(?:\s*\/\s*10)?$/);
     if (colon) {
       name = colon[1].trim();
-      level = Math.min(10, parseInt(colon[2]));
-    } else if (/\(/.test(item) && item.match(/\((\d{1,2})\)/)) {
+      level = parseInt(colon[2], 10);
+    } else if (/\((\d{1,2})\)/.test(item)) {
       const m = item.match(/^(.*?)\((\d{1,2})\)$/);
       name = (m?.[1] || item).trim();
-      level = Math.min(10, parseInt(m?.[2] || "0"));
+      level = parseInt(m?.[2] || "0", 10);
     } else {
       const trail = item.match(/^(.*?)(\d{1,2})$/);
       if (trail) {
         name = trail[1].trim();
-        level = Math.min(10, parseInt(trail[2]));
+        level = parseInt(trail[2], 10);
       } else {
         name = item.trim();
-        level = 0;
       }
     }
-    return { name, level: isFinite(level) ? level : 0 };
+    return { name, level: Number.isFinite(level) ? Math.min(10, Math.max(0, level)) : 0 };
   });
 }
 function headerMap(headers) {
   const map = {};
   const lower = headers.map((h) => (h || "").toLowerCase().trim());
-  function findIndex(aliases) {
-    for (const a of aliases) {
-      const idx = lower.indexOf(a);
+  const findIndex = (aliases) => {
+    for (const alias of aliases) {
+      const idx = lower.indexOf(alias);
       if (idx !== -1) return idx;
     }
     return -1;
-  }
+  };
   for (const key of Object.keys(COL_ALIAS)) {
     const idx = findIndex(COL_ALIAS[key]);
     if (idx !== -1) map[key] = idx;
   }
-  GALLERY_ALIASES.forEach((aliases, n) => {
+  GALLERY_ALIASES.forEach((aliases, index) => {
     const idx = findIndex(aliases);
-    if (idx !== -1) map[`gallery_${n + 1}`] = idx;
+    if (idx !== -1) map[`gallery_${index + 1}`] = idx;
   });
   return map;
 }
 function parseGViz(text) {
-  const m = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/s);
-  if (!m) throw new Error("GViz format not recognized");
-  return JSON.parse(m[1]);
+  const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/s);
+  if (!match) throw new Error("GViz format not recognised");
+  return JSON.parse(match[1]);
 }
 function rowToCharacter(row, map) {
-  const get = (k) => {
-    const idx = map[k];
+  const read = (key) => {
+    const idx = map[key];
     if (idx == null) return undefined;
     const cell = row[idx];
     if (!cell) return undefined;
-    const v = cell.v ?? cell.f ?? cell;
-    return typeof v === "string" ? v : String(v ?? "");
+    const value = cell.v ?? cell.f ?? cell;
+    return typeof value === "string" ? value : String(value ?? "");
   };
-  const name = (get("name") || "").trim();
+  const name = (read("name") || "").trim();
   if (!name) return null;
   const char = {
-    id: get("id") || toSlug(name),
+    id: read("id") || toSlug(name),
     name,
-    alias: splitList(get("alias")),
-    gender: get("gender"),
-    alignment: get("alignment"),
-    locations: parseLocations(get("location")),
-    status: get("status"),
-    era: get("era"),
-    firstAppearance: get("firstAppearance"),
-    powers: parsePowers(get("powers")),
-    faction: splitList(get("faction")),
-    tags: splitList(get("tag")),
-    shortDesc: get("shortDesc"),
-    longDesc: get("longDesc"),
-    stories: splitList(get("stories")),
-    cover: normalizeDriveUrl(get("cover")),
+    alias: splitList(read("alias")),
+    gender: read("gender"),
+    alignment: read("alignment"),
+    locations: parseLocations(read("location")),
+    status: read("status"),
+    era: read("era"),
+    firstAppearance: read("firstAppearance"),
+    powers: parsePowers(read("powers")),
+    faction: splitList(read("faction")),
+    tags: splitList(read("tag")),
+    shortDesc: read("shortDesc"),
+    longDesc: read("longDesc"),
+    stories: splitList(read("stories")),
+    cover: normalizeDriveUrl(read("cover")),
     gallery: [],
   };
   for (let i = 1; i <= 15; i++) {
-    const url = get(`gallery_${i}`);
+    const url = read(`gallery_${i}`);
     if (url) char.gallery.push(normalizeDriveUrl(url));
   }
   return char;
 }
 
-/** Daily seeding helpers */
 const todayKey = () => new Date().toISOString().slice(0, 10);
 function seededRandom(seed) {
   let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
   return () => {
     h += 0x6d2b79f5;
     let t = Math.imul(h ^ (h >>> 15), 1 | h);
@@ -294,8 +288,8 @@ function seededRandom(seed) {
   };
 }
 const dailyInt = (seed, min = 1, max = 10) => {
-  const r = seededRandom(seed + todayKey())();
-  return Math.floor(r * (max - min + 1)) + min;
+  const rand = seededRandom(`${seed}|${todayKey()}`)();
+  return Math.floor(rand * (max - min + 1)) + min;
 };
 function fillDailyPowers(c) {
   const seed = c.id || c.name || "character";
@@ -310,81 +304,8 @@ function fillDailyPowers(c) {
   return { ...c, powers };
 }
 
-/** -------------------- Data hook -------------------- */
-const SAMPLE = [
-  {
-    id: "mystic-man",
-    name: "Mystic Man",
-    alias: ["Arcanist"],
-    gender: "Male",
-    alignment: "Hero",
-    locations: ["Accra", "London"],
-    status: "Active",
-    era: "Modern",
-    firstAppearance: "2019",
-    powers: [
-      { name: "Spellcraft", level: 9 },
-      { name: "Teleportation", level: 7 },
-    ],
-    faction: ["Earthguard"],
-    tags: ["Leader"],
-    shortDesc: "A strategist mage who wages wars with runes.",
-    longDesc: "Master tactician of the Loremaker universe.",
-    stories: ["Heroes & Gods"],
-    cover:
-      "https://images.unsplash.com/photo-1544450770-94d251f81d7b?q=80&w=1200&auto=format&fit=crop",
-    gallery: [],
-  },
-  {
-    id: "lithespeed",
-    name: "Lithespeed",
-    alias: ["Quicksable"],
-    gender: "Female",
-    alignment: "Hero",
-    locations: ["Tema"],
-    status: "Active",
-    era: "Modern",
-    firstAppearance: "2020",
-    powers: [
-      { name: "Superspeed", level: 8 },
-      { name: "Reflexes", level: 7 },
-    ],
-    faction: ["Earthguard"],
-    tags: ["Legend"],
-    shortDesc: "Speedster with dancer's finesse.",
-    longDesc: "She can paint circles around thunder.",
-    stories: ["Heroes & Gods"],
-    cover:
-      "https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=1200&auto=format&fit=crop",
-    gallery: [],
-  },
-  {
-    id: "nighteagle",
-    name: "Nighteagle",
-    alias: ["Watcher"],
-    gender: "Male",
-    alignment: "Vigilante",
-    locations: ["Kumasi"],
-    status: "Unknown",
-    era: "Modern",
-    firstAppearance: "2018",
-    powers: [
-      { name: "Stealth", level: 8 },
-      { name: "Gadgets", level: 7 },
-    ],
-    faction: ["Janitors"],
-    tags: ["Mythic"],
-    shortDesc: "Silent guardian with metal wings.",
-    longDesc: "Haunts rooftops and rumor mills alike.",
-    stories: ["Vigilantes: Dawn of the"],
-    cover:
-      "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1200&auto=format&fit=crop",
-    gallery: [],
-  },
-];
-
 function useCharacters() {
-  const [raw, setRaw] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -392,141 +313,154 @@ function useCharacters() {
     setLoading(true);
     setError(null);
     try {
-      const pull = async (sheetName) => {
-        const res = await fetch(GVIZ_URL(sheetName));
-        const txt = await res.text();
-        return parseGViz(txt);
+      const pull = async (sheet) => {
+        const res = await fetch(GVIZ_URL(sheet));
+        if (!res.ok) throw new Error(`Google Sheets request failed (${res.status})`);
+        const text = await res.text();
+        return parseGViz(text);
       };
-      let obj;
+      let response;
       try {
-        obj = await pull(SHEET_NAME);
-      } catch {
-        obj = await pull("Sheet1");
+        response = await pull(SHEET_NAME);
+      } catch (err) {
+        response = await pull("Sheet1");
       }
-      let rows = obj.table.rows || [];
-      const labels = obj.table.cols.map((c) => (c?.label || c?.id || "").trim());
+      const rows = response.table.rows || [];
+      const labels = response.table.cols.map((col) => (col?.label || col?.id || "").trim());
       let map = headerMap(labels);
+      let usableRows = rows;
       if (map.name == null && rows.length) {
-        const first = (rows[0]?.c || []).map((cell) => String(cell?.v ?? cell?.f ?? "").trim());
-        const alt = headerMap(first);
+        const guess = (rows[0]?.c || []).map((cell) => String(cell?.v ?? cell?.f ?? "").trim());
+        const alt = headerMap(guess);
         if (alt.name != null) {
           map = alt;
-          rows = rows.slice(1);
+          usableRows = rows.slice(1);
         }
       }
       const parsed = [];
-      for (const r of rows) {
-        const c = rowToCharacter(r.c || [], map);
-        if (c) parsed.push(fillDailyPowers(c));
-      }
-      setRaw(parsed);
-      __ALL_CHARS = parsed;
-    } catch (e) {
-      console.error("Sheet load failed, using SAMPLE:", e?.message || e);
-      const parsed = SAMPLE.map(fillDailyPowers);
-      setRaw(parsed);
-      __ALL_CHARS = parsed;
-      setError("Loaded fallback sample data");
+      usableRows.forEach((row, index) => {
+        const char = rowToCharacter(row.c || [], map);
+        if (char) {
+          parsed.push(fillDailyPowers(char));
+          if (!__SOURCE_ORDER.has(char.id)) __SOURCE_ORDER.set(char.id, index);
+        }
+      });
+      setData(parsed);
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "Unable to load characters");
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchSheet();
   }, []);
-  return { data: raw, loading, error, refetch: fetchSheet };
+
+  return { data, loading, error, refetch: fetchSheet };
 }
 
-/** -------------------- Aesthetics -------------------- */
-function Aurora({ className }) {
+function Aurora({ className = "" }) {
   const x = useMotionValue(50);
   const y = useMotionValue(50);
   const sx = useSpring(x, { stiffness: 60, damping: 20 });
   const sy = useSpring(y, { stiffness: 60, damping: 20 });
-  const left = useTransform(sx, (v) => `${v}%`);
-  const top = useTransform(sy, (v) => `${v}%`);
+  const left = useTransform(sx, (value) => `${value}%`);
+  const top = useTransform(sy, (value) => `${value}%`);
   return (
     <motion.div
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        x.set(((e.clientX - r.left) / r.width) * 100);
-        y.set(((e.clientY - r.top) / r.height) * 100);
+      onMouseMove={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        x.set(((event.clientX - rect.left) / rect.width) * 100);
+        y.set(((event.clientY - rect.top) / rect.height) * 100);
       }}
-      className={"absolute inset-0 -z-10 overflow-hidden " + (className || "")}
+      className={cx("pointer-events-none absolute inset-0 -z-10 overflow-hidden", className)}
     >
-      <motion.div style={{ left, top }} className="absolute h-[70vmax] w-[70vmax] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl opacity-70">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-indigo-700/40 via-fuchsia-500/40 to-amber-400/40" />
+      <motion.div style={{ left, top }} className="absolute h-[70vmax] w-[70vmax] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-80 blur-3xl">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-indigo-700/40 via-fuchsia-500/35 to-amber-400/40" />
       </motion.div>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.09),transparent_65%)]" />
     </motion.div>
   );
 }
 
-// Upright heater shield insignia (interactive)
-function Insignia({ label, size = 48, variant = "character", expandableName }) {
-  const initials =
-    label
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase())
-      .join("") || "LM";
-  const hue = Math.abs([...label].reduce((a, c) => a + c.charCodeAt(0), 0)) % 360;
-  const g1 = `hsl(${hue},85%,65%)`;
-  const g2 = `hsl(${(hue + 50) % 360},85%,60%)`;
-  const topWidth = variant === "site" ? 40 : variant === "faction" ? 36 : 32;
+function Insignia({ label, size = 48, variant = "character" }) {
+  const fallback = label || "Lore";
+  const initials = fallback
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("") || "LM";
+  const hue = Math.abs([...fallback].reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 360;
+  const topWidth = variant === "site" ? 42 : variant === "faction" ? 36 : 32;
+  const fillOne = `hsl(${hue}, 85%, 64%)`;
+  const fillTwo = `hsl(${(hue + 48) % 360}, 80%, 60%)`;
   return (
-    <div className="group inline-flex items-center gap-2">
-      <svg width={size} height={size} viewBox="0 0 64 64" className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)]">
-        <defs>
-          <linearGradient id={`g-${hue}`} x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor={g1} />
-            <stop offset="100%" stopColor={g2} />
-          </linearGradient>
-        </defs>
-        <path
-          d={`M32 6 C32 6 ${32 - topWidth / 2} 10 ${32 - topWidth / 2} 10 L ${32 + topWidth / 2} 10 C ${32 + topWidth / 2} 10 32 6 32 6 L 54 16 L 54 35 C 54 46 45 55 32 58 C 19 55 10 46 10 35 L 10 16 Z`}
-          fill={`url(#g-${hue})`}
-          stroke="rgba(255,255,255,.6)"
-          strokeWidth="1.2"
-        />
-        <text x="32" y="38" textAnchor="middle" fontFamily="ui-sans-serif,system-ui" fontWeight="900" fontSize="20" fill="#fff" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,.6))" }}>
-          {initials}
-        </text>
-      </svg>
-      {expandableName && (
-        <div className="px-2 py-1 rounded-full bg-white text-black text-xs font-extrabold opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow">{expandableName}</div>
-      )}
-    </div>
+    <svg width={size} height={size} viewBox="0 0 64 64" className="drop-shadow-[0_3px_12px_rgba(0,0,0,0.55)]">
+      <defs>
+        <linearGradient id={`ins-${hue}`} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stopColor={fillOne} />
+          <stop offset="100%" stopColor={fillTwo} />
+        </linearGradient>
+      </defs>
+      <path
+        d={`M32 6 C32 6 ${32 - topWidth / 2} 10 ${32 - topWidth / 2} 10 L ${32 + topWidth / 2} 10 C ${32 + topWidth / 2} 10 32 6 32 6 L 56 16 L 56 36 C 56 47 46 57 32 60 C 18 57 8 47 8 36 L 8 16 Z`}
+        fill={`url(#ins-${hue})`}
+        stroke="rgba(255,255,255,.45)"
+        strokeWidth="1.4"
+      />
+      <text
+        x="32"
+        y="39"
+        textAnchor="middle"
+        fontFamily="var(--font-sans, 'Inter', 'Segoe UI', sans-serif)"
+        fontWeight="900"
+        fontSize="20"
+        fill="#fff"
+        style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,.6))" }}
+      >
+        {initials}
+      </text>
+    </svg>
   );
 }
 
-function ImageSafe({ src, alt, className, fallbackLabel }) {
-  const [err, setErr] = useState(false);
-  if (!src || err)
+function ImageSafe({ src, alt, className = "", fallbackLabel }) {
+  const [error, setError] = useState(false);
+  if (!src || error) {
     return (
-      <div className={`relative ${className || ""} flex items-center justify-center bg-white/5 border border-white/10 rounded-xl`}>
-        <Insignia label={fallbackLabel || alt || ""} size={64} />
+      <div className={cx("flex items-center justify-center rounded-2xl border border-white/15 bg-white/10", className)}>
+        <Insignia label={fallbackLabel} size={64} />
       </div>
     );
-  return <img src={src} alt={alt} onError={() => setErr(true)} className={className} loading="lazy" />;
+  }
+  return <img src={src} alt={alt} onError={() => setError(true)} className={className} loading="lazy" />;
 }
 
-/** -------------------- UI atoms -------------------- */
-function PowerMeter({ level }) {
-  const pct = Math.max(0, Math.min(10, level)) * 10;
+function PowerMeter({ level, accent = "amber" }) {
+  const pct = Math.min(100, Math.max(0, (Number(level) || 0) * 10));
+  const gradient =
+    accent === "emerald"
+      ? "from-emerald-200 via-cyan-200 to-blue-300"
+      : accent === "crimson"
+      ? "from-rose-300 via-rose-400 to-red-500"
+      : "from-amber-200 via-fuchsia-300 to-indigo-300";
   return (
-    <div className="w-full h-2 rounded-full bg-white/20 overflow-hidden">
-      <div className="h-full bg-gradient-to-r from-cyan-300 via-fuchsia-400 to-amber-300" style={{ width: `${pct}%` }} />
+    <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
+      <div className={cx("h-full bg-gradient-to-r", gradient)} style={{ width: `${pct}%` }} />
     </div>
   );
 }
+
 function FacetChip({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
       className={cx(
-        "px-3 py-1 rounded-full text-sm font-bold border transition",
-        active ? "bg-white text-black border-white" : "bg-white/10 text-white border-white/40 hover:bg-white/20"
+        "rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide transition",
+        active ? "border-white bg-white text-black" : "border-white/30 bg-white/10 text-white hover:bg-white/20"
       )}
     >
       {children}
@@ -623,36 +557,42 @@ function CharacterCard({ c, onOpen, onFacet, onUseInSim, highlight }) {
 }
 
 function Gallery({ images, cover, name }) {
-  const [idx, setIdx] = useState(0);
-  const imgs = [cover, ...(images || [])].filter(Boolean);
-  if (!imgs.length)
+  const [index, setIndex] = useState(0);
+  const sources = [cover, ...(images || [])].filter(Boolean);
+  if (!sources.length) {
     return (
-      <div className="h-64 w-full rounded-xl border border-white/10 bg-white/5 flex items-center justify-center">
-        <Insignia label={name} size={64} />
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-white/15 bg-white/12">
+        <Insignia label={name} size={72} />
       </div>
     );
+  }
   return (
-    <div className="relative group">
-      <ImageSafe src={imgs[idx]} alt={`${name} gallery ${idx + 1}`} fallbackLabel={name} className="w-full h-64 object-cover rounded-xl border border-white/10" />
-      {imgs.length > 1 && (
+    <div className="group relative">
+      <ImageSafe
+        src={sources[index]}
+        alt={`${name} gallery ${index + 1}`}
+        fallbackLabel={name}
+        className="h-64 w-full rounded-2xl border border-white/12 object-cover"
+      />
+      {sources.length > 1 && (
         <>
           <button
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition"
-            onClick={() => setIdx((i) => (i - 1 + imgs.length) % imgs.length)}
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white opacity-0 transition group-hover:opacity-100"
+            onClick={() => setIndex((i) => (i - 1 + sources.length) % sources.length)}
             aria-label="Previous"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
           <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition"
-            onClick={() => setIdx((i) => (i + 1) % imgs.length)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white opacity-0 transition group-hover:opacity-100"
+            onClick={() => setIndex((i) => (i + 1) % sources.length)}
             aria-label="Next"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-            {imgs.map((_, i) => (
-              <span key={i} className={cx("h-1.5 w-1.5 rounded-full", i === idx ? "bg-white" : "bg-white/60")} />
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-2">
+            {sources.map((_, idx) => (
+              <span key={idx} className={cx("h-1.5 w-5 rounded-full", idx === index ? "bg-white" : "bg-white/50")} />
             ))}
           </div>
         </>
@@ -661,90 +601,93 @@ function Gallery({ images, cover, name }) {
   );
 }
 
-function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
+function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
   useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prev;
-      };
-    }
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
   }, [open]);
-  if (!open || !c) return null;
+  if (!open || !char) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <Aurora />
-      <div className="absolute inset-0 bg-black/65 backdrop-blur" onClick={onClose} />
-      <div className="relative w-full max-w-5xl bg-white/10 border border-white/20 backdrop-blur-2xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,.5)] overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <Insignia label={c.name} size={40} />
+      <Aurora className="opacity-70" />
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-6xl overflow-hidden rounded-3xl border border-white/15 bg-black/65 backdrop-blur-2xl">
+        <div className="flex items-center justify-between border-b border-white/15 px-6 py-4 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={char.name} size={48} />
             <div>
-              <div className="text-2xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.7)] text-white">{c.name}</div>
-              {c.era && <div className="text-[11px] uppercase tracking-widest text-white font-bold">{c.era}</div>}
+              <div className="text-3xl font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{char.name}</div>
+              {char.era && <div className="text-[11px] font-extrabold uppercase tracking-[0.3em] text-white/70">{char.era}</div>}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => onUseInSim(c.id)} className="font-bold">
+          <div className="flex items-center gap-2">
+            <Button variant="gradient" size="sm" onClick={() => onUseInSim(char.id)}>
               Use in Sim
             </Button>
-            <Button variant="ghost" onClick={onClose} aria-label="Close">
+            <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close profile">
               <X />
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 max-h-[75vh] overflow-y-auto text-white">
-          <div className="space-y-4">
-            <Gallery images={c.gallery} cover={c.cover} name={c.name} />
-            <div className="space-y-2">
-              <div className="text-sm font-bold">Short Description</div>
-              <div className="font-semibold">{c.shortDesc || "—"}</div>
-              <div className="text-sm mt-3 font-bold">Bio</div>
-              <div className="whitespace-pre-wrap">{c.longDesc || "—"}</div>
+        <div className="grid max-h-[75vh] grid-cols-1 gap-6 overflow-y-auto p-6 text-white lg:grid-cols-2">
+          <div className="space-y-5">
+            <Gallery images={char.gallery} cover={char.cover} name={char.name} />
+            <div className="space-y-3 text-sm font-semibold text-white/80">
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-wide text-white">Short Description</div>
+                <div className="mt-1 text-white/80">{char.shortDesc || "—"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-wide text-white">Bio</div>
+                <div className="mt-1 whitespace-pre-wrap text-white/80">{char.longDesc || "—"}</div>
+              </div>
             </div>
           </div>
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
-              {(c.alias || []).map((a) => (
-                <FacetChip key={a} onClick={() => onFacet({ key: "alias", value: a })}>
-                  {a}
+              {(char.alias || []).map((alias) => (
+                <FacetChip key={alias} onClick={() => onFacet({ key: "alias", value: alias })}>
+                  {alias}
                 </FacetChip>
               ))}
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {c.gender && (
-                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <div className="mb-1 font-bold">Gender</div>
-                  <div className="font-extrabold">{c.gender}</div>
+              {char.gender && (
+                <div className="rounded-2xl border border-white/15 bg-white/8 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wide text-white/70">Gender</div>
+                  <div className="text-base font-extrabold">{char.gender}</div>
                 </div>
               )}
-              {c.alignment && (
-                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <div className="mb-1 font-bold">Alignment</div>
-                  <div className="font-extrabold">{c.alignment}</div>
+              {char.alignment && (
+                <div className="rounded-2xl border border-white/15 bg-white/8 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wide text-white/70">Alignment</div>
+                  <div className="text-base font-extrabold">{char.alignment}</div>
                 </div>
               )}
-              {c.status && (
-                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <div className="mb-1 font-bold">Status</div>
-                  <div className="font-extrabold">{c.status}</div>
+              {char.status && (
+                <div className="rounded-2xl border border-white/15 bg-white/8 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wide text-white/70">Status</div>
+                  <div className="text-base font-extrabold">{char.status}</div>
                 </div>
               )}
-              {c.firstAppearance && (
-                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <div className="mb-1 font-bold">First Appearance</div>
-                  <div className="font-extrabold">{c.firstAppearance}</div>
+              {char.firstAppearance && (
+                <div className="rounded-2xl border border-white/15 bg-white/8 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wide text-white/70">First Appearance</div>
+                  <div className="text-base font-extrabold">{char.firstAppearance}</div>
                 </div>
               )}
             </div>
-            {!!(c.locations || []).length && (
+            {!!(char.locations || []).length && (
               <div>
-                <div className="text-sm mb-2 font-bold flex items-center gap-2">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
                   <MapPin size={14} /> Locations
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {c.locations.map((loc) => (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(char.locations || []).map((loc) => (
                     <FacetChip key={loc} onClick={() => onFacet({ key: "locations", value: loc })}>
                       {loc}
                     </FacetChip>
@@ -752,140 +695,61 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
                 </div>
               </div>
             )}
-            {!!(c.faction || []).length && (
+            {!!(char.faction || []).length && (
               <div>
-                <div className="text-sm mb-2 font-bold flex items-center gap-2">
-                  <Crown size={14} /> Factions/Teams
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
+                  <Crown size={14} /> Factions / Teams
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {c.faction.map((f) => (
-                    <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
-                      {f}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(char.faction || []).map((faction) => (
+                    <FacetChip key={faction} onClick={() => onFacet({ key: "faction", value: faction })}>
+                      {faction}
                     </FacetChip>
                   ))}
                 </div>
               </div>
             )}
-            {!!(c.tags || []).length && (
+            {!!(char.tags || []).length && (
               <div>
                 <div className="text-sm mb-2 font-bold flex items-center gap-2">
                   <Layers size={14} /> Tags
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {c.tags.map((t) => (
-                    <FacetChip key={t} onClick={() => onFacet({ key: "tags", value: t })}>
-                      {t}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(char.tags || []).map((tag) => (
+                    <FacetChip key={tag} onClick={() => onFacet({ key: "tags", value: tag })}>
+                      {tag}
                     </FacetChip>
                   ))}
                 </div>
               </div>
             )}
-            {/* Alliances */}
             <div>
-              <div className="text-sm mb-2 font-bold flex items-center gap-2">
-                <Users size={14} /> Alliances
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {__ALL_CHARS.filter((x) => x.id !== c.id && (x.faction || []).some((f) => (c.faction || []).includes(f)))
-                  .slice(0, 12)
-                  .map((a) => (
-                    <FacetChip key={a.id} onClick={() => onFacet({ key: "faction", value: (a.faction || [""])[0] || "" })}>
-                      {a.name}
-                    </FacetChip>
-                  ))}
-                {!__ALL_CHARS.filter((x) => x.id !== c.id && (x.faction || []).some((f) => (c.faction || []).includes(f))).length && (
-                  <span className="text-white/70 font-semibold">No listed allies</span>
-                )}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm mb-2 font-bold flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
                 <Atom size={14} /> Powers
               </div>
-              <div className="space-y-2">
-                {c.powers.map((p) => (
-                  <div key={p.name} className="text-sm">
-                    <div className="mb-1 flex items-center justify-between font-bold">
-                      <span className="truncate pr-2">{p.name}</span>
-                      <span>{p.level}/10</span>
+              <div className="mt-3 space-y-2">
+                {(char.powers || []).map((power) => (
+                  <div key={power.name}>
+                    <div className="mb-1 flex items-center justify-between text-sm font-bold">
+                      <span className="truncate pr-3">{power.name}</span>
+                      <span>{power.level}/10</span>
                     </div>
-                    <PowerMeter level={p.level} />
+                    <PowerMeter level={power.level} accent="emerald" />
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** -------------------- Filters & Search -------------------- */
-function matchesFilters(c, f, combineAND, query) {
-  const terms = (query || "").toLowerCase().split(/\s+/).filter(Boolean);
-  const hay = [
-    c.name,
-    ...(c.alias || []),
-    ...((c.powers || []).map((p) => p.name) || []),
-    ...(c.locations || []),
-    ...(c.tags || []),
-    c.shortDesc || "",
-    c.longDesc || "",
-  ]
-    .join(" ")
-    .toLowerCase();
-  const searchMatch = terms.every((t) => hay.includes(t));
-  const norm = (v) => (Array.isArray(v) ? v : v != null ? [v] : []);
-  const checks = [];
-  const _fg = norm(f.gender).map((x) => String(x).toLowerCase());
-  if (_fg.length) checks.push(_fg.includes(String(c.gender || "").toLowerCase()));
-  const _fa = norm(f.alignment).map((x) => String(x).toLowerCase());
-  if (_fa.length) checks.push(_fa.includes(String(c.alignment || "").toLowerCase()));
-  if (f.locations?.length) checks.push(f.locations.every((v) => (c.locations || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
-  if (f.faction?.length) checks.push(f.faction.every((v) => (c.faction || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
-  if (f.tags?.length) checks.push(f.tags.every((v) => (c.tags || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
-  if (f.era?.length) checks.push(f.era.some((v) => (c.era || "").toLowerCase() === v.toLowerCase()));
-  if (f.status?.length) checks.push(f.status.some((v) => (c.status || "").toLowerCase() === v.toLowerCase()));
-  if (f.stories?.length) checks.push(f.stories.every((v) => (c.stories || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
-  if (f.alias?.length) checks.push(f.alias.some((v) => (c.alias || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
-  if (f.powers?.length) checks.push(f.powers.every((v) => (c.powers || []).map((p) => p.name.toLowerCase()).includes(v.toLowerCase())));
-  const filterMatch = combineAND ? checks.every(Boolean) : checks.some(Boolean) || Object.keys(f).length === 0;
-  return searchMatch && filterMatch;
-}
-
-/** -------------------- Featured Hero (manual, fixed height) -------------------- */
-function pickDaily(items, salt = "") {
-  if (!items.length) return null;
-  const d = todayKey();
-  const r = seededRandom(d + salt)();
-  return items[Math.floor(r * items.length)] ?? items[0];
-}
-function HeroSection({ data, onOpen, onFacet }) {
-  const character = useMemo(() => pickDaily(data, "char"), [data]);
-  const allFactions = useMemo(() => Array.from(new Set(data.flatMap((d) => d.faction || []))), [data]);
-  const allLocations = useMemo(() => Array.from(new Set(data.flatMap((d) => d.locations || []))), [data]);
-  const allPowers = useMemo(() => Array.from(new Set(data.flatMap((d) => d.powers.map((p) => p.name)))), [data]);
-  const faction = useMemo(() => pickDaily(allFactions, "faction"), [allFactions]);
-  const location = useMemo(() => pickDaily(allLocations, "location"), [allLocations]);
-  const power = useMemo(() => pickDaily(allPowers, "power"), [allPowers]);
-  const slides = (character
-    ? [
-        {
-          type: "Character",
-          render: () => (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 h-72">
-              <ImageSafe src={character.cover || character.gallery[0]} alt={character.name} fallbackLabel={character.name} className="h-72 w-full object-cover" />
-              <div className="p-6 flex flex-col gap-3 text-white">
-                <div className="text-xs uppercase tracking-widest font-extrabold flex items-center gap-2">
-                  <Clock size={14} /> Featured Character
+            {!!(char.stories || []).length && (
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
+                <Library size={14} /> Stories
                 </div>
-                <div className="text-2xl font-extrabold">{character.name}</div>
-                <div className="font-bold line-clamp-3">{character.shortDesc || character.longDesc}</div>
-                <div className="mt-auto flex gap-3">
-                  <Button onClick={() => onOpen(character)} className="font-bold">
-                    View Profile <ArrowRight className="ml-1" size={16} />
-                  </Button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(char.stories || []).map((story) => (
+                    <FacetChip key={story} onClick={() => onFacet({ key: "stories", value: story })}>
+                      {story}
+                    </FacetChip>
+                  ))}
                 </div>
               </div>
             </div>
@@ -982,53 +846,23 @@ function HeroSection({ data, onOpen, onFacet }) {
           <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
         </div>
       </div>
-      <div className="border-t border-white/10 relative">
-        {slides[idx].render()}
-        <button className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white" onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)} aria-label="Previous">
-          <ChevronLeft size={18} />
-        </button>
-        <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white" onClick={() => setIdx((i) => (i + 1) % slides.length)} aria-label="Next">
-          <ChevronRight size={18} />
-        </button>
-      </div>
-    </Card>
-  );
-}
-
-/** -------------------- Story Chips -------------------- */
-function StoryChips({ data, onFacet }) {
-  const top = useMemo(() => {
-    const f = new Map();
-    for (const c of data) (c.stories || []).forEach((s) => f.set(s, (f.get(s) || 0) + 1));
-    return Array.from(f.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([k]) => k);
-  }, [data]);
-  if (!top.length) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {top.map((s) => (
-        <FacetChip key={s} onClick={() => onFacet({ key: "stories", value: s })}>
-          {s}
-        </FacetChip>
-      ))}
     </div>
   );
 }
 
-/** -------------------- Infinite Grid -------------------- */
 const PAGE_SIZE = 24;
 function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [data]);
   useEffect(() => {
-    const onScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      if (scrollTop + clientHeight >= scrollHeight - 200) setPage((p) => (p * PAGE_SIZE < data.length ? p + 1 : p));
+    const handler = () => {
+      const { scrollTop, clientHeight, scrollHeight } = document.documentElement;
+      if (scrollTop + clientHeight >= scrollHeight - 320) {
+        setPage((current) => (current * PAGE_SIZE < data.length ? current + 1 : current));
+      }
     };
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", handler);
+    return () => window.removeEventListener("scroll", handler);
   }, [data.length]);
   const slice = data.slice(0, page * PAGE_SIZE);
   return (
@@ -1043,7 +877,7 @@ function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
           highlight={highlightId === c.id}
         />
       ))}
-      {!slice.length && <div className="text-white font-extrabold">No characters match your filters yet.</div>}
+      {!slice.length && <div className="text-lg font-black text-white">No characters match your filters… yet.</div>}
     </div>
   );
 }
@@ -1139,92 +973,460 @@ function duel(c1, c2) {
   };
 }
 
-function HealthBar({ value }) {
-  const pct = Math.max(0, Math.min(100, value));
-  return (
-    <div className="w-full h-2 rounded-full bg-white/20 overflow-hidden border border-white/20">
-      <div className="h-full bg-gradient-to-r from-green-300 via-yellow-300 to-red-300" style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
-
-// Animated Lore shield with randomized micro-effects
-function LoreGlyph() {
-  const [seed] = useState(() => Math.floor(Math.random() * 1000));
-  const wobble = [0, -2, 2, -1, 1, 0];
+function ArenaCard({ char, position, onRelease, onOpen, health, isWinner, showX }) {
+  if (!char) {
+    return (
+      <div className="flex min-h-[280px] items-center justify-center rounded-3xl border-2 border-dashed border-slate-500/60 bg-slate-900/40 p-6 text-center text-sm font-bold text-slate-400">
+        Choose combatant {position}
+      </div>
+    );
+  }
+  const healthGradient = health > 60 ? "from-emerald-300 to-emerald-500" : health > 30 ? "from-amber-300 to-amber-500" : "from-rose-400 to-red-500";
   return (
     <motion.div
-      animate={{ rotate: wobble, scale: [1, 1.02, 1], filter: ["drop-shadow(0 0 6px rgba(255,255,255,.25))", `drop-shadow(0 0 12px hsl(${(seed*37)%360},90%,60%))`, "drop-shadow(0 0 6px rgba(255,255,255,.25))"] }}
-      transition={{ duration: 2 + (seed % 10) / 5, repeat: Infinity, ease: "easeInOut" }}
-      className="relative"
-      title="Lore"
+      layout
+      className={cx(
+        "relative h-full rounded-3xl border border-slate-700 bg-slate-950/90 p-5 text-left text-slate-100 shadow-[0_25px_80px_rgba(6,7,12,0.65)]",
+        isWinner ? "ring-4 ring-emerald-400 scale-[1.02]" : "",
+        showX ? "ring-2 ring-red-500" : ""
+      )}
+      animate={isWinner ? { scale: [1, 1.03, 1], boxShadow: "0 30px 80px rgba(16,185,129,0.35)" } : {}}
+      transition={{ type: "spring", stiffness: 220, damping: 18 }}
     >
-      <Insignia label="Lore" size={54} variant="site" />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-xs font-black tracking-wide">Lore</span>
+      {showX && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center text-6xl font-black text-red-500"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 1.5, repeat: 1 }}
+        >
+          X
+        </motion.div>
+      )}
+      <div className="flex items-center justify-between">
+        <Badge className="bg-slate-800/80 text-slate-200">Combatant {position}</Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => onOpen(char)}>
+            Details
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onRelease(char.id)}>
+            Release
+          </Button>
+        </div>
       </div>
+      <button onClick={() => onOpen(char)} className="mt-3 block w-full text-left">
+        <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Health</div>
+        <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-800">
+          <motion.div
+            key={health}
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.max(0, health)}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className={cx("h-full bg-gradient-to-r", healthGradient)}
+          />
+        </div>
+      </button>
+      <div className="mt-5 flex items-start gap-4">
+        <ImageSafe
+          src={char.cover || char.gallery[0]}
+          alt={char.name}
+          fallbackLabel={char.name}
+          className="h-32 w-32 rounded-2xl border border-slate-700 object-cover"
+        />
+        <div className="flex-1 space-y-3 text-xs">
+          <div className="text-lg font-black text-white">{char.name}</div>
+          <div className="grid grid-cols-2 gap-2">
+            {char.gender && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Gender</div>
+                <div className="text-sm font-extrabold text-white">{char.gender}</div>
+              </div>
+            )}
+            {char.alignment && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Alignment</div>
+                <div className="text-sm font-extrabold text-white">{char.alignment}</div>
+              </div>
+            )}
+            {char.status && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Status</div>
+                <div className="text-sm font-extrabold text-white">{char.status}</div>
+              </div>
+            )}
+            {char.era && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Era</div>
+                <div className="text-sm font-extrabold text-white">{char.era}</div>
+              </div>
+            )}
+          </div>
+          {!!(char.locations || []).length && (
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Locations</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(char.locations || []).map((loc) => (
+                  <Badge key={loc} className="bg-slate-800/70 text-white">
+                    {loc}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {!!(char.faction || []).length && (
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Factions</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(char.faction || []).map((faction) => (
+                  <Badge key={faction} className="bg-slate-800/70 text-white">
+                    {faction}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {!!(char.tags || []).length && (
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Tags</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(char.tags || []).map((tag) => (
+                  <Badge key={tag} className="bg-slate-800/70 text-white">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-5 space-y-2">
+        {(char.powers || []).map((power) => (
+          <div key={power.name}>
+            <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-200">
+              <span className="truncate pr-2">{power.name}</span>
+              <span>{power.level}/10</span>
+            </div>
+            <PowerMeter level={power.level} accent="crimson" />
+          </div>
+        ))}
+      </div>
+      {!!(char.stories || []).length && (
+        <div className="mt-4">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Stories</div>
+          <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] font-semibold text-slate-300">
+            {(char.stories || []).map((story) => (
+              <span key={story} className="rounded-full bg-slate-800/60 px-2 py-1">
+                {story}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-/** Filters Drawer */
-function FiltersDrawer({ open, onClose, values, filters, setFilters }) {
-  if (!open) return null;
-  const toggle = (key, value) => {
-    setFilters((f) => {
-      const set = new Set([...(f[key] || [])]);
+const swordVariants = {
+  idle: { rotate: 0, scale: 1, filter: "drop-shadow(0 0 0 rgba(255,255,255,0))" },
+  charging: { rotate: [0, -5, 5, -8, 8, 0], scale: 1.05, filter: "drop-shadow(0 0 25px rgba(249,250,139,0.9))" },
+  swing: { rotate: [0, -25, 25, -18, 18, 0], scale: 1.1, filter: "drop-shadow(0 0 35px rgba(255,255,255,0.9))" },
+  explode: { rotate: [0, -15, 15, 0], scale: [1, 1.2, 0.9, 1], filter: "drop-shadow(0 0 45px rgba(255,196,12,1))" },
+};
+
+function BattleArena({ characters, slots, setSlots, onOpenCharacter, pulseKey }) {
+  const left = characters.find((item) => item.id === slots.left) || null;
+  const right = characters.find((item) => item.id === slots.right) || null;
+  const [battleState, setBattleState] = useState("idle");
+  const [timeline, setTimeline] = useState([]);
+  const [result, setResult] = useState(null);
+  const [health, setHealth] = useState({ left: 100, right: 100 });
+  const [showX, setShowX] = useState(null);
+  const [arenaPulse, setArenaPulse] = useState(false);
+
+  useEffect(() => {
+    if (!pulseKey) return;
+    setArenaPulse(true);
+    const timer = setTimeout(() => setArenaPulse(false), 700);
+    return () => clearTimeout(timer);
+  }, [pulseKey]);
+
+  useEffect(() => {
+    setBattleState("idle");
+    setTimeline([]);
+    setResult(null);
+    setHealth({ left: 100, right: 100 });
+    setShowX(null);
+  }, [left?.id, right?.id]);
+
+  const release = (id) => {
+    setSlots((prev) => ({
+      left: prev.left === id ? null : prev.left,
+      right: prev.right === id ? null : prev.right,
+    }));
+    setShowX(null);
+  };
+
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const runBattle = async () => {
+    if (!left || !right || left.id === right.id) return;
+    const computed = computeBattleTimeline(left, right);
+    setBattleState("charging");
+    setResult(null);
+    setTimeline([]);
+    setHealth({ left: 100, right: 100 });
+    setShowX(null);
+    for (const phase of computed.timeline) {
+      setBattleState("swing");
+      setTimeline((prev) => [...prev, phase]);
+      setHealth({ left: phase.healthA, right: phase.healthB });
+      // eslint-disable-next-line no-await-in-loop
+      await delay(650);
+    }
+    setBattleState("explode");
+    await delay(450);
+    setBattleState("idle");
+    setResult(computed);
+    setShowX(computed.loser.id);
+    setTimeout(() => setShowX(null), 2200);
+  };
+
+  const runRandom = () => {
+    if (characters.length < 2) return;
+    const rng = seededRandom(`arena|${Date.now()}`);
+    const shuffled = [...characters].sort(() => rng() - 0.5);
+    const first = shuffled[0];
+    const second = shuffled.find((char) => char.id !== first.id) || shuffled[1];
+    setSlots({ left: first?.id || null, right: second?.id || null });
+  };
+
+  const reset = () => {
+    setSlots({ left: null, right: null });
+    setTimeline([]);
+    setResult(null);
+    setHealth({ left: 100, right: 100 });
+    setBattleState("idle");
+    setShowX(null);
+  };
+
+  return (
+    <motion.div
+      layout
+      animate={arenaPulse ? { scale: [1, 1.02, 0.99, 1.01, 1], boxShadow: "0 30px 100px rgba(244,187,74,0.25)" } : {}}
+      transition={{ type: "spring", stiffness: 200, damping: 18 }}
+    >
+      <Card className="border-0 bg-slate-900 text-slate-100">
+        <CardHeader className="border-b border-white/5 pb-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold text-white">
+              <Swords /> Battle Arena
+            </CardTitle>
+            <Badge className="bg-slate-800/70 text-slate-300">Luck recalculates every round</Badge>
+            <div className="ml-auto flex items-center gap-3 text-xs font-semibold text-slate-300">
+              <span>Humans must earn their victories — gods begin ahead.</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto_1fr]">
+            <ArenaCard
+              char={left}
+              position="A"
+              onRelease={release}
+              onOpen={onOpenCharacter}
+              health={health.left}
+              isWinner={result?.winner?.id === left?.id}
+              showX={showX === left?.id}
+            />
+            <div className="flex flex-col items-center justify-center gap-3">
+              <motion.div
+                animate={battleState}
+                variants={swordVariants}
+                transition={{ duration: 0.9, ease: "easeInOut" }}
+                className="rounded-full bg-gradient-to-br from-amber-200 via-amber-400 to-rose-300 p-4 text-slate-900 shadow-[0_0_60px_rgba(251,191,36,0.45)]"
+              >
+                <Swords className="h-10 w-10" />
+              </motion.div>
+              <div className="flex flex-col gap-2 text-xs font-bold text-slate-300">
+                <Button variant="outline" size="sm" onClick={runRandom}>
+                  Random Duel
+                </Button>
+                <Button variant="gradient" size="sm" onClick={runBattle}>
+                  Fight
+                </Button>
+                <Button variant="destructive" size="sm" onClick={reset}>
+                  Reset Arena
+                </Button>
+              </div>
+            </div>
+            <ArenaCard
+              char={right}
+              position="B"
+              onRelease={release}
+              onOpen={onOpenCharacter}
+              health={health.right}
+              isWinner={result?.winner?.id === right?.id}
+              showX={showX === right?.id}
+            />
+          </div>
+          {timeline.length > 0 && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-xs">
+              <div className="mb-2 text-sm font-black uppercase tracking-wide text-slate-200">Battle Flow</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {timeline.map((phase) => (
+                  <div key={phase.round} className="rounded-xl border border-slate-800/80 bg-slate-900/80 p-3 text-slate-200">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Round {phase.round}</div>
+                    <div className="mt-2 space-y-1">
+                      <div>A Strike: {phase.strikeA}</div>
+                      <div>A Luck: {phase.luckA}</div>
+                      <div>A Health: {phase.healthA}%</div>
+                      <div className="pt-1">B Strike: {phase.strikeB}</div>
+                      <div>B Luck: {phase.luckB}</div>
+                      <div>B Health: {phase.healthB}%</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {result && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Winner</div>
+              <div className="mt-2 rounded-xl bg-slate-900 px-4 py-3 text-lg font-black text-slate-100">
+                {result.winner.name}
+              </div>
+              <div className="mt-2 text-xs text-slate-400">
+                Final totals — {left?.name}: {result.finalScoreA} • {right?.name}: {result.finalScoreB}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, onClear }) {
+  const uniq = (arr) => Array.from(new Set(arr)).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const genders = useMemo(() => uniq(data.map((item) => item.gender || "")), [data]);
+  const alignments = useMemo(() => uniq(data.map((item) => item.alignment || "")), [data]);
+  const locations = useMemo(() => uniq(data.flatMap((item) => item.locations || [])), [data]);
+  const factions = useMemo(() => uniq(data.flatMap((item) => item.faction || [])), [data]);
+  const eras = useMemo(() => uniq(data.map((item) => item.era || "")), [data]);
+  const tags = useMemo(() => uniq(data.flatMap((item) => item.tags || [])), [data]);
+  const statuses = useMemo(() => uniq(data.map((item) => item.status || "")), [data]);
+  const stories = useMemo(() => uniq(data.flatMap((item) => item.stories || [])), [data]);
+  const powers = useMemo(() => uniq(data.flatMap((item) => (item.powers || []).map((p) => p.name))), [data]);
+
+  const toggle = (key, value, single = false) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      if (single) {
+        next[key] = next[key] === value ? undefined : value;
+        return next;
+      }
+      const set = new Set([...(next[key] || [])]);
       set.has(value) ? set.delete(value) : set.add(value);
-      return { ...f, [key]: Array.from(set) };
+      next[key] = Array.from(set);
+      return next;
     });
   };
-  const Section = ({ title, keyName, items }) => (
-    <div>
-      <div className="text-xs uppercase tracking-widest font-extrabold mb-2">{title}</div>
-      <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pr-1">
-        {items.map((v) => (
-          <FacetChip key={v} active={(filters[keyName] || []).includes(v)} onClick={() => toggle(keyName, v)}>
-            {v}
+
+  const Section = ({ title, values, keyName, single }) => (
+    <div className="space-y-2">
+      <div className="text-xs font-extrabold uppercase tracking-wide text-white/70">{title}</div>
+      <div className="flex max-h-40 flex-wrap gap-2 overflow-auto pr-1">
+        {values.map((value) => (
+          <FacetChip key={value} active={single ? filters[keyName] === value : (filters[keyName] || []).includes(value)} onClick={() => toggle(keyName, value, !!single)}>
+            {value}
           </FacetChip>
         ))}
       </div>
     </div>
   );
+
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white/10 backdrop-blur-2xl border-l border-white/20 p-5 text-white overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-lg font-black tracking-tight">Filters</div>
-          <Button variant="ghost" onClick={onClose}><X /></Button>
+    <div className="space-y-6 p-5 text-white">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
+          <Filter className="text-amber-300" /> Filters
         </div>
-        <div className="space-y-5">
-          {values.gender.length > 0 && <Section title="Gender" keyName="gender" items={values.gender} />}
-          {values.alignment.length > 0 && <Section title="Alignment" keyName="alignment" items={values.alignment} />}
-          {values.faction.length > 0 && <Section title="Faction" keyName="faction" items={values.faction} />}
-          {values.locations.length > 0 && <Section title="Locations" keyName="locations" items={values.locations} />}
-          {values.era.length > 0 && <Section title="Era" keyName="era" items={values.era} />}
-          {values.status.length > 0 && <Section title="Status" keyName="status" items={values.status} />}
-          {values.tags.length > 0 && <Section title="Tags" keyName="tags" items={values.tags} />}
-          {values.powers.length > 0 && <Section title="Powers" keyName="powers" items={values.powers} />}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-bold uppercase tracking-wide">Mode</span>
+          <Badge className="bg-white/10 text-white/80">{combineAND ? "AND" : "Blend"}</Badge>
+          <Switch checked={combineAND} onCheckedChange={setCombineAND} />
         </div>
       </div>
+      <Button variant="destructive" className="w-full" onClick={onClear}>
+        Clear all
+      </Button>
+      <Section title="Gender / Sex" values={genders} keyName="gender" single />
+      <Section title="Alignment" values={alignments} keyName="alignment" single />
+      <Section title="Era" values={eras} keyName="era" />
+      <Section title="Locations" values={locations} keyName="locations" />
+      <Section title="Faction / Team" values={factions} keyName="faction" />
+      <Section title="Powers" values={powers} keyName="powers" />
+      <Section title="Tags" values={tags} keyName="tags" />
+      <Section title="Status" values={statuses} keyName="status" />
+      <Section title="Stories" values={stories} keyName="stories" />
     </div>
   );
 }
 
-function BackToTop() {
-  const [showTop, setShowTop] = useState(false);
-  const [showBottom, setShowBottom] = useState(false);
-  useEffect(() => {
-    const onScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      setShowTop(scrollTop > 300);
-      setShowBottom(scrollTop + clientHeight < scrollHeight - 300);
-    };
-    window.addEventListener("scroll", onScroll);
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+function runDevTests() {
+  if (process.env.NODE_ENV === "production") return;
+  console.groupCollapsed("[Loremaker] quick sanity tests");
+  console.assert(toSlug("Mystic Man!") === "mystic-man", "slug ok");
+  console.assert(JSON.stringify(parseLocations("Hova, Yankopia; Afajato | and Luminae")) === JSON.stringify(["Hova", "Yankopia", "Afajato", "Luminae"]), "locations ok");
+  const powers = parsePowers("Speed:8, Strength=10, Flight (9), Telepathy 7");
+  console.assert(powers[0].level === 8 && powers[1].level === 10 && powers[2].level === 9 && powers[3].level === 7, "powers ok");
+  const gurl = normalizeDriveUrl("https://drive.google.com/file/d/12345/view?usp=sharing");
+  console.assert(gurl === "https://drive.google.com/uc?export=view&id=12345", "drive url normalised");
+  console.groupEnd();
+}
+
+const CHAT_WEBHOOK = process.env.NEXT_PUBLIC_LOREMAKER_CHATBOT_WEBHOOK;
+const TRACK_WEBHOOK = process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK;
+
+function ChatWidget() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role: "system", text: "Welcome to the Loremaker concierge. Ask about heroes, factions, or lore!" },
+  ]);
+  const [pending, setPending] = useState(false);
+  const inputRef = useRef(null);
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+    const value = inputRef.current?.value?.trim();
+    if (!value) return;
+    setMessages((prev) => [...prev, { role: "user", text: value }]);
+    setPending(true);
+    inputRef.current.value = "";
+    try {
+      if (CHAT_WEBHOOK) {
+        const res = await fetch(CHAT_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: value, timestamp: new Date().toISOString() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const reply = data?.reply || data?.message || "The Lore council acknowledges your request.";
+        setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: "Webhook not configured yet, but the Loremaker hears you." },
+        ]);
+      }
+    } catch (err) {
+      setMessages((prev) => [...prev, { role: "assistant", text: "Signal lost in the aether. Try again soon." }]);
+      console.error(err);
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <>
       {showTop && (
@@ -1335,7 +1537,28 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     return () => clearTimeout(t);
   }, [pulse]);
 
-  const release = (id) => setSelectedIds((ids) => ids.filter((x) => x !== id));
+  useEffect(() => {
+    if (!pulse) return undefined;
+    setShake(true);
+    const t = setTimeout(() => setShake(false), 600);
+    return () => clearTimeout(t);
+  }, [pulse]);
+
+export default function LoremakerApp() {
+  const { data, loading, error, refetch } = useCharacters();
+  const [filters, setFilters] = useState({});
+  const [combineAND, setCombineAND] = useState(true);
+  const [query, setQuery] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+  const [current, setCurrent] = useState(null);
+  const [arenaSlots, setArenaSlots] = useState({ left: null, right: null });
+  const [highlightCard, setHighlightCard] = useState(null);
+  const [arenaPulseKey, setArenaPulseKey] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showArena, setShowArena] = useState(true);
+  const [sortOption, setSortOption] = useState("default");
+  const [showTop, setShowTop] = useState(false);
+  const [showBottom, setShowBottom] = useState(false);
 
   const randomise = () => {
     if (data.length < 2) return;
@@ -1851,7 +2074,23 @@ export default function App() {
     }
   }, [filtered, sortMode]);
 
-  const clearAll = () => { setQuery(""); setFilters({}); };
+  const hasStories = useMemo(() => data.some((item) => (item.stories || []).length), [data]);
+
+  useEffect(() => {
+    if (visitTracked.current) return;
+    if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
+    if (!data.length) return;
+    visitTracked.current = true;
+    fetch(TRACK_VISIT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        characters: data.length,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [data.length]);
 
   useEffect(() => {
     if (visitTracked.current) return;
@@ -1870,24 +2109,44 @@ export default function App() {
   }, [data.length]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="relative min-h-screen bg-[#070813] text-white">
       <Aurora />
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <LoreGlyph />
-            <div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight">Loremaker Universe</div>
-              <div className="text-xs uppercase tracking-widest text-white/80 font-bold">Welcome to the official home of all the Loremaker universe and characters created by Menelek Makonnen</div>
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+              <Insignia label="Lore" size={32} variant="site" />
             </div>
+            <div className="text-2xl font-black tracking-tight">Loremaker Universe</div>
           </div>
-          <div className="hidden md:flex items-center gap-2">
-            <Switch id="mode" checked={combineAND} onChange={setCombineAND} />
-            <Badge className="bg-white/10 border border-white/20">{combineAND ? "AND" : "Single"}</Badge>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search characters, powers, locations, tags..."
+                className="w-72 bg-white/15 pl-9"
+              />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
+            </div>
+            <Button variant="gradient" onClick={() => setShowFilters(true)} className="shadow-[0_15px_40px_rgba(250,204,21,0.3)]">
+              <Filter className="h-4 w-4" /> Filters
+            </Button>
+            <Button variant="outline" onClick={clearFilters}>
+              <X size={14} /> Clear
+            </Button>
+            <Button variant="subtle" onClick={() => setShowArena((prev) => !prev)}>
+              <Swords size={14} /> {showArena ? "Hide Arena" : "Arena"}
+            </Button>
+            <Button variant="dark" onClick={() => refetch()}>
+              <RefreshCcw size={14} /> Sync
+            </Button>
           </div>
         </div>
+      </header>
 
-        <HeroSection data={data} onOpen={onOpen} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} />
+      <main className="mx-auto max-w-7xl space-y-10 px-4 py-8">
+        <HeroSection data={data} onOpen={openCharacter} onFacet={handleFacet} />
 
         {/* Arena pinned right under Hero */}
         <div id="arena-anchor">
@@ -1906,9 +2165,12 @@ export default function App() {
           />
         </div>
 
-        <div className="mt-6">
-          <StoryChips data={data} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} />
-        </div>
+        <section className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+            <Users size={14} /> {filtered.length} heroes ready
+          </div>
+          <SortBar option={sortOption} setOption={setSortOption} />
+        </section>
 
         <div className="mt-6">
           <CharacterGrid
@@ -1921,31 +2183,25 @@ export default function App() {
         </div>
       </div>
 
-      <CharacterModal open={open} onClose={() => setOpen(false)} c={active} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={(id) => { onUseInSim(id); setOpen(false); }} />
+        <CharacterGrid
+          data={charactersForGrid}
+          onOpen={openCharacter}
+          onFacet={handleFacet}
+          onUseInSim={useInSim}
+          highlightId={highlightCard}
+        />
+      </main>
 
-      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} />
+      <CharacterModal
+        open={openModal}
+        onClose={closeCharacter}
+        char={currentCharacter}
+        onFacet={handleFacet}
+        onUseInSim={useInSim}
+      />
 
       <BackToTop />
       <ChatDock />
     </div>
   );
 }
-
-/** -------------------- Minimal runtime tests (console) -------------------- */
-(function runTinyTests() {
-  try {
-    console.group("Tests");
-    const ps = parsePowers("Spellcraft:9, Teleportation(7), Reflexes 6");
-    console.assert(ps.length === 3 && ps[0].level === 9 && ps[1].level === 7 && ps[2].level === 6, "parsePowers failed");
-    const u = normalizeDriveUrl("https://drive.google.com/file/d/ABC123/view?usp=sharing");
-    console.assert(u.includes("uc?export=view&id=ABC123"), "normalizeDriveUrl failed");
-    const c = SAMPLE[0];
-    const ok = matchesFilters(c, { faction: ["Earthguard"] }, false, "Mystic");
-    console.assert(ok === true, "matchesFilters failed");
-    const res = duel(SAMPLE[0], SAMPLE[1]);
-    console.assert(res && res.winner && res.loser, "duel result structure");
-    console.groupEnd();
-  } catch (e) {
-    console.error("Tests failed:", e);
-  }
-})();
