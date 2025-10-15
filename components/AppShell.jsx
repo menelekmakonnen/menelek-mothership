@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -118,6 +119,45 @@ const shuffleArray = (arr) => {
   }
   return next;
 };
+
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => {
+      const touchCapable =
+        "ontouchstart" in window ||
+        (navigator?.maxTouchPoints ?? 0) > 0 ||
+        (navigator?.msMaxTouchPoints ?? 0) > 0;
+      setIsTouch(touchCapable);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return isTouch;
+}
+
+async function fetchWithProxy(url, { signal, headers = {} } = {}) {
+  const attempts = [url, `${GOOGLE_PROXY_PREFIX}${url}`];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt, { headers, signal, mode: "cors" });
+      if (!res.ok) {
+        lastError = new Error(`Request failed with status ${res.status}`);
+        continue;
+      }
+      return res;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) throw lastError;
+  throw new Error("No response received");
+}
 
 const createSeededRandom = (seed = 1) => {
   let s = Math.floor(seed) % 2147483647;
@@ -409,6 +449,35 @@ const PROJECTS = [
   },
 ];
 
+const SOCIAL_TRUST_LOGOS = [
+  { name: "Netflix", label: "Netflix Incubator" },
+  { name: "Channel 4", label: "Channel 4" },
+  { name: "ICUNI", label: "ICUNI" },
+  { name: "Nike", label: "Nike" },
+];
+
+const SOCIAL_METRICS = [
+  { value: "70+", label: "projects delivered" },
+  { value: "1.2M+", label: "organic views" },
+  { value: "89%", label: "client retention" },
+];
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "Menelek takes abstract prompts and returns campaigns that feel inevitable. Our clients ask for him by name now.",
+    author: "L. Mensah — Creative Director, ICUNI",
+  },
+  {
+    quote: "His notes in the edit suite are surgical. We wrapped under schedule and the final cut still feels electric.",
+    author: "A. Grant — Producer, Left Hook Gym",
+  },
+  {
+    quote: "He worldbuilds on the fly—scripts, shotlists, lore. Working with him is like plugging into a larger universe.",
+    author: "R. Owusu — Showrunner, Loremaker",
+  },
+];
+
 function getYouTubeId(url) {
   try {
     const u = new URL(url);
@@ -478,26 +547,22 @@ const HERO_PLACEHOLDERS = {
   },
 };
 
-const heroLoadingSlide = (base) => ({
-  id: `${base.id}-loading`,
-  kind: "loading",
-  title: base.title,
-  caption: base.caption,
-  preview: base.thumb,
-  credit: base.credit,
-  videoUrl: base.videoUrl || null,
-});
-
 function Hero({ onOpenLinksModal }) {
   const [idx, setIdx] = useState(0);
   const photoMedia = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 10, seed: 2 });
   const reelMedia = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 10, seed: 4 });
   const loreMedia = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 10, seed: 6 });
   const [fallbackReady, setFallbackReady] = useState(false);
+  const scrollToSection = (id) => (event) => {
+    if (event) event.preventDefault();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const instagramResolved = !photoMedia.loading && !reelMedia.loading && !loreMedia.loading;
   const instagramCount =
     (photoMedia.media?.length || 0) + (reelMedia.media?.length || 0) + (loreMedia.media?.length || 0);
+  const fallbackActive = fallbackReady || photoMedia.error || reelMedia.error || loreMedia.error;
 
   useEffect(() => {
     if (instagramResolved && instagramCount > 0) return;
@@ -506,15 +571,15 @@ function Hero({ onOpenLinksModal }) {
   }, [instagramResolved, instagramCount]);
 
   const slides = useMemo(() => {
-    if (!HERO_SLIDES.length) return [];
-
-    return HERO_SLIDES.map((entry) => {
+    const computed = [];
+    HERO_SLIDES.forEach((entry) => {
       if (entry.type === "video") {
-        return {
+        computed.push({
           ...entry,
           kind: "video",
           preview: entry.thumb,
-        };
+        });
+        return;
       }
 
       let pool = [];
@@ -523,8 +588,8 @@ function Hero({ onOpenLinksModal }) {
       if (entry.username === "lore.maker_") pool = loreMedia.media;
 
       const mediaItem = pool?.[0];
-      if (mediaItem && !fallbackReady) {
-        return {
+      if (mediaItem && !fallbackActive) {
+        computed.push({
           id: entry.id,
           kind: mediaItem.type === "video" ? "video" : "image",
           title: entry.title,
@@ -535,12 +600,13 @@ function Hero({ onOpenLinksModal }) {
             entry.type === "instagram-video"
               ? mediaItem.permalink || mediaItem.videoSrc
               : mediaItem.videoSrc || null,
-        };
+        });
+        return;
       }
 
       const placeholder = HERO_PLACEHOLDERS[entry.id];
-      if (placeholder) {
-        return {
+      if (placeholder && fallbackActive) {
+        computed.push({
           id: entry.id,
           kind: "image",
           title: entry.title,
@@ -548,15 +614,25 @@ function Hero({ onOpenLinksModal }) {
           preview: placeholder.preview,
           credit: entry.credit,
           videoUrl: null,
-        };
+        });
+      } else if (!fallbackActive) {
+        computed.push({
+          id: `${entry.id}-loading`,
+          kind: "image",
+          title: entry.title,
+          caption: entry.caption,
+          preview: placeholder?.preview || "",
+          credit: entry.credit,
+          videoUrl: null,
+          pending: true,
+        });
       }
-
-      return heroLoadingSlide(entry);
     });
-  }, [fallbackReady, photoMedia.media, reelMedia.media, loreMedia.media]);
+    return computed;
+  }, [fallbackActive, fallbackReady, photoMedia.media, reelMedia.media, loreMedia.media]);
 
   const slidesLength = slides.length || 1;
-  const awaitingSlides = slidesLength < HERO_SLIDES.length || slides.some((slide) => slide.kind === "loading");
+  const awaitingSlides = slidesLength < HERO_SLIDES.length;
 
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
@@ -580,16 +656,19 @@ function Hero({ onOpenLinksModal }) {
     caption: baseSlide.caption,
     credit: baseSlide.credit,
   };
+  const pendingSlide = Boolean(activeSlide?.pending);
   const openVideo = () => {
-    if (!activeSlide?.videoUrl || activeSlide.kind === "loading") return;
+    if (!activeSlide?.videoUrl || pendingSlide) return;
     window.open(activeSlide.videoUrl, "_blank", "noopener,noreferrer");
   };
   const imageSrc = activeSlide?.preview || activeSlide?.thumb || activeSlide?.src || "";
-  const ctaLabel = activeSlide?.videoUrl
-    ? activeSlide.videoUrl.includes("instagram.com")
-      ? "View on Instagram"
-      : "Watch reel"
-    : "";
+  const ctaLabel = pendingSlide
+    ? "Loading media"
+    : activeSlide?.videoUrl
+      ? activeSlide.videoUrl.includes("instagram.com")
+        ? "View on Instagram"
+        : "Watch reel"
+      : "";
   return (
     <section className="relative pt-24 pb-10" id="hero">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
@@ -610,9 +689,19 @@ function Hero({ onOpenLinksModal }) {
           </motion.h1>
           <div className="mt-2 text-xl text-white/85 select-none">Worldbuilder. Filmmaker. Storyteller.</div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button href={LINKS.loremakerSite} icon={ExternalLink}>Explore the Loremaker Universe</Button>
-            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
-            <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
+            <Button
+              href="#featured"
+              onClick={scrollToSection("featured")}
+              variant="accent"
+            >
+              View My Work
+            </Button>
+            <Button href={LINKS.loremakerSite} icon={ExternalLink} target="_blank" rel="noreferrer" variant="ghost">
+              Explore Loremaker
+            </Button>
+            <Button href="#value-calculator" onClick={scrollToSection("value-calculator")} variant="ghost">
+              Get a Free Quote
+            </Button>
           </div>
         </div>
         <Card className="relative overflow-hidden">
@@ -620,29 +709,11 @@ function Hero({ onOpenLinksModal }) {
             <span>Showcase</span>
             <div className="flex items-center gap-2 text-xs text-white/60">
               <span>{awaitingSlides ? "Loading…" : `${idx + 1}/${slidesLength}`}</span>
-              {slidesLength > 1 ? (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={goPrev}
-                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
-                    aria-label="Previous showcase"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={goNext}
-                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
-                    aria-label="Next showcase"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : null}
             </div>
           </div>
-            <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
-              <AnimatePresence mode="wait">
-                <motion.div
+          <div className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group">
+            <AnimatePresence mode="wait">
+              <motion.div
                   key={activeSlide.id}
                   className="absolute inset-0"
                   initial={{ opacity: 0, scale: 1.02 }}
@@ -650,11 +721,7 @@ function Hero({ onOpenLinksModal }) {
                   exit={{ opacity: 0, scale: 1.02 }}
                   transition={{ duration: 0.6 }}
                 >
-                {activeSlide.kind === "loading" ? (
-                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70 text-sm">
-                    Syncing Instagram…
-                  </div>
-                ) : imageSrc ? (
+                {imageSrc ? (
                   <img
                     src={imageSrc}
                     alt={activeSlide.title}
@@ -666,7 +733,7 @@ function Hero({ onOpenLinksModal }) {
                     {activeSlide.title}
                   </div>
                 )}
-                {activeSlide.videoUrl && activeSlide.kind !== "loading" ? (
+                {!pendingSlide && activeSlide.videoUrl ? (
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
                     <button
                       onClick={openVideo}
@@ -675,10 +742,32 @@ function Hero({ onOpenLinksModal }) {
                       <Play className="h-4 w-4" /> {ctaLabel || "Play"}
                     </button>
                   </div>
+                ) : pendingSlide ? (
+                  <div className="absolute inset-0 grid place-items-center bg-black/30 text-xs uppercase tracking-[0.3em] text-white/60">
+                    Loading media
+                  </div>
                 ) : null}
               </motion.div>
             </AnimatePresence>
           </div>
+          {slidesLength > 1 ? (
+            <div className="absolute bottom-4 right-4 flex items-center gap-2">
+              <button
+                onClick={goPrev}
+                className="rounded-full bg-black/30 border border-white/20 p-2 text-white hover:bg-black/50"
+                aria-label="Previous showcase"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={goNext}
+                className="rounded-full bg-black/30 border border-white/20 p-2 text-white hover:bg-black/50"
+                aria-label="Next showcase"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
           {slide.caption ? (
             <motion.p
               key={`${activeSlide.id}-caption`}
@@ -836,11 +925,19 @@ function ContactInline({ calendarState }) {
       subtype: s,
       otherDetail: s === "Other" ? f.otherDetail : "",
       fitScore: s === "Other" ? "" : f.fitScore,
-      recTier: s === "Other" ? "Starter" : f.recTier || "Starter",
-      scope: s === "Other" ? "" : f.scope,
+      recTier: s === "Other" ? "" : f.recTier || "Starter",
     }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
-  const showFitFields = form.subtype && form.subtype !== "Other";
+  const autoSummary = form.fitScore || form.scope || form.recTier ? (
+    <div className="rounded-2xl border border-white/15 bg-black/30 px-3 py-2 text-xs text-white/65">
+      <div className="font-semibold text-white/80 text-sm mb-1">Auto insights</div>
+      <ul className="space-y-1">
+        {form.fitScore ? <li>Fit score: {form.fitScore}</li> : null}
+        {form.recTier ? <li>Recommended package: {form.recTier}</li> : null}
+        {form.scope ? <li>Budget • timeline: {form.scope}</li> : null}
+      </ul>
+    </div>
+  ) : null;
 
   return (
     <Card id="contact-inline">
@@ -866,40 +963,6 @@ function ContactInline({ calendarState }) {
             </div>
           ) : null}
 
-          {showFitFields ? (
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-                <input
-                  value={form.fitScore}
-                  onChange={(e) => setForm({ ...form, fitScore: e.target.value })}
-                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-                />
-              </div>
-              <div>
-                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-                <select
-                  value={form.recTier || "Starter"}
-                  onChange={(e) => setForm({ ...form, recTier: e.target.value })}
-                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
-                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-                >
-                  {["Starter", "Signature", "Cinema+"].map((x) => (
-                    <option key={x} className="text-black">{x}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-                <input
-                  value={form.scope}
-                  onChange={(e) => setForm({ ...form, scope: e.target.value })}
-                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-                />
-              </div>
-            </div>
-          ) : null}
-
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="text-white/70 text-sm mb-1 block">Name *</label>
@@ -921,10 +984,10 @@ function ContactInline({ calendarState }) {
             </div>
           </div>
           <div>
-            <label className="text-white/70 text-sm mb-1 block">Project brief / goals</label>
+            <label className="text-white/70 text-sm mb-1 block">Project brief / goals *</label>
             <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
           </div>
-
+          {autoSummary}
           <label className="flex items-center gap-2 text-white/70">
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I agree to the {" "}
             <a href="#" onClick={(e) => { e.preventDefault(); alert("Privacy policy modal placeholder."); }} className="underline">Privacy Policy</a>.
@@ -953,11 +1016,14 @@ function ContactInline({ calendarState }) {
 // ========= Calculator (CVC) with days/weeks modes & no Distribution ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
-  useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
-  const [budget, setBudget] = useState(2000);
-  const [ambition, setAmbition] = useState(6);
+  useEffect(() => {
+    if (serviceProp) setService(serviceProp);
+  }, [serviceProp]);
+  const [budget, setBudget] = useState(5000);
+  const [ambition, setAmbition] = useState(7);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [total, setTotal] = useState(6); // weeks
+  const [total, setTotal] = useState(6);
+  const [showSchedule, setShowSchedule] = useState(false);
 
   const RULES = {
     "Feature Film": { base: 40000, budgetRange: [15000, 250000], ambitionIdeal: [7, 10], durationIdeal: 16, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
@@ -970,26 +1036,19 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   };
   const cfg = RULES[service] || RULES["Short Film"];
   const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
-  const durationScoreFor = (svc, tot) => {
+  const durationScoreFor = (svc, weeks) => {
     const ideal = RULES[svc].durationIdeal;
-    return norm(1 - Math.abs(tot - ideal) / ideal, [0, 1]);
+    return norm(1 - Math.abs(weeks - ideal) / ideal, [0, 1]);
   };
-  const scoreFor = (svc, bgt, amb, tot) => {
+  const scoreFor = (svc, bgt, amb, weeks) => {
     const r = RULES[svc];
     const budgetScore = norm(bgt, r.budgetRange);
     const ambitionScore = norm(amb, r.ambitionIdeal);
-    const durationScore = durationScoreFor(svc, tot);
+    const durationScore = durationScoreFor(svc, weeks);
     const raw = r.weights.budget * budgetScore + r.weights.ambition * ambitionScore + r.weights.duration * durationScore;
     return Math.round(clamp(raw, 0, 1) * 100);
   };
 
-  const score = scoreFor(service, budget, ambition, total);
-  const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
-  const coverage = budget / cfg.base;
-  const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
-  const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
-
-  // No distribution phase. Split across: Development / Pre‑Production / Production / Post‑Production
   const SPLIT = [0.22, 0.33, 0.22, 0.23];
   const KEYS = ["development", "pre", "production", "post"];
   const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
@@ -1054,11 +1113,38 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     });
   }, [total]);
 
+  const calendarSummary = useMemo(() => buildCalendarStateOverlapping(phases, projectDate), [phases, projectDate]);
+  const totalDurationDays = useMemo(() => {
+    if (!calendarSummary?.start || !calendarSummary?.end) return Math.max(1, Math.round(total * 7));
+    const start = new Date(`${calendarSummary.start}T00:00:00Z`);
+    const end = new Date(`${calendarSummary.end}T00:00:00Z`);
+    const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(1, diff || Math.round(total * 7));
+  }, [calendarSummary, total]);
+  const timelineWeeks = Math.max(1, totalDurationDays / 7);
+  const timelineWeeksRounded = Math.max(1, Math.round(timelineWeeks));
+  const totalLabel = totalDurationDays <= 14 ? `${totalDurationDays} days` : `${timelineWeeks.toFixed(1)} weeks`;
+
+  const score = scoreFor(service, budget, ambition, timelineWeeksRounded);
+  const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
+  const coverage = budget / cfg.base;
+  const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
+  const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
+  const phaseSummaries = calendarSummary?.phases || [];
+  const formatPhaseLength = (phase) => {
+    const days = Math.max(1, Math.round((phase.weeks || 0) * 7));
+    return totalDurationDays <= 14 ? `${days} days` : `${(phase.weeks || 0).toFixed(1)} wks`;
+  };
+
   useEffect(() => {
-    onCalendarChange?.(buildCalendarStateOverlapping(phases, projectDate));
-    window.dispatchEvent(new CustomEvent("prefill-fit", { detail: { service, fit: score, suggestedTier, budget, timeline: total } }));
+    onCalendarChange?.(calendarSummary);
+    window.dispatchEvent(
+      new CustomEvent("prefill-fit", {
+        detail: { service, fit: score, suggestedTier, budget, timeline: timelineWeeksRounded },
+      })
+    );
     window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: service } }));
-  }, [phases, projectDate, service, score, suggestedTier, budget, total]);
+  }, [calendarSummary, service, score, suggestedTier, budget, timelineWeeksRounded]);
 
   useEffect(() => {
     if (randomizeKey === undefined) return;
@@ -1071,22 +1157,18 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       const tot = Math.floor(Math.random() * 26) + 1;
       const sc = scoreFor(svc, bgt, amb, tot);
       if (sc > best.score) best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
-      if (sc >= 80) { best = { s: svc, b: bgt, a: amb, t: tot, score: sc }; break; }
+      if (sc >= 80) {
+        best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
+        break;
+      }
     }
     setService(best.s);
     setBudget(best.b);
     setAmbition(best.a);
     setTotal(best.t);
     setPhases(makeFSForTotal(best.t));
+    setShowSchedule(false);
   }, [randomizeKey]);
-
-  const totalSpanDays = phases.reduce((acc, p) => {
-    const durationDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
-    return Math.max(acc, p.startDays + durationDays);
-  }, 0);
-  const totalLabel = totalSpanDays <= 14
-    ? `${Math.max(1, totalSpanDays)} days`
-    : `${(totalSpanDays / 7).toFixed(1)} weeks`;
 
   return (
     <div>
@@ -1096,34 +1178,82 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           <div className="px-3 py-2 rounded-xl border border-white/20 bg-white/10">{service}</div>
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Budget (£{budget.toLocaleString()})</div>
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+            <span>Budget (£{budget.toLocaleString()})</span>
+            <Info className="h-3.5 w-3.5 text-white/60" title="Estimated production budget in GBP." />
+          </div>
           <input aria-label="Budget" type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Ambition ({ambition})</div>
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+            <span>Ambition ({ambition})</span>
+            <Info className="h-3.5 w-3.5 text-white/60" title="How bold the visuals, VFX, and narrative beats should feel." />
+          </div>
           <input aria-label="Ambition" type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Proposed Project Start</div>
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+            <span>Proposed Project Start</span>
+            <Info className="h-3.5 w-3.5 text-white/60" title="When we’d begin pre-production." />
+          </div>
           <input aria-label="Project start" type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
         </div>
       </div>
-      <div className="mt-5">
-        <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
-        <div className="rounded-2xl p-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
-          <svg viewBox="0 0 110 6" className="w-full block" aria-label={`Fit score ${score}%`}>
-            <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
-            <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
-          </svg>
-          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalLabel}</div>
+      <div className="mt-6 space-y-3">
+        <div className="flex items-center justify-between text-white/70 text-sm">
+          <span>Fit Score</span>
+          <span>{descriptor}</span>
+        </div>
+        <div className="rounded-3xl border border-white/15 bg-gradient-to-br from-white/12 to-white/5 p-4 shadow-[0_10px_45px_rgba(0,0,0,0.45)]">
+          <div className="h-3 rounded-full bg-white/15 overflow-hidden">
+            <div className="h-full" style={{ width: `${score}%`, background: barColor }} aria-hidden="true" />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
+            <span>Recommended: <span className="font-semibold text-white">{suggestedTier}</span></span>
+            <span>Timeline: {totalLabel}</span>
+          </div>
         </div>
       </div>
-      <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
-      <div className="mt-4 flex gap-2"><Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-white/70">
+        <button
+          type="button"
+          onClick={() => setShowSchedule((v) => !v)}
+          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 hover:bg-white/15 transition"
+        >
+          {showSchedule ? "Hide schedule ▲" : "Customize schedule ▼"}
+        </button>
+        <div className="text-xs text-white/60">Slider: {total} wks • Actual: {totalLabel}</div>
+      </div>
+      {showSchedule ? (
+        <TimelineGrid
+          phases={phases}
+          onChange={setPhases}
+          total={total}
+          onTotalChange={setTotal}
+          startDate={projectDate}
+        />
+      ) : (
+        <div className="mt-4 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/75 space-y-2">
+          {phaseSummaries.length ? (
+            phaseSummaries.map((phase) => (
+              <div key={phase.key} className="flex items-center justify-between">
+                <span>{phase.label}</span>
+                <span className="text-white/60">{formatPhaseLength(phase)}</span>
+              </div>
+            ))
+          ) : (
+            <div>No schedule generated yet.</div>
+          )}
+        </div>
+      )}
+      <div className="mt-4 flex gap-2">
+        <Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">
+          Book this Scope
+        </Button>
+      </div>
     </div>
   );
 }
-
 // ========= Calendar helpers ========= //
 function addDays(dateStr, days) {
   const d = new Date(dateStr + "T00:00:00");
@@ -1149,6 +1279,7 @@ function buildCalendarStateOverlapping(phases, startDate) {
 // ========= Timeline Grid ========= //
 function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const containerRef = useRef(null);
+  const isTouch = useIsTouchDevice();
   const totalDays = Math.max(7, total * 7);
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
   const dragRef = useRef(null);
@@ -1173,12 +1304,14 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     };
   };
   const onPointerDown = (e, idx, mode) => {
+    if (isTouch) return;
     const rect = containerRef.current.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { idx, mode, startX: e.clientX, rectW: rect.width, startStart: phases[idx].startDays, startWeeks: phases[idx].weeks };
   };
   const onPointerMove = (e) => {
-    const d = dragRef.current; if (!d) return;
+    const d = dragRef.current;
+    if (!d) return;
     const dx = e.clientX - d.startX;
     const deltaDays = Math.round((dx / d.rectW) * totalDays);
     const next = phases.map((p) => ({ ...p }));
@@ -1195,8 +1328,43 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     }
     onChange(next.map(clampPhase));
   };
-  const onPointerUp = () => { dragRef.current = null; };
+  const onPointerUp = () => {
+    dragRef.current = null;
+  };
   const cal = buildCalendarStateOverlapping(phases, startDate);
+  const sliderLabel = total <= 2 ? `${total * 7} days` : `${total} weeks`;
+
+  if (isTouch) {
+    return (
+      <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4 space-y-3">
+        <div className="flex items-center justify-between text-white/70 text-sm">
+          <span>Total duration</span>
+          <span className="text-xs text-white/60">{sliderLabel}</span>
+        </div>
+        <input
+          aria-label="Total duration weeks"
+          type="range"
+          min={1}
+          max={26}
+          step={1}
+          value={total}
+          onChange={(e) => onTotalChange(parseInt(e.target.value))}
+        />
+        <div className="space-y-2 text-sm text-white/75">
+          {cal.phases.map((phase) => (
+            <div key={phase.key} className="flex items-center justify-between">
+              <span>{phase.label}</span>
+              <span className="text-white/60">
+                {total <= 2 ? `${Math.max(1, Math.round(phase.weeks * 7))} days` : `${phase.weeks.toFixed(1)} wks`}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="text-xs text-white/60">Detailed bar adjustments are available on desktop.</div>
+      </div>
+    );
+  }
+
   const showDays = total <= 2;
   return (
     <div className="mt-6">
@@ -1205,15 +1373,15 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
           <input
-            aria-label="Total duration"
+            aria-label="Total duration weeks"
             type="range"
             min={1}
             max={26}
             step={1}
             value={total}
-            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
+            onChange={(e) => onTotalChange(parseInt(e.target.value))}
           />
-          <span className="text-white/70 text-xs">{showDays ? `${totalDays} d` : `${total} wks`}</span>
+          <span className="text-white/70 text-xs">{sliderLabel}</span>
         </div>
       </div>
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
@@ -1232,33 +1400,24 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
               ))
             ) : (
               [...Array(total).keys()].map((w) => (
-                <div key={w} className="absolute top-0 text-center font-semibold text-white/80" style={{ left: pct(w * 7), width: pct(7) }}>
-                  W{w + 1}
-                </div>
+                <div key={w} className="absolute top-0 text-center font-semibold text-white/80" style={{ left: pct(w * 7), width: pct(7) }}>W{w + 1}</div>
               ))
             )}
           </div>
         </div>
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => {
-            const visibleDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
-            const widthDays = p.weeks <= 0 ? 0.75 : visibleDays;
-            return (
-              <div key={p.key} className="flex items-center gap-3">
-                <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
-                <div className="relative h-10 flex-1">
-                  <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
-                    style={{ left: pct(p.startDays), width: pct(widthDays) }}
-                  >
-                    <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
-                    <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                    <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
-                    <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                      <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
-                        {total <= 2 ? `${visibleDays}d` : `${Math.round(p.weeks * 10) / 10}w`}
-                      </div>
+          {phases.map((p, idx) => (
+            <div key={p.key} className="flex items-center gap-3">
+              <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
+              <div className="relative h-10 flex-1">
+                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
+                <div className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]" style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}>
+                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
+                  <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                  <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                    <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {total <= 2 ? `${Math.ceil(p.weeks * 7)}d` : `${Math.round(p.weeks * 10) / 10}w`}
                     </div>
                   </div>
                 </div>
@@ -1271,7 +1430,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     </div>
   );
 }
-
+// ========= CSV helper ========= //
 // ========= CSV helper ========= //
 function useCSV(url) {
   const [rows, setRows] = useState([]);
@@ -1749,7 +1908,7 @@ function ChatbotWidget() {
     return (
       <button
         onClick={toggleOpen}
-        className="relative rounded-full px-4 py-3 bg-white/10 border border-white/20 backdrop-blur-xl text-left shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/15 w-48"
+        className="relative rounded-full px-4 py-3 bg-white/10 border border-white/20 backdrop-blur-xl text-left shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/15 w-44 sm:w-48"
         title="Open chat"
       >
         <div className="flex items-center gap-3">
@@ -1775,7 +1934,7 @@ function ChatbotWidget() {
   };
 
   return (
-    <div className="w-[320px] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+    <div className="w-full max-w-[320px] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
       <div
         className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer select-none"
         onClick={onHeaderClick}
@@ -1972,6 +2131,33 @@ const MMM_ALBUMS = [
   },
 ];
 
+const MMM_FALLBACKS = {
+  "mmm-photos": [
+    { id: "mmm-photos-f1", src: "https://i.imgur.com/1lFvlPj.jpg", preview: "https://i.imgur.com/1lFvlPj.jpg", type: "image" },
+    { id: "mmm-photos-f2", src: "https://i.imgur.com/sS1Zt8Y.jpg", preview: "https://i.imgur.com/sS1Zt8Y.jpg", type: "image" },
+    { id: "mmm-photos-f3", src: "https://i.imgur.com/xqY7EwA.jpg", preview: "https://i.imgur.com/xqY7EwA.jpg", type: "image" },
+    { id: "mmm-photos-f4", src: "https://i.imgur.com/9xvXh3o.jpg", preview: "https://i.imgur.com/9xvXh3o.jpg", type: "image" },
+  ],
+  "mmm-epic-edits": [
+    { id: "mmm-epic-f1", src: "https://i.imgur.com/4w30rYd.jpg", preview: "https://i.imgur.com/4w30rYd.jpg", type: "image" },
+    { id: "mmm-epic-f2", src: "https://i.imgur.com/Jh3VFX5.jpg", preview: "https://i.imgur.com/Jh3VFX5.jpg", type: "image" },
+    { id: "mmm-epic-f3", src: "https://i.imgur.com/3YDN8Yp.jpg", preview: "https://i.imgur.com/3YDN8Yp.jpg", type: "image" },
+    { id: "mmm-epic-f4", src: "https://i.imgur.com/av1CkSq.jpg", preview: "https://i.imgur.com/av1CkSq.jpg", type: "image" },
+  ],
+  "mmm-ai-stills": [
+    { id: "mmm-ai-stills-f1", src: "https://i.imgur.com/WFvxi4A.jpg", preview: "https://i.imgur.com/WFvxi4A.jpg", type: "image" },
+    { id: "mmm-ai-stills-f2", src: "https://i.imgur.com/0u5HnF2.jpg", preview: "https://i.imgur.com/0u5HnF2.jpg", type: "image" },
+    { id: "mmm-ai-stills-f3", src: "https://i.imgur.com/MV1tFUS.jpg", preview: "https://i.imgur.com/MV1tFUS.jpg", type: "image" },
+    { id: "mmm-ai-stills-f4", src: "https://i.imgur.com/6E0KxhQ.jpg", preview: "https://i.imgur.com/6E0KxhQ.jpg", type: "image" },
+  ],
+  "mmm-ai-videos": [
+    { id: "mmm-ai-videos-f1", src: "https://i.imgur.com/H9Lt1J3.jpg", preview: "https://i.imgur.com/H9Lt1J3.jpg", type: "image" },
+    { id: "mmm-ai-videos-f2", src: "https://i.imgur.com/zpB2lOf.jpg", preview: "https://i.imgur.com/zpB2lOf.jpg", type: "image" },
+    { id: "mmm-ai-videos-f3", src: "https://i.imgur.com/DrjOIx1.jpg", preview: "https://i.imgur.com/DrjOIx1.jpg", type: "image" },
+    { id: "mmm-ai-videos-f4", src: "https://i.imgur.com/L1VvYkD.jpg", preview: "https://i.imgur.com/L1VvYkD.jpg", type: "image" },
+  ],
+};
+
 function MMMBelt({ album, onOpen }) {
   const { media, loading, error } = useInstagramMedia({
     username: album.username,
@@ -1980,11 +2166,28 @@ function MMMBelt({ album, onOpen }) {
     seed: album.seed,
   });
   const [hovered, setHovered] = useState(null);
+  const [fallbackReady, setFallbackReady] = useState(false);
+  const isTouch = useIsTouchDevice();
 
-  const duplicated = media.length ? [...media, ...media] : [];
+  useEffect(() => {
+    if (media.length) {
+      setFallbackReady(false);
+      return;
+    }
+    if (!loading) {
+      setFallbackReady(true);
+      return;
+    }
+    const timer = setTimeout(() => setFallbackReady(true), 5000);
+    return () => clearTimeout(timer);
+  }, [media.length, loading]);
+
+  const fallbackMedia = MMM_FALLBACKS[album.id] || [];
+  const activeMedia = media.length ? media : fallbackReady ? fallbackMedia : [];
+  const duplicated = activeMedia.length ? [...activeMedia, ...activeMedia] : [];
   const openAt = (index) => {
-    if (!media.length) return;
-    onOpen?.({ album, media, initialIndex: index % media.length });
+    if (!activeMedia.length) return;
+    onOpen?.({ album, media: activeMedia, initialIndex: index % activeMedia.length });
   };
 
   return (
@@ -1995,65 +2198,89 @@ function MMMBelt({ album, onOpen }) {
           <p className="text-white/70 text-sm max-w-2xl">{album.description}</p>
         </div>
         <div className="flex items-center gap-2 text-white/65 text-xs">
-          {loading ? (
+          {loading && !activeMedia.length ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Syncing media…</span>
             </>
-          ) : error && !media.length ? (
+          ) : error && !activeMedia.length ? (
             <span className="text-rose-200/80">Feed temporarily unavailable.</span>
           ) : null}
         </div>
       </div>
       <div className="relative overflow-hidden">
         {duplicated.length ? (
-          <motion.div
-            className="flex gap-4"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: album.filter === "reels" ? 42 : 54, repeat: Infinity, ease: "linear" }}
-          >
-            {duplicated.map((item, idx) => {
-              const baseIndex = idx % media.length;
-              const isActive = hovered === baseIndex;
-              const isDimmed = hovered !== null && !isActive;
-              return (
-                <button
-                  key={`${album.id}-${idx}`}
-                  onMouseEnter={() => setHovered(baseIndex)}
-                  onMouseLeave={() => setHovered(null)}
-                  onClick={() => openAt(baseIndex)}
-                  className={cn(
-                    "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
-                    isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
-                  )}
-                  title="Open lightbox"
-                >
-                  {item.type === "video" && item.videoSrc ? (
-                    <video
-                      src={item.videoSrc}
-                      className="w-full h-full object-cover"
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                    />
-                  ) : (
+          isTouch ? (
+            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2">
+              {duplicated.map((item, idx) => {
+                const baseIndex = idx % activeMedia.length;
+                return (
+                  <button
+                    key={`${album.id}-${idx}`}
+                    onClick={() => openAt(baseIndex)}
+                    className="relative h-40 w-64 shrink-0 snap-center overflow-hidden rounded-2xl border border-white/15"
+                    title="Open lightbox"
+                  >
                     <img
                       src={item.preview || item.src}
                       alt={`${album.title} still`}
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
-                </button>
-              );
-            })}
-          </motion.div>
+                    <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <motion.div
+              className="flex gap-4"
+              animate={{ x: ["0%", "-50%"] }}
+              transition={{ duration: album.filter === "reels" ? 42 : 54, repeat: Infinity, ease: "linear" }}
+            >
+              {duplicated.map((item, idx) => {
+                const baseIndex = idx % activeMedia.length;
+                const isActive = hovered === baseIndex;
+                const isDimmed = hovered !== null && !isActive;
+                return (
+                  <button
+                    key={`${album.id}-${idx}`}
+                    onMouseEnter={() => setHovered(baseIndex)}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => openAt(baseIndex)}
+                    className={cn(
+                      "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                      isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                    )}
+                    title="Open lightbox"
+                  >
+                    {item.type === "video" && item.videoSrc ? (
+                      <video
+                        src={item.videoSrc}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={item.preview || item.src}
+                        alt={`${album.title} still`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                  </button>
+                );
+              })}
+            </motion.div>
+          )
         ) : (
           <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
-            {loading ? "Loading gallery…" : "No media pulled yet."}
+            {loading && !fallbackReady ? "Loading gallery…" : "No media pulled yet."}
           </div>
         )}
       </div>
@@ -2199,6 +2426,59 @@ function CharacterCard({ row }) {
 }
 
 // ========= Portfolio ========= //
+function SocialProof() {
+  return (
+    <section className="pt-10 pb-6" aria-label="Social proof">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-4 max-w-2xl">
+              <div className="text-xs uppercase tracking-[0.4em] text-white/60">Trusted By</div>
+              <div className="flex flex-wrap gap-3 text-white/80">
+                {SOCIAL_TRUST_LOGOS.map((logo) => (
+                  <span
+                    key={logo.name}
+                    className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-sm font-medium"
+                  >
+                    {logo.label}
+                  </span>
+                ))}
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {SOCIAL_METRICS.map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="rounded-2xl border border-white/15 bg-black/30 px-4 py-5 text-center"
+                  >
+                    <div className="text-3xl font-bold text-white">{metric.value}</div>
+                    <div className="text-white/65 text-xs uppercase tracking-[0.25em]">
+                      {metric.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="text-xs uppercase tracking-[0.4em] text-white/60">Testimonials</div>
+              <div className="mt-3 space-y-3">
+                {TESTIMONIALS.map((t, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-white/15 bg-white/5 p-4 text-white/80 text-sm"
+                  >
+                    <p className="italic">“{t.quote}”</p>
+                    <p className="mt-2 text-white/60 text-xs uppercase tracking-[0.2em]">{t.author}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Portfolio() {
   const [modal, setModal] = useState(null);
   const embedSrc = useMemo(() => {
@@ -2388,10 +2668,10 @@ function LogoMark() {
 
 const SECTION_LINKS = [
   { id: "featured", label: "Featured" },
-  { id: "galleries", label: "Galleries" },
-  { id: "loremaker", label: "Loremaker" },
   { id: "value-calculator", label: "Client Value Calculator" },
+  { id: "galleries", label: "Galleries" },
   { id: "contact", label: "Contact Form" },
+  { id: "loremaker", label: "Loremaker" },
   { id: "blog", label: "Blog" },
 ];
 
@@ -2405,9 +2685,9 @@ const MENU = [
 
 function FloatingButtons({ onOpenContact }) {
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3">
       <ChatbotWidget />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col items-end gap-2">
         <button
           onClick={onOpenContact}
           className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
@@ -2436,7 +2716,7 @@ function SectionNav({ variant = "floating", className = "" }) {
   };
 
   const containerClasses = cn(
-    "flex flex-wrap items-center gap-2 px-4 py-3",
+    "flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 px-4 py-3 justify-center",
     variant === "floating"
       ? "rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
       : "rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
@@ -2448,17 +2728,41 @@ function SectionNav({ variant = "floating", className = "" }) {
 
   return (
     <div className={cn(containerClasses, className)}>
-      {SECTION_LINKS.map((link) => (
-        <button
-          key={link.id}
-          type="button"
-          onClick={() => onNavigate(link.id)}
-          className={buttonClasses}
-          title={`Jump to ${link.label}`}
+      <div className="w-full sm:hidden">
+        <label className="sr-only" htmlFor={`section-nav-${variant}`}>Jump to section</label>
+        <select
+          id={`section-nav-${variant}`}
+          className="w-full rounded-2xl border border-white/20 bg-black/40 px-3 py-2 text-sm"
+          defaultValue=""
+          onChange={(e) => {
+            if (!e.target.value) return;
+            onNavigate(e.target.value);
+            e.target.value = "";
+          }}
         >
-          {link.label}
-        </button>
-      ))}
+          <option value="" disabled>
+            Navigate to…
+          </option>
+          {SECTION_LINKS.map((link) => (
+            <option key={link.id} value={link.id}>
+              {link.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="hidden w-full sm:flex sm:flex-wrap sm:justify-center sm:gap-2">
+        {SECTION_LINKS.map((link) => (
+          <button
+            key={link.id}
+            type="button"
+            onClick={() => onNavigate(link.id)}
+            className={buttonClasses}
+            title={`Jump to ${link.label}`}
+          >
+            {link.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -2509,6 +2813,42 @@ export default function AppShell() {
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
 
+  const structuredData = useMemo(() => {
+    const sameAs = [
+      LINKS.personalYouTube,
+      LINKS.directorYouTube,
+      SOCIALS.instagram,
+      LINKS.personalIG,
+      LINKS.loremakerIG,
+      LINKS.icuniIG,
+      LINKS.mmmIG,
+      LINKS.aiIG,
+      SOCIALS.linkedin,
+      LINKS.personalLI,
+      LINKS.businessLI,
+    ].filter(Boolean);
+    return {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: "Menelek Makonnen",
+      url: "https://menelekmakonnen.com",
+      jobTitle: "Director & Worldbuilder",
+      worksFor: {
+        "@type": "Organization",
+        name: "ICUNI",
+      },
+      sameAs,
+      description:
+        "Director and worldbuilder crafting films, music videos, documentaries, and AI-assisted storytelling pipelines.",
+      workExample: PROJECTS.slice(0, 4).map((p) => ({
+        "@type": "CreativeWork",
+        name: p.title,
+        url: p.url,
+        description: p.summary,
+      })),
+    };
+  }, []);
+
   const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: name } }));
 
   const goContactInline = (serviceName) => {
@@ -2522,7 +2862,26 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div className="min-h-screen text-white relative overflow-x-hidden">
+    <>
+      <Head>
+        <title>Menelek Makonnen — Director & Worldbuilder</title>
+        <meta
+          name="description"
+          content="Director and worldbuilder delivering cinematic campaigns, AI-assisted edits, and the expanding Loremaker Universe."
+        />
+        <meta property="og:title" content="Menelek Makonnen — Director & Worldbuilder" />
+        <meta
+          property="og:description"
+          content="Cinematic storytelling, AI experimentation, and the Loremaker Universe — explore featured work, pricing, and contact options."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://menelekmakonnen.com" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      </Head>
+      <div className="min-h-screen text-white relative overflow-x-hidden">
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.015)_0,rgba(255,255,255,0.015)_1px,transparent_1px,transparent_8px)]" />
@@ -2562,8 +2921,20 @@ export default function AppShell() {
             <div className="max-w-7xl mx-auto px-6 -mt-6">
               <SectionNav />
             </div>
+            <SocialProof />
             <Portfolio />
+            <WorkWithMe
+              currentService={currentService}
+              onSetService={(n) => setCurrentService(n)}
+              onBook={(svc) => goContactInline(svc)}
+              onCalendarChange={setCalendarState}
+            />
             <MMMGalleries />
+            <section className="py-6" id="contact">
+              <div className="max-w-7xl mx-auto px-6">
+                <ContactInline calendarState={calendarState} />
+              </div>
+            </section>
             <FeaturedUniverse />
             <Blog />
             <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
@@ -2614,6 +2985,7 @@ export default function AppShell() {
           <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
         </div>
       </Modal>
-    </div>
+      </div>
+    </>
   );
 }
