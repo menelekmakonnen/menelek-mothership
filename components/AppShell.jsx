@@ -75,6 +75,18 @@ const CHATBOT_ENDPOINTS = {
 const CHATBOT_NAME = "Zara";
 const CHATBOT_TAGLINE = "Menelek's AI Assistant";
 
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+  workflow: "/workflow/cQltZgIikkp4fFER",
+};
+const CHATBOT_NAME = "Zara";
+const CHATBOT_TAGLINE = "Menelek's AI Assistant";
+const GOOGLE_PROXY_PREFIX = "https://r.jina.ai/https://";
+const INSTAGRAM_PROXY_PREFIX = "https://r.jina.ai/https://www.instagram.com/";
+
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -965,10 +977,10 @@ function ContactInline({ calendarState }) {
             </div>
           </div>
           <div>
-            <label className="text-white/70 text-sm mb-1 block">Project brief / goals</label>
+            <label className="text-white/70 text-sm mb-1 block">Project brief / goals *</label>
             <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
           </div>
-
+          {autoSummary}
           <label className="flex items-center gap-2 text-white/70">
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I agree to the {" "}
             <a href="#" onClick={(e) => { e.preventDefault(); alert("Privacy policy modal placeholder."); }} className="underline">Privacy Policy</a>.
@@ -1017,7 +1029,7 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
   const durationScoreFor = (svc, tot) => {
     const ideal = RULES[svc].durationIdeal;
-    return norm(1 - Math.abs(tot - ideal) / ideal, [0, 1]);
+    return norm(1 - Math.abs(weeks - ideal) / ideal, [0, 1]);
   };
   const scoreFor = (svc, bgt, amb, tot) => {
     const r = RULES[svc];
@@ -1100,10 +1112,14 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   }, [total]);
 
   useEffect(() => {
-    onCalendarChange?.(buildCalendarStateOverlapping(phases, projectDate));
-    window.dispatchEvent(new CustomEvent("prefill-fit", { detail: { service, fit: score, suggestedTier, budget, timeline: total } }));
+    onCalendarChange?.(calendarSummary);
+    window.dispatchEvent(
+      new CustomEvent("prefill-fit", {
+        detail: { service, fit: score, suggestedTier, budget, timeline: timelineWeeksRounded },
+      })
+    );
     window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: service } }));
-  }, [phases, projectDate, service, score, suggestedTier, budget, total]);
+  }, [calendarSummary, service, score, suggestedTier, budget, timelineWeeksRounded]);
 
   useEffect(() => {
     if (randomizeKey === undefined) return;
@@ -1116,13 +1132,17 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       const tot = Math.floor(Math.random() * 26) + 1;
       const sc = scoreFor(svc, bgt, amb, tot);
       if (sc > best.score) best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
-      if (sc >= 80) { best = { s: svc, b: bgt, a: amb, t: tot, score: sc }; break; }
+      if (sc >= 80) {
+        best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
+        break;
+      }
     }
     setService(best.s);
     setBudget(best.b);
     setAmbition(best.a);
     setTotal(best.t);
     setPhases(makeFSForTotal(best.t));
+    setShowSchedule(false);
   }, [randomizeKey]);
 
   const totalSpanDays = phases.reduce((acc, p) => {
@@ -1199,7 +1219,6 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     </div>
   );
 }
-
 // ========= Calendar helpers ========= //
 function addDays(dateStr, days) {
   const d = new Date(dateStr + "T00:00:00");
@@ -1225,6 +1244,7 @@ function buildCalendarStateOverlapping(phases, startDate) {
 // ========= Timeline Grid ========= //
 function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const containerRef = useRef(null);
+  const isTouch = useIsTouchDevice();
   const totalDays = Math.max(7, total * 7);
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
   const dragRef = useRef(null);
@@ -1326,9 +1346,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
               ))
             ) : (
               [...Array(total).keys()].map((w) => (
-                <div key={w} className="absolute top-0 text-center font-semibold text-white/80" style={{ left: pct(w * 7), width: pct(7) }}>
-                  W{w + 1}
-                </div>
+                <div key={w} className="absolute top-0 text-center font-semibold text-white/80" style={{ left: pct(w * 7), width: pct(7) }}>W{w + 1}</div>
               ))
             )}
           </div>
@@ -2024,6 +2042,59 @@ function MMMGalleries() {
 
 
 // ========= Portfolio ========= //
+function SocialProof() {
+  return (
+    <section className="pt-10 pb-6" aria-label="Social proof">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-4 max-w-2xl">
+              <div className="text-xs uppercase tracking-[0.4em] text-white/60">Trusted By</div>
+              <div className="flex flex-wrap gap-3 text-white/80">
+                {SOCIAL_TRUST_LOGOS.map((logo) => (
+                  <span
+                    key={logo.name}
+                    className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-sm font-medium"
+                  >
+                    {logo.label}
+                  </span>
+                ))}
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {SOCIAL_METRICS.map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="rounded-2xl border border-white/15 bg-black/30 px-4 py-5 text-center"
+                  >
+                    <div className="text-3xl font-bold text-white">{metric.value}</div>
+                    <div className="text-white/65 text-xs uppercase tracking-[0.25em]">
+                      {metric.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="text-xs uppercase tracking-[0.4em] text-white/60">Testimonials</div>
+              <div className="mt-3 space-y-3">
+                {TESTIMONIALS.map((t, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-white/15 bg-white/5 p-4 text-white/80 text-sm"
+                  >
+                    <p className="italic">“{t.quote}”</p>
+                    <p className="mt-2 text-white/60 text-xs uppercase tracking-[0.2em]">{t.author}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Portfolio() {
   const [modal, setModal] = useState(null);
   const embedSrc = useMemo(() => {
@@ -2381,6 +2452,42 @@ export default function AppShell() {
   const [quickError, setQuickError] = useState(null);
   const jsonLd = useMemo(() => JSON.stringify(JSON_LD), []);
 
+  const structuredData = useMemo(() => {
+    const sameAs = [
+      LINKS.personalYouTube,
+      LINKS.directorYouTube,
+      SOCIALS.instagram,
+      LINKS.personalIG,
+      LINKS.loremakerIG,
+      LINKS.icuniIG,
+      LINKS.mmmIG,
+      LINKS.aiIG,
+      SOCIALS.linkedin,
+      LINKS.personalLI,
+      LINKS.businessLI,
+    ].filter(Boolean);
+    return {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: "Menelek Makonnen",
+      url: "https://menelekmakonnen.com",
+      jobTitle: "Director & Worldbuilder",
+      worksFor: {
+        "@type": "Organization",
+        name: "ICUNI",
+      },
+      sameAs,
+      description:
+        "Director and worldbuilder crafting films, music videos, documentaries, and AI-assisted storytelling pipelines.",
+      workExample: PROJECTS.slice(0, 4).map((p) => ({
+        "@type": "CreativeWork",
+        name: p.title,
+        url: p.url,
+        description: p.summary,
+      })),
+    };
+  }, []);
+
   const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: name } }));
 
   const goContactInline = (serviceName) => {
@@ -2495,6 +2602,8 @@ export default function AppShell() {
               </div>
             </section>
             <Blog />
+            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
+            <section className="py-6" id="contact"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
           </>
         )}
         {route === "bio" && <Biography />}
