@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Search,
   RefreshCcw,
@@ -7,17 +7,20 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowRight,
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Filter,
   Users,
   MapPin,
-  Layers3,
+  Layers,
   Atom,
   Clock,
   Crown,
   Swords,
+  Sparkles,
+  MessageCircle,
+  Send,
+  Bot,
 } from "lucide-react";
 
 /**
@@ -43,6 +46,8 @@ function Button({ variant = "default", className = "", children, as: Tag = "butt
     outline: "border border-white/30 text-white hover:bg-white/10",
     ghost: "text-white/90 hover:bg-white/10",
     destructive: "bg-red-600 text-white hover:bg-red-500",
+    radiant:
+      "bg-gradient-to-r from-amber-300 via-rose-400 to-fuchsia-500 text-black shadow-[0_10px_24px_rgba(251,191,36,0.35)] border border-amber-200/70 hover:brightness-110",
   }[variant];
   return (
     <Tag className={cx(base, styles, className)} {...props}>
@@ -109,6 +114,20 @@ const SHEET_ID = "1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM"; // replace if n
 const SHEET_NAME = "Characters";
 const GVIZ_URL = (sheetName) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+
+const CHATBOT_WEBHOOK =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK || ""
+    : window?.__NEXT_DATA__?.props?.pageProps?.chatbotWebhook ||
+      process.env.NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK ||
+      "";
+
+const TRACK_VISIT_WEBHOOK =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK || ""
+    : window?.__NEXT_DATA__?.props?.pageProps?.trackVisitWebhook ||
+      process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK ||
+      "";
 
 const COL_ALIAS = {
   id: ["id", "char_id", "character id", "code"],
@@ -279,7 +298,15 @@ const dailyInt = (seed, min = 1, max = 10) => {
   return Math.floor(r * (max - min + 1)) + min;
 };
 function fillDailyPowers(c) {
-  const powers = (c.powers || []).map((p) => ({ ...p, level: p.level > 0 ? p.level : dailyInt(`${c.name}|${p.name}`, 4, 9) }));
+  const seed = c.id || c.name || "character";
+  const powers = (c.powers || []).map((p, idx) => {
+    const label = p.name || `Power ${idx + 1}`;
+    const base = Math.max(0, Math.min(10, Number(p.level) || 0));
+    const min = base ? Math.max(3, base - 2) : 3;
+    const max = base ? Math.min(10, base + 2) : 9;
+    const level = dailyInt(`${seed}|${label}`, min, max);
+    return { ...p, level };
+  });
   return { ...c, powers };
 }
 
@@ -508,81 +535,90 @@ function FacetChip({ active, onClick, children }) {
 }
 
 /** -------------------- Character Card / Modal -------------------- */
-function CharacterCard({ c, onOpen, onFacet, onUseInSim }) {
+function CharacterCard({ c, onOpen, onFacet, onUseInSim, highlight }) {
   const [pulse, setPulse] = useState(false);
   const openProfile = () => onOpen(c);
   const triggerSim = () => {
     setPulse(true);
     onUseInSim(c.id);
-    setTimeout(() => setPulse(false), 420);
+    setTimeout(() => setPulse(false), 480);
   };
   return (
-    <Card className={cx(
-      "hover:shadow-2xl hover:shadow-fuchsia-500/15 transition overflow-hidden group",
-      pulse ? "ring-2 ring-amber-300 scale-[1.01]" : ""
-    )}>
-      <div className="relative">
-        <button onClick={openProfile} className="block text-left w-full">
-          <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-56 w-full object-cover" />
-        </button>
-        <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
-          <div onClick={openProfile} className="cursor-pointer">
-            <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
-          </div>
-          {/* Hover-only Sim button near the name bubble */}
-          <motion.button
-            onClick={triggerSim}
-            whileTap={{ scale: 0.95 }}
-            className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-extrabold bg-amber-300 text-black shadow border border-black/10"
-            aria-label="Use in Simulator"
-            title="Load into Battle Arena"
-          >
-            <Swords size={14} /> Simulate
-          </motion.button>
-        </div>
-      </div>
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-3">
-          <Insignia label={c.faction?.[0] || c.name} size={32} variant={c.faction?.length ? "faction" : "character"} />
-          <CardTitle role="button" onClick={openProfile} className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-amber-200">{c.name}</span>
-          </CardTitle>
-        </div>
-        <CardDescription className="line-clamp-2 font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="flex flex-wrap gap-2">
-          {c.gender && <FacetChip onClick={() => onFacet({ key: "gender", value: c.gender })}>{c.gender}</FacetChip>}
-          {c.alignment && <FacetChip onClick={() => onFacet({ key: "alignment", value: c.alignment })}>{c.alignment}</FacetChip>}
-          {c.locations?.slice(0, 2).map((loc) => (
-            <FacetChip key={loc} onClick={() => onFacet({ key: "locations", value: loc })}>
-              {loc}
-            </FacetChip>
-          ))}
-          {c.faction?.slice(0, 1).map((f) => (
-            <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
-              {f}
-            </FacetChip>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter className="flex items-center justify-between">
-        <div className="w-full">
-          {c.powers?.slice(0, 1).map((p) => (
-            <div key={p.name} className="text-xs mb-1 flex items-center justify-between text-white font-bold">
-              <span className="truncate pr-2">{p.name}</span>
-              <span>{p.level}/10</span>
+    <motion.div
+      animate={pulse || highlight ? { scale: 1.02 } : { scale: 1 }}
+      transition={{ type: "spring", stiffness: 240, damping: 20 }}
+      className="group"
+    >
+      <Card
+        className={cx(
+          "hover:shadow-2xl hover:shadow-fuchsia-500/15 transition overflow-hidden",
+          pulse || highlight
+            ? "ring-2 ring-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.35)]"
+            : ""
+        )}
+      >
+        <div className="relative">
+          <button onClick={openProfile} className="block text-left w-full">
+            <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-56 w-full object-cover" />
+          </button>
+          <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
+            <div onClick={openProfile} className="cursor-pointer">
+              <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
             </div>
-          ))}
-          <PowerMeter level={c.powers?.[0]?.level ?? 0} />
+            <motion.button
+              onClick={triggerSim}
+              whileTap={{ scale: 0.95 }}
+              className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-extrabold bg-amber-300 text-black shadow border border-black/10"
+              aria-label="Use in Simulator"
+              title="Load into Battle Arena"
+            >
+              <Swords size={14} /> Simulate
+            </motion.button>
+          </div>
         </div>
-        <div className="flex gap-2 ml-3">
-          <Button variant="secondary" className="font-bold" onClick={openProfile}>
-            Read <ArrowRight className="ml-1" size={16} />
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-3">
+            <Insignia label={c.faction?.[0] || c.name} size={32} variant={c.faction?.length ? "faction" : "character"} />
+            <CardTitle role="button" onClick={openProfile} className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-amber-200">{c.name}</span>
+            </CardTitle>
+          </div>
+          <CardDescription className="line-clamp-2 font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {c.gender && <FacetChip onClick={() => onFacet({ key: "gender", value: c.gender })}>{c.gender}</FacetChip>}
+            {c.alignment && <FacetChip onClick={() => onFacet({ key: "alignment", value: c.alignment })}>{c.alignment}</FacetChip>}
+            {c.locations?.slice(0, 2).map((loc) => (
+              <FacetChip key={loc} onClick={() => onFacet({ key: "locations", value: loc })}>
+                {loc}
+              </FacetChip>
+            ))}
+            {c.faction?.slice(0, 1).map((f) => (
+              <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
+                {f}
+              </FacetChip>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between">
+          <div className="w-full">
+            {c.powers?.slice(0, 1).map((p) => (
+              <div key={p.name} className="text-xs mb-1 flex items-center justify-between text-white font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
+            ))}
+            <PowerMeter level={c.powers?.[0]?.level ?? 0} />
+          </div>
+          <div className="flex gap-2 ml-3">
+            <Button variant="secondary" className="font-bold" onClick={openProfile}>
+              Read <ArrowRight className="ml-1" size={16} />
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -733,7 +769,7 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
             {!!(c.tags || []).length && (
               <div>
                 <div className="text-sm mb-2 font-bold flex items-center gap-2">
-                  <Layers3 size={14} /> Tags
+                  <Layers size={14} /> Tags
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {c.tags.map((t) => (
@@ -939,7 +975,9 @@ function HeroSection({ data, onOpen, onFacet }) {
   return (
     <Card className="bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 border-white/20 backdrop-blur-xl overflow-hidden text-white">
       <div className="flex items-center justify-between px-4 pt-3">
-        <div className="text-sm font-extrabold tracking-wide">Today’s Featured</div>
+        <div className="flex items-center gap-2 text-sm font-extrabold tracking-[0.35em] uppercase">
+          <Sparkles size={16} /> Today’s Featured
+        </div>
         <div className="flex gap-2 text-xs font-bold">
           <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
         </div>
@@ -981,7 +1019,7 @@ function StoryChips({ data, onFacet }) {
 
 /** -------------------- Infinite Grid -------------------- */
 const PAGE_SIZE = 24;
-function CharacterGrid({ data, onOpen, onFacet, onUseInSim }) {
+function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [data]);
   useEffect(() => {
@@ -996,7 +1034,14 @@ function CharacterGrid({ data, onOpen, onFacet, onUseInSim }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 pb-24">
       {slice.map((c) => (
-        <CharacterCard key={c.id} c={c} onOpen={onOpen} onFacet={onFacet} onUseInSim={onUseInSim} />
+        <CharacterCard
+          key={c.id}
+          c={c}
+          onOpen={onOpen}
+          onFacet={onFacet}
+          onUseInSim={onUseInSim}
+          highlight={highlightId === c.id}
+        />
       ))}
       {!slice.length && <div className="text-white font-extrabold">No characters match your filters yet.</div>}
     </div>
@@ -1008,14 +1053,15 @@ function scoreCharacter(c) {
   const base = (c.powers || []).reduce((s, p) => s + (isFinite(p.level) ? p.level : 0), 0);
   const elite = (c.tags || []).some((t) => /leader|legend|mythic|prime/i.test(t)) ? 3 : 0;
   const eraMod = /old gods|ancient/i.test(c.era || "") ? 1.07 : 1;
-  const withBias = (base + elite) * scoreBiasByBeing(c) * eraMod;
+  const origin = powerOriginProfile(c);
+  const withBias = (base + elite) * origin.multiplier * eraMod;
   return Math.round(withBias);
 }
 function rngLuck(max) {
-  const r = (Math.random() * 2 - 1) * 0.18 * max; // ±18%
+  const r = (Math.random() * 2 - 1) * 0.2 * max; // ±20%
   return Math.round(r);
 }
-function scoreBiasByBeing(c) {
+function powerOriginProfile(c) {
   const text = [
     (c.tags || []).join(" "),
     (c.alias || []).join(" "),
@@ -1025,37 +1071,72 @@ function scoreBiasByBeing(c) {
   // crude but effective class detection
   const isGod = /(god|goddess|deity|divine|celestial|primordial)/i.test(text) || /old gods|ancient gods/i.test(c.era || "");
   const isAlien = /(alien|extraterrestrial|offworld|cosmic)/i.test(text);
+  const isMythic = /(demon|spirit|ethereal|eldritch|angel)/i.test(text);
   const isMeta = /(meta|mutant|enhanced|super soldier|augment)/i.test(text) || (c.powers || []).some((p) => p.level >= 7);
-  // Multipliers — humans 1.0 baseline
-  if (isGod) return 1.55; // requires stacked human to match
-  if (isAlien) return 1.25;
-  if (isMeta) return 1.12;
-  return 1.0;
+  if (isGod) return { label: "Divine", multiplier: 1.6 };
+  if (isAlien) return { label: "Alien", multiplier: 1.28 };
+  if (isMythic) return { label: "Mythic", multiplier: 1.24 };
+  if (isMeta) return { label: "Enhanced", multiplier: 1.14 };
+  if (/human|civilian/.test(text)) return { label: "Human", multiplier: 1.0 };
+  return { label: "Legend", multiplier: 1.08 };
 }
 
 function duel(c1, c2) {
   const s1 = scoreCharacter(c1);
   const s2 = scoreCharacter(c2);
+  const origin1 = powerOriginProfile(c1);
+  const origin2 = powerOriginProfile(c2);
   const maxBase = Math.max(s1, s2) || 1;
   const swings = 3;
-  let h1 = 100,
-    h2 = 100;
+  let h1 = 100;
+  let h2 = 100;
   const logs = [];
-  for (let i = 0; i < swings; i++) {
+  for (let i = 0; i < swings; i += 1) {
     const luck1 = rngLuck(maxBase);
     const luck2 = rngLuck(maxBase);
-    const hit1 = Math.max(0, s1 + luck1 - Math.max(0, s2 * 0.35));
-    const hit2 = Math.max(0, s2 + luck2 - Math.max(0, s1 * 0.35));
-    const scale = 34 / Math.max(1, Math.max(hit1, hit2));
-    const dmg1 = Math.round(hit1 * scale);
-    const dmg2 = Math.round(hit2 * scale);
+    const offensive1 = s1 + luck1;
+    const offensive2 = s2 + luck2;
+    const shield1 = s1 * 0.35;
+    const shield2 = s2 * 0.35;
+    const delta1 = Math.max(0, offensive1 - shield2);
+    const delta2 = Math.max(0, offensive2 - shield1);
+    const combined = Math.max(1, delta1 + delta2);
+    const dmg1 = Math.round((delta1 / combined) * 48);
+    const dmg2 = Math.round((delta2 / combined) * 48);
     h2 = Math.max(0, h2 - dmg1);
     h1 = Math.max(0, h1 - dmg2);
-    logs.push({ swing: i + 1, dmg1, dmg2, h1, h2 });
+    logs.push({
+      swing: i + 1,
+      luck1,
+      luck2,
+      offensive1,
+      offensive2,
+      dmg1,
+      dmg2,
+      h1,
+      h2,
+    });
   }
-  let winner = h1 === h2 ? (s1 >= s2 ? c1 : c2) : h1 > h2 ? c1 : c2;
-  let loser = winner === c1 ? c2 : c1;
-  return { winner, loser, h1, h2, logs };
+  let winner;
+  if (h1 === h2) {
+    winner = s1 === s2 ? (Math.random() > 0.5 ? c1 : c2) : s1 > s2 ? c1 : c2;
+  } else {
+    winner = h1 > h2 ? c1 : c2;
+  }
+  const loser = winner === c1 ? c2 : c1;
+  return {
+    winner,
+    loser,
+    h1,
+    h2,
+    logs,
+    breakdown: {
+      s1,
+      s2,
+      origin1,
+      origin2,
+    },
+  };
 }
 
 function HealthBar({ value }) {
@@ -1151,7 +1232,13 @@ function BackToTop() {
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           whileHover={{ scale: 1.08, rotate: [-2, 2, 0] }}
           whileTap={{ scale: 0.95, rotate: 0 }}
-          className="fixed bottom-5 right-5 z-40 p-3 rounded-full bg-black/70 text-white border border-white/20 shadow-xl"
+          animate={{ y: [0, -6, 0], boxShadow: [
+            "0 0 0 rgba(0,0,0,0.2)",
+            "0 12px 24px rgba(251,191,36,0.35)",
+            "0 0 0 rgba(0,0,0,0.2)",
+          ] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          className="fixed bottom-5 right-5 z-40 rounded-full border border-amber-300/60 bg-black/80 p-3 text-white shadow-xl"
           aria-label="Back to top"
           title="Back to top"
         >
@@ -1163,7 +1250,13 @@ function BackToTop() {
           onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
           whileHover={{ scale: 1.08, rotate: [2, -2, 0] }}
           whileTap={{ scale: 0.95, rotate: 0 }}
-          className="fixed bottom-5 right-20 z-40 p-3 rounded-full bg-black/70 text-white border border-white/20 shadow-xl"
+          animate={{ y: [0, 6, 0], boxShadow: [
+            "0 0 0 rgba(0,0,0,0.2)",
+            "0 -12px 24px rgba(148,163,184,0.35)",
+            "0 0 0 rgba(0,0,0,0.2)",
+          ] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          className="fixed bottom-5 right-24 z-40 rounded-full border border-white/30 bg-black/80 p-3 text-white shadow-xl"
           aria-label="Back to bottom"
           title="Back to bottom"
         >
@@ -1174,53 +1267,73 @@ function BackToTop() {
   );
 }
 
-function Controls({ query, setQuery, openFilters, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
+function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
+  const sortOptions = [
+    { value: "default", label: "Default" },
+    { value: "random", label: "Random" },
+    { value: "faction", label: "By Faction" },
+    { value: "az", label: "A-Z" },
+    { value: "za", label: "Z-A" },
+    { value: "most", label: "From Most Powerful" },
+    { value: "least", label: "From Least Powerful" },
+  ];
   return (
-    <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
-      <div className="flex-1">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+        <div className="flex-1">
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button variant="radiant" onClick={() => setOpenFilters(true)} className="font-black tracking-wide">
+            <Filter className="mr-1" size={16} /> Filters
+          </Button>
+          <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
+          <Button variant="secondary" onClick={onJumpArena} className="font-bold">Arena</Button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <select
-          value={sortMode}
-          onChange={(e) => setSortMode(e.target.value)}
-          className="rounded-xl bg-black/60 text-white border border-white/20 px-3 py-2 text-sm font-bold"
-        >
-          <option value="default">Default</option>
-          <option value="random">Random</option>
-          <option value="faction">By Faction</option>
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
-          <option value="most">From Most Powerful</option>
-          <option value="least">From Least Powerful</option>
-          <option value="simresults">As per user's simulation battle results</option>
-        </select>
-        <Button variant="outline" onClick={() => setOpenFilters(true)} className="font-bold border-amber-300 text-amber-300">
-          <Filter className="mr-1" size={16} /> Filters
-        </Button>
-        <Button variant="ghost" onClick={onClear} className="font-bold">Clear</Button>
-        <Button variant="secondary" onClick={onJumpArena} className="font-bold">Arena</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs uppercase tracking-widest font-extrabold text-white/70">Sort:</span>
+        {sortOptions.map((opt) => (
+          <FacetChip key={opt.value} active={sortMode === opt.value} onClick={() => setSortMode(opt.value)}>
+            {opt.label}
+          </FacetChip>
+        ))}
       </div>
     </div>
   );
 }
 
-function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
+function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
   const [animating, setAnimating] = useState(false);
   const [hp, setHp] = useState({ left: 100, right: 100 });
   const [shake, setShake] = useState(false);
+  const [phase, setPhase] = useState(-1);
+  const [battle, setBattle] = useState(null);
+  const [winner, setWinner] = useState(null);
+  const [loser, setLoser] = useState(null);
+  const [explosion, setExplosion] = useState(false);
+  const [loserMark, setLoserMark] = useState(false);
+
   const left = data.find((c) => c.id === selectedIds[0]);
   const right = data.find((c) => c.id === selectedIds[1]);
   const canFight = !!left && !!right && !animating;
+  const originLeft = left ? powerOriginProfile(left) : null;
+  const originRight = right ? powerOriginProfile(right) : null;
 
-  // Subtle shake/glow when fighters change
   useEffect(() => {
     if (selectedIds.length) {
       setShake(true);
       const t = setTimeout(() => setShake(false), 500);
       return () => clearTimeout(t);
     }
-  }, [selectedIds.join('|')]);
+  }, [selectedIds.join("|")]);
+
+  useEffect(() => {
+    if (!pulse) return undefined;
+    setShake(true);
+    const t = setTimeout(() => setShake(false), 600);
+    return () => clearTimeout(t);
+  }, [pulse]);
 
   const release = (id) => setSelectedIds((ids) => ids.filter((x) => x !== id));
 
@@ -1231,71 +1344,148 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
     if (r2 === r1) r2 = (r2 + 1) % data.length;
     setSelectedIds([data[r1].id, data[r2].id]);
     setHp({ left: 100, right: 100 });
+    setWinner(null);
+    setLoser(null);
+    setBattle(null);
   };
 
-  const runFight = async () => {
+  const runFight = () => {
     if (!left || !right) return;
     setAnimating(true);
+    setWinner(null);
+    setLoser(null);
+    setLoserMark(false);
+    setExplosion(false);
+    setPhase(-1);
     setHp({ left: 100, right: 100 });
     const outcome = duel(left, right);
-    for (const step of outcome.logs) {
-      await new Promise((r) => setTimeout(r, 500));
-      setHp({ left: step.h1, right: step.h2 });
-    }
-    await new Promise((r) => setTimeout(r, 600));
-    setAnimating(false);
+    setBattle(outcome);
+    outcome.logs.forEach((step, idx) => {
+      setTimeout(() => {
+        setPhase(idx);
+        setHp({ left: step.h1, right: step.h2 });
+      }, 600 * (idx + 1));
+    });
+    const blastAt = 600 * outcome.logs.length + 200;
+    setTimeout(() => setExplosion(true), blastAt);
+    setTimeout(() => setExplosion(false), blastAt + 480);
+    setTimeout(() => {
+      setWinner(outcome.winner);
+      setLoser(outcome.loser);
+      setLoserMark(true);
+      setAnimating(false);
+      setTimeout(() => setLoserMark(false), 1100);
+    }, blastAt + 520);
   };
 
   const StatBlock = ({ c }) => (
-    <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-      {/* quick chips */}
+    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
       <div className="flex flex-wrap gap-2">
         {(c.alias || []).map((a) => (
-          <Badge key={a} className="bg-white/10 border border-white/20">{a}</Badge>
+          <Badge key={a} className="bg-white/10 border border-white/20">
+            {a}
+          </Badge>
         ))}
       </div>
-      {/* grid stats */}
       <div className="grid grid-cols-2 gap-2 text-[12px]">
         {c.gender && (
-          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Gender</div><div className="font-extrabold">{c.gender}</div></div>
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Gender</div>
+            <div className="font-extrabold">{c.gender}</div>
+          </div>
         )}
         {c.alignment && (
-          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Alignment</div><div className="font-extrabold">{c.alignment}</div></div>
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Alignment</div>
+            <div className="font-extrabold">{c.alignment}</div>
+          </div>
         )}
         {c.status && (
-          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Status</div><div className="font-extrabold">{c.status}</div></div>
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Status</div>
+            <div className="font-extrabold">{c.status}</div>
+          </div>
         )}
         {c.era && (
-          <div className="bg-white/10 p-2 rounded-lg border border-white/20"><div className="font-bold">Era</div><div className="font-extrabold">{c.era}</div></div>
+          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">Era</div>
+            <div className="font-extrabold">{c.era}</div>
+          </div>
         )}
         {c.firstAppearance && (
-          <div className="bg-white/10 p-2 rounded-lg border border-white/20 col-span-2"><div className="font-bold">First Appearance</div><div className="font-extrabold">{c.firstAppearance}</div></div>
+          <div className="col-span-2 rounded-lg border border-white/20 bg-white/10 p-2">
+            <div className="font-bold">First Appearance</div>
+            <div className="font-extrabold">{c.firstAppearance}</div>
+          </div>
         )}
       </div>
       {!!(c.locations || []).length && (
         <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><MapPin size={12}/> Locations</div>
-          <div className="flex flex-wrap gap-2">{c.locations.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <MapPin size={12} /> Locations
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.locations.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
         </div>
       )}
       {!!(c.faction || []).length && (
         <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Crown size={12}/> Factions</div>
-          <div className="flex flex-wrap gap-2">{c.faction.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <Crown size={12} /> Factions
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.faction.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
         </div>
       )}
       {!!(c.tags || []).length && (
         <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers3 size={12}/> Tags</div>
-          <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <Layers size={12} /> Tags
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.tags.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {!!(c.stories || []).length && (
+        <div>
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+            <LibraryBig size={12} /> Stories
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {c.stories.map((v) => (
+              <Badge key={v} className="bg-white/10 border border-white/20">
+                {v}
+              </Badge>
+            ))}
+          </div>
         </div>
       )}
       <div>
-        <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Atom size={12}/> Powers</div>
+        <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
+          <Atom size={12} /> Powers
+        </div>
         <div className="space-y-1.5">
           {(c.powers || []).map((p) => (
             <div key={p.name}>
-              <div className="flex items-center justify-between text-[12px] font-bold"><span className="truncate pr-2">{p.name}</span><span>{p.level}/10</span></div>
+              <div className="flex items-center justify-between text-[12px] font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
               <PowerMeter level={p.level} />
             </div>
           ))}
@@ -1304,78 +1494,294 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
     </div>
   );
 
+  const Slot = ({ label, character, health, origin }) => {
+    if (!character)
+      return (
+        <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/60">
+          {label} empty. Choose a character.
+        </div>
+      );
+    const isWinner = winner?.id === character.id;
+    const isLoser = loser?.id === character.id;
+    return (
+      <motion.div
+        animate={isWinner ? { scale: 1.05 } : { scale: 1 }}
+        transition={{ type: "spring", stiffness: 220, damping: 18 }}
+        className={cx(
+          "relative rounded-2xl border border-white/15 bg-white/5 p-3",
+          isWinner ? "shadow-[0_0_30px_rgba(251,191,36,0.35)]" : ""
+        )}
+      >
+        <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/70">
+          <span>{label}</span>
+          <span>{origin?.label || "Origin"}</span>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-white/15">
+          <ImageSafe
+            src={character.cover || character.gallery?.[0]}
+            alt={character.name}
+            fallbackLabel={character.name}
+            className="h-32 w-full object-cover"
+          />
+          <AnimatePresence>
+            {loserMark && isLoser && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 flex items-center justify-center bg-red-600/40"
+              >
+                <span className="text-4xl font-black text-red-200">✕</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="text-sm font-extrabold">{character.name}</div>
+          <Badge className="bg-white/10 border border-white/20 text-[10px]">
+            {origin?.label || "Unknown"}
+          </Badge>
+        </div>
+        <div className="mt-2">
+          <HealthBar value={health} />
+        </div>
+        <div className="mt-2 text-[12px] text-white/80">
+          {character.shortDesc || character.longDesc}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button variant="ghost" onClick={() => onOpen(character)}>
+            Read More
+          </Button>
+          <Button variant="outline" onClick={() => release(character.id)}>
+            Release
+          </Button>
+        </div>
+        <div className="mt-3">
+          <StatBlock c={character} />
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
-    <Card className={cx("border-white/20 bg-white/5 backdrop-blur-xl text-white p-4 md:p-6 mt-6", shake ? "ring-2 ring-amber-300" : "") }>
-      <div className="flex items-center justify-between mb-3">
+    <Card
+      className={cx(
+        "mt-6 bg-white/5 p-4 text-white backdrop-blur-xl md:p-6",
+        shake || pulse ? "ring-2 ring-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.25)]" : "",
+        animating ? "animate-[pulse_2s_ease-in-out_infinite]" : ""
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Swords />
           <div className="text-lg font-black tracking-tight">Battle Arena</div>
-          <Badge className="bg-amber-300 text-black">Beta</Badge>
+          <Badge className="bg-amber-300 text-black">Live</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={randomise} className="font-bold"><RefreshCcw size={16} className="mr-1"/> Randomise</Button>
+          <Button variant="ghost" onClick={randomise} className="font-bold">
+            <RefreshCcw size={16} className="mr-1" /> Randomise
+          </Button>
+          <Button onClick={runFight} disabled={!canFight} className="font-black">
+            {animating ? "Simulating…" : "Fight"}
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-        {/* LEFT FIGHTER */}
-        <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", left ? "" : "opacity-70")} style={{ boxShadow: left ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
-          <div className="text-xs font-bold mb-2">Fighter A</div>
-          {left ? (
-            <div className={cx("space-y-2", animating ? "pointer-events-none" : "") }>
-              <div className="text-sm font-extrabold">{left.name}</div>
-              <HealthBar value={hp.left} />
-              <div className="text-[11px] uppercase tracking-widest">{left.faction?.[0] || "—"}</div>
-              <div className="text-xs opacity-90">{left.shortDesc || left.longDesc}</div>
-              <StatBlock c={left} />
-              <div className="flex gap-2 pt-1">
-                <Button variant="ghost" onClick={() => onOpen(left)}>View</Button>
-                <Button variant="outline" onClick={() => release(left.id)}>Release</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-white/60 text-sm">Empty slot. Choose a character.</div>
-          )}
-        </div>
-
-        {/* SWORD + ACTIONS */}
-        <div className="flex flex-col items-center justify-center gap-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
+        <Slot label="Fighter A" character={left} health={hp.left} origin={originLeft} />
+        <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden">
           <motion.div
-            animate={animating ? { rotate: [0, -20, 20, -12, 12, 0], scale: [1, 1.06, 1] } : { rotate: 0, scale: 1 }}
-            transition={{ duration: 0.6, repeat: animating ? 3 : 0, ease: "easeInOut" }}
-            className={cx("p-3 rounded-full border border-white/20", animating ? "bg-amber-300/20" : "bg-white/5")}
+            animate={
+              animating
+                ? {
+                    rotate: [0, -18, 22, -14, 14, 0],
+                    scale: [1, 1.08, 1],
+                    boxShadow: [
+                      "0 0 0px rgba(255,255,255,0.2)",
+                      "0 0 25px rgba(251,191,36,0.6)",
+                      "0 0 0px rgba(255,255,255,0.2)",
+                    ],
+                  }
+                : { rotate: 0, scale: 1, boxShadow: "0 0 0 rgba(0,0,0,0)" }
+            }
+            transition={{ duration: 0.6, repeat: animating ? Infinity : 0, ease: "easeInOut" }}
+            className="relative rounded-full border border-white/20 bg-white/10 p-4"
           >
-            <Swords size={32} />
+            <Swords size={36} />
+            <AnimatePresence>
+              {explosion && (
+                <motion.span
+                  initial={{ scale: 0, opacity: 0.6 }}
+                  animate={{ scale: [0, 1.4, 1.8], opacity: [0.6, 0.35, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-amber-400/60 via-fuchsia-400/40 to-indigo-400/30"
+                />
+              )}
+            </AnimatePresence>
           </motion.div>
-          <Button onClick={runFight} disabled={!canFight} className="font-black">{animating ? "Fighting…" : "Fight"}</Button>
-          {left && right && !animating && (hp.left !== 100 || hp.right !== 100) && (
-            <div className="text-xs font-extrabold px-3 py-1 rounded-full bg-black text-white/90">
-              {hp.left === hp.right ? "Draw" : hp.left > hp.right ? left.name : right.name}
+          {battle && (
+            <div className="text-center text-[11px] font-semibold text-white/70">
+              Phase {phase + 1}/{battle.logs.length}
+            </div>
+          )}
+          {winner && (
+            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-200 shadow-lg">
+              {winner.name}
             </div>
           )}
         </div>
-
-        {/* RIGHT FIGHTER */}
-        <div className={cx("rounded-xl p-3 border border-white/15 bg-white/5", right ? "" : "opacity-70")} style={{ boxShadow: right ? "0 0 0 2px rgba(250,204,21,.6)" : undefined }}>
-          <div className="text-xs font-bold mb-2">Fighter B</div>
-          {right ? (
-            <div className={cx("space-y-2", animating ? "pointer-events-none" : "") }>
-              <div className="text-sm font-extrabold">{right.name}</div>
-              <HealthBar value={hp.right} />
-              <div className="text-[11px] uppercase tracking-widest">{right.faction?.[0] || "—"}</div>
-              <div className="text-xs opacity-90">{right.shortDesc || right.longDesc}</div>
-              <StatBlock c={right} />
-              <div className="flex gap-2 pt-1">
-                <Button variant="ghost" onClick={() => onOpen(right)}>View</Button>
-                <Button variant="outline" onClick={() => release(right.id)}>Release</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-white/60 text-sm">Empty slot. Choose a character.</div>
-          )}
-        </div>
+        <Slot label="Fighter B" character={right} health={hp.right} origin={originRight} />
       </div>
+
+      {battle && (
+        <div className="mt-4 grid gap-3 rounded-2xl border border-white/15 bg-white/5 p-4 text-xs md:grid-cols-2">
+          <div className="space-y-1">
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Power Spread</div>
+            <div className="font-bold text-white">{left?.name}: {battle.breakdown.s1} • {battle.breakdown.origin1.label}</div>
+            <div className="font-bold text-white">{right?.name}: {battle.breakdown.s2} • {battle.breakdown.origin2.label}</div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Luck Timeline</div>
+            <ul className="space-y-1 font-semibold">
+              {battle.logs.map((step) => (
+                <li key={step.swing}>
+                  Round {step.swing}: {left?.name} luck {step.luck1 >= 0 ? "+" : ""}{step.luck1}, {right?.name} luck {step.luck2 >= 0 ? "+" : ""}{step.luck2}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </Card>
+  );
+}
+
+function ChatDock() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      role: "bot",
+      text: "Welcome to the Loremaker concierge. Ask about characters, battles, or request spreadsheet syncs!",
+      ts: Date.now(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const trailRef = useRef(null);
+
+  useEffect(() => {
+    if (open) trailRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [open, messages]);
+
+  const sendMessage = async () => {
+    const content = input.trim();
+    if (!content) return;
+    setMessages((prev) => [...prev, { role: "user", text: content, ts: Date.now() }]);
+    setInput("");
+    setSending(true);
+    try {
+      if (!CHATBOT_WEBHOOK) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "bot",
+            text: "Chatbot webhook is not configured yet. Please add NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK.",
+            ts: Date.now(),
+          },
+        ]);
+      } else {
+        const payload = {
+          message: content,
+          timestamp: new Date().toISOString(),
+          source: "loremaker",
+        };
+        const res = await fetch(CHATBOT_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        let reply = "Our lore AI has received your message!";
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          reply = data?.reply || data?.message || reply;
+        }
+        setMessages((prev) => [...prev, { role: "bot", text: reply, ts: Date.now() }]);
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "We couldn't reach the chatbot right now. Please try again shortly.",
+          ts: Date.now(),
+        },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 left-6 z-50 text-white">
+      <motion.button
+        onClick={() => setOpen((v) => !v)}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.94 }}
+        className="flex items-center gap-2 rounded-full border border-white/30 bg-black/70 px-4 py-2 font-bold shadow-lg"
+      >
+        <MessageCircle size={16} /> {open ? "Hide" : "Chat"}
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: "spring", stiffness: 220, damping: 26 }}
+            className="mt-3 w-72 rounded-2xl border border-white/20 bg-black/80 p-3 backdrop-blur"
+          >
+            <div className="mb-2 flex items-center gap-2 text-sm font-extrabold">
+              <Bot size={16} /> Loremaker Live Chat
+            </div>
+            <div className="mb-3 max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
+              {messages.map((msg) => (
+                <div
+                  key={msg.ts + msg.role}
+                  className={cx(
+                    "rounded-xl border px-3 py-2",
+                    msg.role === "user"
+                      ? "ml-8 border-amber-300/40 bg-amber-300/10 text-amber-100"
+                      : "mr-8 border-white/20 bg-white/10 text-white"
+                  )}
+                >
+                  {msg.text}
+                </div>
+              ))}
+              <div ref={trailRef} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Send a message to the lore team"
+                className="flex-1 border-white/30 bg-white/10"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+              />
+              <Button onClick={sendMessage} disabled={sending} className="px-3">
+                <Send size={16} />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -1390,6 +1796,9 @@ export default function App() {
   const [active, setActive] = useState(null);
   const [sortMode, setSortMode] = useState("default");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const [arenaPulse, setArenaPulse] = useState(false);
+  const visitTracked = useRef(false);
 
   const onOpen = (c) => { setActive(c); setOpen(true); };
 
@@ -1400,6 +1809,10 @@ export default function App() {
       if (ids.length < 2) return [...ids, id];
       return [ids[1], id]; // replace oldest
     });
+    setHighlightedId(id);
+    setArenaPulse(true);
+    setTimeout(() => setHighlightedId(null), 900);
+    setTimeout(() => setArenaPulse(false), 900);
     // scroll to arena
     const anchor = document.getElementById("arena-anchor");
     if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1433,14 +1846,28 @@ export default function App() {
         return arr.sort((a, b) => scoreCharacter(b) - scoreCharacter(a));
       case "least":
         return arr.sort((a, b) => scoreCharacter(a) - scoreCharacter(b));
-      case "simresults":
-        return arr; // placeholder until we persist history
       default:
         return arr;
     }
   }, [filtered, sortMode]);
 
   const clearAll = () => { setQuery(""); setFilters({}); };
+
+  useEffect(() => {
+    if (visitTracked.current) return;
+    if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
+    if (!data.length) return;
+    visitTracked.current = true;
+    fetch(TRACK_VISIT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        characters: data.length,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [data.length]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -1464,14 +1891,13 @@ export default function App() {
 
         {/* Arena pinned right under Hero */}
         <div id="arena-anchor">
-          <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} />
+          <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
         </div>
 
         <div className="mt-6">
           <Controls
             query={query}
             setQuery={setQuery}
-            openFilters={openFilters}
             setOpenFilters={setOpenFilters}
             sortMode={sortMode}
             setSortMode={setSortMode}
@@ -1485,7 +1911,13 @@ export default function App() {
         </div>
 
         <div className="mt-6">
-          <CharacterGrid data={sorted.filter((c) => !selectedIds.includes(c.id))} onOpen={onOpen} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={onUseInSim} />
+          <CharacterGrid
+            data={sorted.filter((c) => !selectedIds.includes(c.id))}
+            onOpen={onOpen}
+            onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))}
+            onUseInSim={onUseInSim}
+            highlightId={highlightedId}
+          />
         </div>
       </div>
 
@@ -1494,6 +1926,7 @@ export default function App() {
       <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} />
 
       <BackToTop />
+      <ChatDock />
     </div>
   );
 }
