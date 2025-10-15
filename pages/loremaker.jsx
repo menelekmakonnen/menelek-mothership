@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Search,
-  RefreshCcw,
   X,
   ArrowUp,
   ArrowDown,
@@ -21,6 +20,15 @@ import {
   MessageCircle,
   Send,
   Bot,
+  Home,
+  BookOpen,
+  Cpu,
+  Newspaper,
+  ExternalLink,
+  Instagram,
+  Youtube,
+  Linkedin,
+  Mail,
 } from "lucide-react";
 
 /**
@@ -91,7 +99,7 @@ function Switch({ checked, onChange, id }) {
       id={id}
       role="switch"
       aria-checked={!!checked}
-      onClick={() => onChange(!checked)}
+      onClick={() => onChange && onChange(!checked)}
       className={cx(
         "w-12 h-6 rounded-full relative transition border",
         checked ? "bg-amber-300 border-amber-300" : "bg-white/10 border-white/30"
@@ -157,6 +165,7 @@ let __ALL_CHARS = [];
 
 /** -------------------- Utils -------------------- */
 const toSlug = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+const directDriveUrl = (id) => `https://drive.google.com/uc?export=view&id=${id}`;
 function normalizeDriveUrl(url) {
   if (!url) return undefined;
   try {
@@ -164,12 +173,35 @@ function normalizeDriveUrl(url) {
     if (u.hostname.includes("drive.google.com")) {
       const m = u.pathname.match(/\/file\/d\/([^/]+)/);
       const id = (m && m[1]) || u.searchParams.get("id");
-      if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+      if (id) return directDriveUrl(id);
+      if (u.pathname.startsWith("/uc") && u.searchParams.get("id")) {
+        u.searchParams.set("export", "view");
+        return u.toString();
+      }
+    }
+    if (/^lh\d+\.googleusercontent\.com$/i.test(url.split("//")[1]?.split("/")[0] || "")) {
+      return url;
     }
     return url;
   } catch {
     return url;
   }
+}
+
+function extractDriveImages(text) {
+  if (!text) return [];
+  const urls = new Set();
+  const directRx = /https?:\/\/drive\.google\.com\/(?:file\/d\/([a-zA-Z0-9_-]+)|open\?id=([a-zA-Z0-9_-]+)|uc\?(?:[^\s]*?&)?id=([a-zA-Z0-9_-]+)|thumbnail\?id=([a-zA-Z0-9_-]+))/gi;
+  let match;
+  while ((match = directRx.exec(text))) {
+    const id = match[1] || match[2] || match[3] || match[4];
+    if (id) urls.add(directDriveUrl(id));
+  }
+  const cdnRx = /https?:\/\/lh\d+\.googleusercontent\.com\/[a-zA-Z0-9_\-\/=.]+/gi;
+  while ((match = cdnRx.exec(text))) {
+    urls.add(match[0]);
+  }
+  return Array.from(urls);
 }
 function splitList(raw) {
   if (!raw) return [];
@@ -276,6 +308,19 @@ function rowToCharacter(row, map) {
     const url = get(`gallery_${i}`);
     if (url) char.gallery.push(normalizeDriveUrl(url));
   }
+  const descImages = extractDriveImages([char.shortDesc, char.longDesc, (row.map((cell) => cell?.v || cell?.f || "") || []).join(" ")].join(" \n "));
+  const uniqueGallery = new Set(char.gallery.filter(Boolean));
+  if (!char.cover && descImages.length) {
+    char.cover = descImages[0];
+    uniqueGallery.add(descImages[0]);
+  }
+  descImages.forEach((img) => {
+    if (!uniqueGallery.has(img)) {
+      uniqueGallery.add(img);
+      char.gallery.push(img);
+    }
+  });
+  char.gallery = Array.from(uniqueGallery);
   return char;
 }
 
@@ -462,13 +507,17 @@ function Aurora({ className }) {
 
 // Upright heater shield insignia (interactive)
 function Insignia({ label, size = 48, variant = "character", expandableName }) {
+  const base = label || "Lore";
   const initials =
-    label
+    base
       .split(/\s+/)
       .slice(0, 2)
       .map((s) => s[0]?.toUpperCase())
       .join("") || "LM";
-  const hue = Math.abs([...label].reduce((a, c) => a + c.charCodeAt(0), 0)) % 360;
+  const text = variant === "site" ? base.toUpperCase().slice(0, 4) : initials;
+  const fontSize = variant === "site" ? 14 : 20;
+  const letterSpacing = variant === "site" ? 2.4 : 0;
+  const hue = Math.abs([...base].reduce((a, c) => a + c.charCodeAt(0), 0)) % 360;
   const g1 = `hsl(${hue},85%,65%)`;
   const g2 = `hsl(${(hue + 50) % 360},85%,60%)`;
   const topWidth = variant === "site" ? 40 : variant === "faction" ? 36 : 32;
@@ -487,8 +536,17 @@ function Insignia({ label, size = 48, variant = "character", expandableName }) {
           stroke="rgba(255,255,255,.6)"
           strokeWidth="1.2"
         />
-        <text x="32" y="38" textAnchor="middle" fontFamily="ui-sans-serif,system-ui" fontWeight="900" fontSize="20" fill="#fff" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,.6))" }}>
-          {initials}
+        <text
+          x="32"
+          y={variant === "site" ? 36 : 38}
+          textAnchor="middle"
+          fontFamily="ui-sans-serif,system-ui"
+          fontWeight="900"
+          fontSize={fontSize}
+          fill="#fff"
+          style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,.6))", letterSpacing }}
+        >
+          {text}
         </text>
       </svg>
       {expandableName && (
@@ -867,125 +925,138 @@ function HeroSection({ data, onOpen, onFacet }) {
   const faction = useMemo(() => pickDaily(allFactions, "faction"), [allFactions]);
   const location = useMemo(() => pickDaily(allLocations, "location"), [allLocations]);
   const power = useMemo(() => pickDaily(allPowers, "power"), [allPowers]);
-  const slides = (character
-    ? [
-        {
-          type: "Character",
-          render: () => (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 h-72">
-              <ImageSafe src={character.cover || character.gallery[0]} alt={character.name} fallbackLabel={character.name} className="h-72 w-full object-cover" />
-              <div className="p-6 flex flex-col gap-3 text-white">
-                <div className="text-xs uppercase tracking-widest font-extrabold flex items-center gap-2">
-                  <Clock size={14} /> Featured Character
-                </div>
-                <div className="text-2xl font-extrabold">{character.name}</div>
-                <div className="font-bold line-clamp-3">{character.shortDesc || character.longDesc}</div>
-                <div className="mt-auto flex gap-3">
-                  <Button onClick={() => onOpen(character)} className="font-bold">
-                    View Profile <ArrowRight className="ml-1" size={16} />
-                  </Button>
-                </div>
-              </div>
+  const slides = [];
+  if (character) {
+    slides.push({
+      type: "Character",
+      onClick: () => onOpen(character),
+      content: (
+        <div className="grid h-72 grid-cols-1 gap-0 md:grid-cols-2">
+          <ImageSafe src={character.cover || character.gallery[0]} alt={character.name} fallbackLabel={character.name} className="h-72 w-full object-cover" />
+          <div className="flex flex-col gap-3 p-6 text-white">
+            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest">
+              <Clock size={14} /> Featured Character
             </div>
-          ),
-        },
-      ]
-    : [])
-    .concat(
-      faction
-        ? [
-            {
-              type: "Faction",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(faction)} size={56} variant="faction" />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
-                      <div className="text-2xl font-extrabold">{String(faction)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "faction", value: String(faction) })} className="font-bold">
-                    View Members
-                  </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      location
-        ? [
-            {
-              type: "Location",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(location)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
-                      <div className="text-2xl font-extrabold">{String(location)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "locations", value: String(location) })} className="font-bold">
-                    View Residents
-                  </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      power
-        ? [
-            {
-              type: "Power",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(power)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
-                      <div className="text-2xl font-extrabold">{String(power)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "powers", value: String(power) })} className="font-bold">
-                    View Wielders
-                  </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    );
+            <div className="text-2xl font-extrabold">{character.name}</div>
+            <div className="font-bold line-clamp-3 text-white/90">{character.shortDesc || character.longDesc}</div>
+            <div className="mt-auto text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to open profile</div>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (faction) {
+    slides.push({
+      type: "Faction",
+      onClick: () => onFacet({ key: "faction", value: String(faction) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(faction)} size={56} variant="faction" />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
+              <div className="text-2xl font-extrabold">{String(faction)}</div>
+            </div>
+          </div>
+          <div className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to view members</div>
+        </div>
+      ),
+    });
+  }
+  if (location) {
+    slides.push({
+      type: "Location",
+      onClick: () => onFacet({ key: "locations", value: String(location) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(location)} size={56} />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
+              <div className="text-2xl font-extrabold">{String(location)}</div>
+            </div>
+          </div>
+          <div className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to filter residents</div>
+        </div>
+      ),
+    });
+  }
+  if (power) {
+    slides.push({
+      type: "Power",
+      onClick: () => onFacet({ key: "powers", value: String(power) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(power)} size={56} />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
+              <div className="text-2xl font-extrabold">{String(power)}</div>
+            </div>
+          </div>
+          <div className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">Click to see wielders</div>
+        </div>
+      ),
+    });
+  }
   const [idx, setIdx] = useState(0);
-  const handleKey = (e) => {
-    if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
-    if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
-  };
+  const activeRef = useRef(null);
   useEffect(() => {
+    if (!slides.length) return undefined;
+    const handleKey = (e) => {
+      if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
+      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
+      if ((e.key === "Enter" || e.key === " ") && document.activeElement === activeRef.current) {
+        e.preventDefault();
+        slides[idx].onClick?.();
+      }
+    };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [slides.length]);
+  }, [slides.length, idx, slides]);
+  useEffect(() => {
+    if (idx >= slides.length) setIdx(0);
+  }, [slides.length, idx]);
   if (!slides.length) return null;
+  const activeSlide = slides[idx];
   return (
-    <Card className="bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 border-white/20 backdrop-blur-xl overflow-hidden text-white">
+    <Card className="overflow-hidden border-white/20 bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 text-white backdrop-blur-xl">
       <div className="flex items-center justify-between px-4 pt-3">
-        <div className="flex items-center gap-2 text-sm font-extrabold tracking-[0.35em] uppercase">
+        <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-[0.35em]">
           <Sparkles size={16} /> Today’s Featured
         </div>
         <div className="flex gap-2 text-xs font-bold">
-          <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
+          <span>{activeSlide.type}</span> <span>•</span> <span>{todayKey()}</span>
         </div>
       </div>
-      <div className="border-t border-white/10 relative">
-        {slides[idx].render()}
-        <button className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white" onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)} aria-label="Previous">
+      <div className="relative border-t border-white/10">
+        <div
+          role="button"
+          tabIndex={0}
+          ref={activeRef}
+          onClick={() => activeSlide.onClick?.()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              activeSlide.onClick?.();
+            }
+          }}
+          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+        >
+          {activeSlide.content}
+        </div>
+        <button
+          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur"
+          onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)}
+          aria-label="Previous"
+        >
           <ChevronLeft size={18} />
         </button>
-        <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 backdrop-blur text-white" onClick={() => setIdx((i) => (i + 1) % slides.length)} aria-label="Next">
+        <button
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur"
+          onClick={() => setIdx((i) => (i + 1) % slides.length)}
+          aria-label="Next"
+        >
           <ChevronRight size={18} />
         </button>
       </div>
@@ -1012,6 +1083,98 @@ function StoryChips({ data, onFacet }) {
         </FacetChip>
       ))}
     </div>
+  );
+}
+
+const SITE_MENU = [
+  { label: "Home", description: "Return to the mothership", href: "/", icon: Home },
+  { label: "Biography", description: "Meet Menelek Makonnen", href: "/#bio", icon: BookOpen },
+  { label: "AI Consultancy", description: "ICUNI — intelligence crafted", href: "https://icuni.co.uk", icon: Cpu, external: true },
+  { label: "Blog", description: "Latest essays and updates", href: "/#blog", icon: Newspaper },
+  { label: "Loremaker Database", description: "Dive deeper into the universe", href: "/loremaker", icon: Sparkles },
+];
+
+const SITE_SOCIALS = [
+  { label: "Instagram", href: "https://instagram.com/menelek.makonnen", icon: Instagram },
+  { label: "YouTube", href: "https://youtube.com/@director_menelek", icon: Youtube },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/menelekmakonnen/", icon: Linkedin },
+  { label: "Email", href: "mailto:admin@menelekmakonnen.com", icon: Mail },
+];
+
+function SiteMenuSection() {
+  return (
+    <section className="mt-12">
+      <div className="rounded-3xl border border-white/15 bg-white/5 p-6 backdrop-blur">
+        <div className="mb-4 flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.35em] text-white/70">
+          <Sparkles size={14} /> Main Navigation
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {SITE_MENU.map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noreferrer" : undefined}
+                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-white transition hover:-translate-y-1 hover:border-amber-300/50 hover:bg-black/55"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-amber-200">
+                    <Icon size={20} />
+                  </span>
+                  <div>
+                    <div className="text-sm font-black tracking-tight text-white">{item.label}</div>
+                    <div className="text-xs text-white/70">{item.description}</div>
+                  </div>
+                </div>
+                {item.external ? (
+                  <ExternalLink size={16} className="text-white/60 group-hover:text-amber-200" />
+                ) : (
+                  <ArrowRight size={16} className="text-white/40 group-hover:text-amber-200" />
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SiteFooter() {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="mt-16 border-t border-white/10 bg-black/35 backdrop-blur">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 md:grid-cols-3">
+        <div>
+          <div className="text-lg font-semibold text-white">Menelek Makonnen</div>
+          <div className="text-sm text-white/70">Filmmaker • Worldbuilder</div>
+          <div className="mt-4 flex flex-wrap gap-4 text-white/80">
+            {SITE_SOCIALS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target={item.href.startsWith("http") ? "_blank" : undefined}
+                  rel={item.href.startsWith("http") ? "noreferrer" : undefined}
+                  className="inline-flex items-center gap-2 hover:text-white"
+                >
+                  <Icon size={16} /> {item.label}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+        <div className="md:col-span-2 text-sm text-white/60">
+          <p>© {year} Loremaker • ICUNI. All rights reserved.</p>
+          <p className="mt-2 text-white/50">
+            Curated with the same palette as the main site so you can traverse Menelek’s worlds without losing your bearings.
+          </p>
+        </div>
+      </div>
+    </footer>
   );
 }
 
@@ -1146,27 +1309,49 @@ function HealthBar({ value }) {
   );
 }
 
-// Animated Lore shield with randomized micro-effects
-function LoreGlyph() {
+// Animated Lore shield with dramatic plasma aura
+function LoreGlyph({ onRefresh }) {
   const [seed] = useState(() => Math.floor(Math.random() * 1000));
-  const wobble = [0, -2, 2, -1, 1, 0];
+  const hue = (seed * 47) % 360;
   return (
-    <motion.div
-      animate={{ rotate: wobble, scale: [1, 1.02, 1], filter: ["drop-shadow(0 0 6px rgba(255,255,255,.25))", `drop-shadow(0 0 12px hsl(${(seed*37)%360},90%,60%))`, "drop-shadow(0 0 6px rgba(255,255,255,.25))"] }}
-      transition={{ duration: 2 + (seed % 10) / 5, repeat: Infinity, ease: "easeInOut" }}
-      className="relative"
-      title="Lore"
+    <motion.button
+      type="button"
+      onClick={onRefresh}
+      whileTap={{ scale: 0.95, rotate: [-3, 3, 0] }}
+      animate={{ rotate: [0, -3, 2, -1, 0], scale: [1, 1.04, 1], filter: [
+        "drop-shadow(0 0 18px rgba(255,255,255,0.35))",
+        `drop-shadow(0 0 28px hsla(${hue},100%,65%,0.75))`,
+        "drop-shadow(0 0 18px rgba(255,255,255,0.35))",
+      ] }}
+      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+      className="relative grid h-14 w-14 place-items-center overflow-visible"
+      title="Refresh Lore data"
+      aria-label="Refresh Lore data"
     >
-      <Insignia label="Lore" size={54} variant="site" />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-xs font-black tracking-wide">Lore</span>
-      </div>
-    </motion.div>
+      <motion.span
+        className="absolute inset-0 -z-10 rounded-[1.35rem] bg-gradient-to-br from-indigo-500/60 via-fuchsia-400/55 to-amber-300/55 blur-lg"
+        animate={{ opacity: [0.55, 0.9, 0.55], scale: [1, 1.18, 1] }}
+        transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+      />
+      <motion.span
+        className="absolute -inset-2 -z-20 rounded-[1.6rem] bg-gradient-to-tr from-white/10 via-transparent to-white/10"
+        animate={{ rotate: [0, 180, 360] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+      />
+      <Insignia label="LORE" size={56} variant="site" />
+      <motion.span
+        className="absolute -bottom-2 right-0 text-amber-200"
+        animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.1, 0.8] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Sparkles size={16} />
+      </motion.span>
+    </motion.button>
   );
 }
 
 /** Filters Drawer */
-function FiltersDrawer({ open, onClose, values, filters, setFilters }) {
+function FiltersDrawer({ open, onClose, values, filters, setFilters, combineAND, setCombineAND }) {
   if (!open) return null;
   const toggle = (key, value) => {
     setFilters((f) => {
@@ -1194,6 +1379,13 @@ function FiltersDrawer({ open, onClose, values, filters, setFilters }) {
         <div className="flex items-center justify-between mb-4">
           <div className="text-lg font-black tracking-tight">Filters</div>
           <Button variant="ghost" onClick={onClose}><X /></Button>
+        </div>
+        <div className="mb-5 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-white/70">
+          <span>Mode</span>
+          <div className="flex items-center gap-2 normal-case">
+            <Badge className="bg-white/15 border border-white/25 text-[10px]">{combineAND ? "AND" : "Single"}</Badge>
+            <Switch id="and-mode" checked={combineAND} onChange={setCombineAND} />
+          </div>
         </div>
         <div className="space-y-5">
           {values.gender.length > 0 && <Section title="Gender" keyName="gender" items={values.gender} />}
@@ -1265,7 +1457,7 @@ function BackToTop() {
   );
 }
 
-function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
+function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onToggleArena, arenaVisible }) {
   const options = [
     { id: "default", label: "Default" },
     { id: "random", label: "Random" },
@@ -1285,11 +1477,11 @@ function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onCl
         />
       </div>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end md:gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {options.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
+      <div className="flex flex-wrap items-center gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
               onClick={() => setSortMode(opt.id)}
               aria-pressed={sortMode === opt.id}
               className={cx(
@@ -1307,15 +1499,20 @@ function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onCl
           <Button
             variant="ghost"
             onClick={() => setOpenFilters(true)}
-            className="font-black border border-amber-200 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] hover:bg-amber-200 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)]"
+            className="font-black border border-amber-200 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] hover:bg-amber-200 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)] md:hidden"
           >
             <Filter className="mr-1" size={16} /> Filters
           </Button>
           <Button variant="ghost" onClick={onClear} className="font-bold">
             Clear
           </Button>
-          <Button variant="secondary" onClick={onJumpArena} className="font-bold">
+          <Button
+            variant={arenaVisible ? "secondary" : "ghost"}
+            onClick={onToggleArena}
+            className={cx("font-bold", arenaVisible ? "bg-emerald-400 text-black" : "border border-white/40 text-white/90 hover:bg-white/10")}
+          >
             Arena
+            <Badge className={cx("ml-2 text-[10px]", arenaVisible ? "bg-black/80 text-emerald-300" : "bg-white/15 text-white/70 border border-white/30")}>{arenaVisible ? "On" : "Off"}</Badge>
           </Button>
         </div>
       </div>
@@ -1341,7 +1538,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
   const originRight = right ? powerOriginProfile(right) : null;
 
   useEffect(() => {
-    if (selectedIds.length) {
+    if (selectedIds.some(Boolean)) {
       setShake(true);
       const t = setTimeout(() => setShake(false), 500);
       return () => clearTimeout(t);
@@ -1355,18 +1552,39 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     return () => clearTimeout(t);
   }, [pulse]);
 
-  const release = (id) => setSelectedIds((ids) => ids.filter((x) => x !== id));
+  const setSlotValue = (side, value) => {
+    setSelectedIds((ids) => {
+      const next = Array.isArray(ids) && ids.length === 2 ? [...ids] : [ids[0] || null, ids[1] || null];
+      next[side === "left" ? 0 : 1] = value;
+      return next;
+    });
+  };
 
-  const randomise = () => {
-    if (data.length < 2) return;
-    const r1 = Math.floor(Math.random() * data.length);
-    let r2 = Math.floor(Math.random() * data.length);
-    if (r2 === r1) r2 = (r2 + 1) % data.length;
-    setSelectedIds([data[r1].id, data[r2].id]);
-    setHp({ left: 100, right: 100 });
+  const release = (side) => {
+    setSlotValue(side, null);
+    setBattle(null);
     setWinner(null);
     setLoser(null);
+    setLoserMark(false);
+    setPhase(-1);
+    setHp((prev) => ({ ...prev, [side]: 100 }));
+  };
+
+  const randomiseContestant = (side) => {
+    if (!data.length) return;
+    const otherId = side === "left" ? selectedIds[1] : selectedIds[0];
+    const currentId = side === "left" ? selectedIds[0] : selectedIds[1];
+    const pool = data.filter((c) => c.id !== otherId && c.id !== currentId);
+    const candidates = pool.length ? pool : data.filter((c) => c.id !== otherId);
+    if (!candidates.length) return;
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    setSlotValue(side, pick.id);
+    setHp((prev) => ({ ...prev, [side]: 100 }));
+    setWinner(null);
+    setLoser(null);
+    setLoserMark(false);
     setBattle(null);
+    setPhase(-1);
   };
 
   const runFight = () => {
@@ -1514,11 +1732,15 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     </div>
   );
 
-  const Slot = ({ label, character, health, origin }) => {
+  const Slot = ({ label, side, character, health, origin }) => {
     if (!character)
       return (
-        <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/60">
-          {label} empty. Choose a character.
+        <div className="flex flex-col gap-3 rounded-xl border border-white/15 bg-white/5 p-4 text-sm text-white/70">
+          <div className="font-extrabold uppercase tracking-widest text-white/60">{label}</div>
+          <div>Summon a contestant from the roster or let the arena pick one for you.</div>
+          <Button variant="secondary" onClick={() => randomiseContestant(side)} className="font-black">
+            Random Contestant
+          </Button>
         </div>
       );
     const isWinner = winner?.id === character.id;
@@ -1573,8 +1795,11 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
           <Button variant="ghost" onClick={() => onOpen(character)}>
             Read More
           </Button>
-          <Button variant="outline" onClick={() => release(character.id)}>
+          <Button variant="outline" onClick={() => release(side)}>
             Release
+          </Button>
+          <Button variant="ghost" onClick={() => randomiseContestant(side)}>
+            Random Contestant
           </Button>
         </div>
         <div className="mt-3">
@@ -1592,24 +1817,21 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
         animating ? "animate-[pulse_2s_ease-in-out_infinite]" : ""
       )}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Swords />
-          <div className="text-lg font-black tracking-tight">Battle Arena</div>
-          <Badge className="bg-amber-300 text-black">Live</Badge>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Swords />
+            <div className="text-lg font-black tracking-tight">Battle Arena</div>
+            <Badge className="bg-amber-300 text-black">Live</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={runFight} disabled={!canFight} className="font-black">
+              {animating ? "Simulating…" : "Fight"}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={randomise} className="font-bold">
-            <RefreshCcw size={16} className="mr-1" /> Randomise
-          </Button>
-          <Button onClick={runFight} disabled={!canFight} className="font-black">
-            {animating ? "Simulating…" : "Fight"}
-          </Button>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
-        <Slot label="Fighter A" character={left} health={hp.left} origin={originLeft} />
+        <Slot label="Contestant One" side="left" character={left} health={hp.left} origin={originLeft} />
         <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden">
           <motion.div
             animate={
@@ -1647,12 +1869,12 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
             </div>
           )}
           {winner && (
-            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-200 shadow-lg">
-              {winner.name}
+            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-400 shadow-lg">
+              Champion: {winner.name}
             </div>
           )}
         </div>
-        <Slot label="Fighter B" character={right} health={hp.right} origin={originRight} />
+        <Slot label="Contestant Two" side="right" character={right} health={hp.right} origin={originRight} />
       </div>
 
       {battle && (
@@ -1815,9 +2037,10 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(null);
   const [sortMode, setSortMode] = useState("default");
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([null, null]);
   const [highlightedId, setHighlightedId] = useState(null);
   const [arenaPulse, setArenaPulse] = useState(false);
+  const [arenaVisible, setArenaVisible] = useState(true);
   const visitTracked = useRef(false);
 
   const onOpen = (c) => { setActive(c); setOpen(true); };
@@ -1825,14 +2048,20 @@ export default function App() {
   // if both slots full and user adds a third, replace the oldest
   const onUseInSim = (id) => {
     setSelectedIds((ids) => {
-      if (ids.includes(id)) return ids;
-      if (ids.length < 2) return [...ids, id];
-      return [ids[1], id]; // replace oldest
+      const next = Array.isArray(ids) && ids.length === 2 ? [...ids] : [ids[0] || null, ids[1] || null];
+      if (next.includes(id)) return next;
+      const emptyIdx = next.findIndex((slot) => !slot);
+      if (emptyIdx !== -1) {
+        next[emptyIdx] = id;
+        return next;
+      }
+      return [next[1], id];
     });
     setHighlightedId(id);
     setArenaPulse(true);
     setTimeout(() => setHighlightedId(null), 900);
     setTimeout(() => setArenaPulse(false), 900);
+    setArenaVisible(true);
     // scroll to arena
     const anchor = document.getElementById("arena-anchor");
     if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1893,17 +2122,32 @@ export default function App() {
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Aurora />
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <LoreGlyph />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="flex items-start gap-3">
+            <LoreGlyph onRefresh={() => refetch()} />
             <div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight">Loremaker Universe</div>
-              <div className="text-xs uppercase tracking-widest text-white/80 font-bold">Welcome to the official home of all the Loremaker universe and characters created by Menelek Makonnen</div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") window.location.href = "/loremaker";
+                }}
+                className="text-left text-2xl md:text-3xl font-black tracking-tight text-white hover:text-amber-200 transition"
+              >
+                Loremaker Universe
+              </button>
+              <p className="mt-2 max-w-2xl text-sm text-white/80 leading-relaxed">
+                Explore every storyline, faction, and mythic ability woven through Menelek Makonnen’s expanding cosmos. Filter the archive, dive into detailed dossiers, and summon characters into the Arena.
+              </p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2">
-            <Switch id="mode" checked={combineAND} onChange={setCombineAND} />
-            <Badge className="bg-white/10 border border-white/20">{combineAND ? "AND" : "Single"}</Badge>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => setOpenFilters(true)}
+              className="font-black border border-amber-200 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] hover:bg-amber-200 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)]"
+            >
+              <Filter className="mr-1" size={16} /> Filters
+            </Button>
           </div>
         </div>
 
@@ -1911,7 +2155,19 @@ export default function App() {
 
         {/* Arena pinned right under Hero */}
         <div id="arena-anchor">
-          <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
+          <AnimatePresence>
+            {arenaVisible && (
+              <motion.div
+                key="arena"
+                initial={{ opacity: 0, y: -18 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -18 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="mt-6">
@@ -1922,7 +2178,8 @@ export default function App() {
             sortMode={sortMode}
             setSortMode={setSortMode}
             onClear={clearAll}
-            onJumpArena={() => document.getElementById("arena-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onToggleArena={() => setArenaVisible((v) => !v)}
+            arenaVisible={arenaVisible}
           />
         </div>
 
@@ -1939,14 +2196,17 @@ export default function App() {
             highlightId={highlightedId}
           />
         </div>
+
+        <SiteMenuSection />
       </div>
 
       <CharacterModal open={open} onClose={() => setOpen(false)} c={active} onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))} onUseInSim={(id) => { onUseInSim(id); setOpen(false); }} />
 
-      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} />
+      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} combineAND={combineAND} setCombineAND={setCombineAND} />
 
       <BackToTop />
       <ChatDock />
+      <SiteFooter />
     </div>
   );
 }
