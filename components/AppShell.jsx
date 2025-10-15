@@ -63,9 +63,15 @@ const LINKS = {
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
-// Publish the Characters tab to the web and set the correct gid
-const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+  workflow: "/workflow/cQltZgIikkp4fFER",
+};
+const CHATBOT_NAME = "Zara";
+const CHATBOT_TAGLINE = "Menelek's AI Assistant";
 
 const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
 const CHATBOT_ENDPOINTS = {
@@ -1251,6 +1257,20 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           Book this Scope
         </Button>
       </div>
+      <AnimatePresence initial={false}>
+        {showTimeline ? (
+          <motion.div
+            key="timeline"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <div className="mt-4 flex gap-2"><Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button></div>
     </div>
   );
 }
@@ -1435,8 +1455,114 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 function useCSV(url) {
   const [rows, setRows] = useState([]);
   useEffect(() => {
-    let abort = false;
-    (async () => {
+    minimizedRef.current = minimized;
+  }, [minimized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const session = ensureChatbotSession();
+    sessionRef.current = session;
+    setIsReturning(Boolean(session?.isReturning));
+    setMessages([
+      {
+        id: Date.now(),
+        sender: "bot",
+        text: session?.isReturning
+          ? "👋 Welcome back! Pick up where we left off—what can I line up for you today?"
+          : `Hey there! I'm ${CHATBOT_NAME}. Share your brief, budget, or timeline and I'll map next steps.`,
+      },
+    ]);
+
+    if (CHATBOT_BASE_URL && CHATBOT_ENDPOINTS.trackVisit) {
+      const payload = {
+        page: window.location.pathname,
+        referrer: document.referrer,
+        timestamp: new Date().toISOString(),
+        sessionId: session?.id,
+        firstSeen: session?.firstSeen,
+        isReturningVisitor: session?.isReturning,
+        visitCount: session?.visitCount,
+        fingerprint: session?.fingerprint,
+      };
+      postJSONWithFallback(CHATBOT_ENDPOINTS.trackVisit, payload).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && !minimized) setUnread(0);
+  }, [open, minimized, messages.length]);
+
+  useEffect(() => {
+    if (!open || minimized) return;
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, open, minimized]);
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      if (!prev) {
+        setUnread(0);
+        setMinimized(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleMinimize = () => {
+    setMinimized((prev) => {
+      const next = !prev;
+      if (!next) setUnread(0);
+      return next;
+    });
+  };
+
+  const appendMessage = (msg) => {
+    setMessages((prev) => [...prev, msg]);
+    if (msg.sender === "bot" && (!openRef.current || minimizedRef.current)) {
+      setUnread((u) => u + 1);
+    }
+  };
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+
+    const baseSession = sessionRef.current || ensureChatbotSession();
+    sessionRef.current = baseSession;
+
+    const userMsg = { id: Date.now(), sender: "user", text };
+    appendMessage(userMsg);
+    messageCountRef.current += 1;
+    setLoading(true);
+
+    const typingDelay = new Promise((resolve) => setTimeout(resolve, 450));
+
+    const failSafe = "I'm running in demo mode right now. Drop an email or call sheet and I'll loop Menelek in manually.";
+
+    try {
+      if (!CHATBOT_BASE_URL || !CHATBOT_ENDPOINTS.chatbot) {
+        await typingDelay;
+        appendMessage({ id: Date.now() + 1, sender: "bot", text: failSafe });
+        return;
+      }
+
+      const payload = {
+        message: text,
+        sessionId: baseSession?.id,
+        messageCount: messageCountRef.current,
+        firstSeen: baseSession?.firstSeen,
+        isReturningVisitor: baseSession?.isReturning,
+        conversationContext: baseSession?.isReturning ? "continuing" : "new",
+        page: typeof window !== "undefined" ? window.location.pathname : "",
+        referrer: typeof document !== "undefined" ? document.referrer : "",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        language: typeof navigator !== "undefined" ? navigator.language : "",
+      };
+
+      let res;
+      let data = null;
       try {
         const target = proxyGoogleUrl(url);
         const attempts = [target];
@@ -2020,6 +2146,98 @@ function ChatbotWidget() {
   );
 }
 
+const INSTAGRAM_VIDEO_COLLECTIONS = [
+  {
+    id: "epic-edits",
+    title: "Epic Edits",
+    description: "Signature reels with cinematic pacing, VFX and colour stories.",
+    fallbackThumb: "https://i.imgur.com/N7w7LGz.jpg",
+    seed: 3,
+    urls: [
+      "https://www.instagram.com/p/DMKpVGwoOC2/",
+      "https://www.instagram.com/p/C7TX-jlqQFB/",
+      "https://www.instagram.com/reel/C8rQp-kq5PG/",
+      "https://www.instagram.com/reel/C8kNL16KIZc/",
+      "https://www.instagram.com/reel/C8z0DAtKq8B/",
+      "https://www.instagram.com/reel/DFPiXCOo220/",
+      "https://www.instagram.com/reel/CIDASf-n6mv/",
+    ],
+  },
+  {
+    id: "beauty-travel",
+    title: "Beauty & Travel",
+    description: "Luxe portraiture and destination vignettes shot for brands and creators.",
+    fallbackThumb: "https://i.imgur.com/1xqQwBn.jpg",
+    seed: 11,
+    urls: [
+      "https://www.instagram.com/reel/C6YtlD2Kbd6/",
+      "https://www.instagram.com/reel/C3sDA4AqP5z/",
+      "https://www.instagram.com/reel/C-VzUiFqfkm/",
+      "https://www.instagram.com/reel/DIx8Dkao7wR/",
+      "https://www.instagram.com/reel/DJZC9tpIIOF/",
+      "https://www.instagram.com/reel/DEPpHmFIGAl/",
+      "https://www.instagram.com/reel/DLfna4ao-z-/",
+      "https://www.instagram.com/reel/C7BdCzwqgKo/",
+      "https://www.instagram.com/reel/C6JjwNGIKni/",
+      "https://www.instagram.com/reel/C5N9JhvK9to/",
+      "https://www.instagram.com/reel/C4yA5RKK0zg/",
+      "https://www.instagram.com/reel/C4YBtJdqoWr/",
+      "https://www.instagram.com/reel/C4LBUi7K9wr/",
+      "https://www.instagram.com/reel/C3igTEsqyam/",
+      "https://www.instagram.com/reel/DLDh5OUt9mQ/",
+      "https://www.instagram.com/reel/DKZRaYntlpH/",
+      "https://www.instagram.com/reel/DGwLruRtP9F/",
+      "https://www.instagram.com/reel/C5BqJyMKBeD/",
+      "https://www.instagram.com/reel/C1ZHmHbKt4u/",
+    ],
+  },
+  {
+    id: "bts",
+    title: "BTS & Production Diaries",
+    description: "Behind the scenes momentum from boxing docs to commercial sets.",
+    fallbackThumb: "https://i.imgur.com/dg9lQbH.jpg",
+    seed: 7,
+    urls: [
+      "https://www.instagram.com/reel/CthPmc7OKK5/",
+      "https://www.instagram.com/reel/CtjWyXJNxwY/",
+      "https://www.instagram.com/reel/Ctlc7--veax/",
+      "https://www.instagram.com/reel/Ctn4hRENjQW/",
+      "https://www.instagram.com/reel/Cttvmy2AdWU/",
+      "https://www.instagram.com/reel/Cue_nHag-QS/",
+      "https://www.instagram.com/reel/CuhtdZYMwWj/",
+      "https://www.instagram.com/reel/C69G68OPF5N/",
+      "https://www.instagram.com/reel/C7KeP-sIHBk/",
+      "https://www.instagram.com/reel/DFNRIRqoFH_/",
+      "https://www.instagram.com/reel/DFPiY-Do1z0/",
+    ],
+  },
+  {
+    id: "ai-edu",
+    title: "AI Lab & Learning",
+    description: "AI-driven experiments plus educational reels that deconstruct the craft.",
+    fallbackThumb: "https://i.imgur.com/2h2x3sC.jpg",
+    seed: 5,
+    urls: [
+      "https://www.instagram.com/reel/DK1bY8couuK/",
+      "https://www.instagram.com/reel/DK4gIZtNB-U/",
+      "https://www.instagram.com/reel/DIvxSY9tQio/",
+      "https://www.instagram.com/reel/DLAbo5mtbC2/",
+      "https://www.instagram.com/reel/C5oZNM5KF77/",
+      "https://www.instagram.com/reel/C5fciTUqXBR/",
+      "https://www.instagram.com/reel/C5c74nYKdI2/",
+      "https://www.instagram.com/reel/DMzghyEtXu1/",
+    ],
+  },
+];
+
+function getInstagramCodeFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i] === "p" || segments[i] === "reel") {
+        return segments[i + 1] || null;
+      }
 function parseCSV(text) {
   const lines = [];
   let cur = [];
@@ -2044,12 +2262,10 @@ function parseCSV(text) {
         }
       } else val += c;
     }
+    return segments[segments.length - 1] || null;
+  } catch (error) {
+    return null;
   }
-  if (val !== "" || cur.length) { cur.push(val); lines.push(cur); }
-  if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0];
-  const rows = lines.slice(1).map((arr) => Object.fromEntries(headers.map((h, i) => [h, arr[i] ?? ""])));
-  return { headers, rows };
 }
 
 // ========= Featured Universe ========= //
@@ -2057,6 +2273,8 @@ function FeaturedUniverse() {
   const { rows } = useCSV(SHEETS_CSV_URL);
   const [seed, setSeed] = useState(0);
 
+function MMMBelt({ collection, onOpen }) {
+  const [hovered, setHovered] = useState(null);
   const picks = useMemo(() => {
     if (!rows?.length) return [];
     const shuffled = shuffleWithSeed(rows, seed + 1);
@@ -2092,7 +2310,53 @@ function FeaturedUniverse() {
           )}
         </div>
       </div>
-    </section>
+      <div className="relative overflow-hidden">
+        {duplicated.length ? (
+          <motion.div
+            className="flex gap-4"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
+          >
+            {duplicated.map((item, idx) => {
+              const baseIndex = idx % media.length;
+              const isActive = hovered === baseIndex;
+              const isDimmed = hovered !== null && !isActive;
+              return (
+                <button
+                  key={`${collection.id}-${idx}`}
+                  onMouseEnter={() => setHovered(baseIndex)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => openAt(baseIndex)}
+                  className={cn(
+                    "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                    isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                  )}
+                  title="Open lightbox"
+                >
+                  <img
+                    src={item.thumbnail || collection.fallbackThumb}
+                    alt={`${collection.title} preview`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      if (collection.fallbackThumb && e.currentTarget.src !== collection.fallbackThumb) {
+                        e.currentTarget.src = collection.fallbackThumb;
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                </button>
+              );
+            })}
+          </motion.div>
+        ) : (
+          <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
+            Pulling reel thumbnails…
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2421,9 +2685,44 @@ function CharacterCard({ row }) {
       <div className="mt-4 flex gap-2">
         <Button href={LINKS.loremakerSite} className="bg-white/10" icon={ExternalLink}>Read more</Button>
       </div>
-    </Card>
+      <div className="mt-2 text-right text-xs text-white/60">
+        <a href={item?.url} target="_blank" rel="noreferrer" className="underline">Open on Instagram</a>
+      </div>
+    </Modal>
   );
 }
+
+function MMMGalleries() {
+  const [lightbox, setLightbox] = useState(null);
+
+  return (
+    <section className="py-12" id="galleries">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="flex items-end justify-between">
+          <h2 className="text-2xl sm:text-3xl font-bold">MMM Galleries</h2>
+          <span className="text-white/70 text-sm">Hover to magnify • tap to open lightbox</span>
+        </div>
+        <p className="text-white/75 max-w-3xl">
+          Four belts of Instagram reels spanning epic edits, beauty work, BTS, and AI experiments. Hover to spotlight a frame; click to open the lightbox and keep watching without leaving the site.
+        </p>
+        <div className="space-y-5">
+          {INSTAGRAM_VIDEO_COLLECTIONS.map((collection) => (
+            <MMMBelt key={collection.id} collection={collection} onOpen={(payload) => setLightbox(payload)} />
+          ))}
+        </div>
+      </div>
+      {lightbox ? (
+        <GalleryLightbox
+          collection={lightbox.collection}
+          media={lightbox.media}
+          startIndex={lightbox.initialIndex || 0}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
 
 // ========= Portfolio ========= //
 function SocialProof() {
@@ -2777,13 +3076,6 @@ function runSelfTests() {
     console.assert(getYouTubeId("https://www.youtube.com/shorts/QQ11WW22") === "QQ11WW22", "shorts failed");
     console.assert(getYouTubeId("https://www.youtube.com/embed/IDID") === "IDID", "embed failed");
 
-    // parseCSV quoted commas
-    const sample = 'Name,Desc\n"Alpha, Beta","Line one, line two"\nGamma,Plain';
-    const parsed = parseCSV(sample);
-    console.assert(parsed.rows.length === 2, "CSV rows length");
-    console.assert(parsed.rows[0].Name === "Alpha, Beta", "CSV quoted field parse");
-    console.assert(parsed.rows[0].Desc.includes("line two"), "CSV multi");
-
     // calendar calc
     const phases = [
       { key: "a", label: "A", startDays: 0, weeks: 1 },
@@ -2812,6 +3104,11 @@ export default function AppShell() {
   const [contactOpen, setContactOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
+  const [quickNote, setQuickNote] = useState("");
+  const [quickEmail, setQuickEmail] = useState("");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickSuccess, setQuickSuccess] = useState(false);
+  const [quickError, setQuickError] = useState(null);
 
   const structuredData = useMemo(() => {
     const sameAs = [
@@ -2860,6 +3157,42 @@ export default function AppShell() {
   useEffect(() => {
     runSelfTests();
   }, []);
+
+  const resetQuickContact = () => {
+    setQuickNote("");
+    setQuickEmail("");
+    setQuickSubmitting(false);
+    setQuickSuccess(false);
+    setQuickError(null);
+  };
+
+  const submitQuickContact = async () => {
+    if (quickSubmitting) return;
+    setQuickError(null);
+    if (!quickNote.trim()) {
+      setQuickError("Share a few project details so I know how to help.");
+      return;
+    }
+    if (quickEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(quickEmail.trim())) {
+      setQuickError("That email doesn’t look right—double check and try again.");
+      return;
+    }
+    try {
+      setQuickSubmitting(true);
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, {
+        source: "quick-contact",
+        message: quickNote,
+        email: quickEmail.trim() || undefined,
+        submittedAt: new Date().toISOString(),
+      });
+      setQuickSuccess(true);
+    } catch (error) {
+      console.error("Quick contact failed", error);
+      setQuickError("Couldn’t send right now. Email hello@menelekmakonnen.com instead and I’ll reply.");
+    } finally {
+      setQuickSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -2973,14 +3306,56 @@ export default function AppShell() {
       <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
 
       {/* Quick Contact bubble modal */}
-      <Modal open={contactOpen} onClose={() => setContactOpen(false)} title="Quick Contact">
+      <Modal
+        open={contactOpen}
+        onClose={() => {
+          setContactOpen(false);
+          resetQuickContact();
+        }}
+        title="Quick Contact"
+      >
         <div className="grid gap-3">
-          <p className="text-white/75 text-sm">Leave a fast brief. I’ll reply within 24–48h.</p>
-          <a className="underline" href={SOCIALS.email}>Or email me directly</a>
-          <textarea rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" placeholder="What are we making? Scope, goals, timeline…" />
+          <p className="text-white/75 text-sm">
+            Leave a fast brief. I’ll route it straight to my inbox and reply within 24–48h.
+          </p>
+          <a className="underline" href={SOCIALS.email} target="_blank" rel="noreferrer">
+            Prefer email? hello@menelekmakonnen.com
+          </a>
+          {quickError ? <div className="text-sm text-rose-300">{quickError}</div> : null}
+          <textarea
+            rows={4}
+            value={quickNote}
+            onChange={(e) => setQuickNote(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            placeholder="What are we making? Scope, goals, timeline…"
+          />
+          <input
+            type="email"
+            value={quickEmail}
+            onChange={(e) => setQuickEmail(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            placeholder="Optional contact email"
+          />
           <div className="flex gap-2">
-            <Button onClick={() => { alert("Saved locally. I’ll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
-            <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
+            <Button onClick={submitQuickContact} icon={ShieldCheck} disabled={quickSubmitting}>
+              {quickSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                </span>
+              ) : (
+                "Send"
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setContactOpen(false);
+                resetQuickContact();
+              }}
+              disabled={quickSubmitting}
+            >
+              Cancel
+            </Button>
           </div>
           <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
         </div>
