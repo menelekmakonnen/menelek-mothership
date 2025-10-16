@@ -56,7 +56,9 @@ function Button({ variant = "default", className = "", children, as: Comp = "but
     outline: "border border-white/35 text-white hover:bg-white/15",
     ghost: "text-white/75 hover:text-white",
     destructive: "bg-red-600 text-white hover:bg-red-500",
-  }[variant];
+    outline: "border border-white/40 text-white hover:bg-white/10",
+    dark: "bg-black/70 text-white hover:bg-black",
+  };
   return (
     <Comp className={cx(base, palette, className)} {...props}>
       {children}
@@ -144,6 +146,20 @@ const NAV_ITEMS = [
   { key: "loremaker", icon: Sparkles, label: "Loremaker", href: LINKS.loremaker },
   { key: "blog", icon: Newspaper, label: "Blog", href: LINKS.blog, external: true },
 ];
+
+const CHATBOT_WEBHOOK =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK || ""
+    : window?.__NEXT_DATA__?.props?.pageProps?.chatbotWebhook ||
+      process.env.NEXT_PUBLIC_LOREMAKER_CHAT_WEBHOOK ||
+      "";
+
+const TRACK_VISIT_WEBHOOK =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK || ""
+    : window?.__NEXT_DATA__?.props?.pageProps?.trackVisitWebhook ||
+      process.env.NEXT_PUBLIC_LOREMAKER_TRACK_WEBHOOK ||
+      "";
 
 const COL_ALIAS = {
   id: ["id", "char_id", "character id", "code"],
@@ -1501,6 +1517,18 @@ const QuickControls = ({
           Arena {arenaVisible ? "On" : "Off"}
         </Button>
       </div>
+      <Button variant="destructive" className="w-full" onClick={onClear}>
+        Clear all
+      </Button>
+      <Section title="Gender / Sex" values={genders} keyName="gender" single />
+      <Section title="Alignment" values={alignments} keyName="alignment" single />
+      <Section title="Era" values={eras} keyName="era" />
+      <Section title="Locations" values={locations} keyName="locations" />
+      <Section title="Faction / Team" values={factions} keyName="faction" />
+      <Section title="Powers" values={powers} keyName="powers" />
+      <Section title="Tags" values={tags} keyName="tags" />
+      <Section title="Status" values={statuses} keyName="status" />
+      <Section title="Stories" values={stories} keyName="stories" />
     </div>
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Sort Characters</p>
