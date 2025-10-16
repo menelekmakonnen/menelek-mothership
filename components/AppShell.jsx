@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -17,16 +17,28 @@ import {
   Info,
   ArrowUp,
   MessageSquare,
+  Minimize2,
+  Maximize2,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 /**
- * Menelek Makonnen — Mothership (v11.2 — Canvas build)
- *
- * Fix: Resolved SyntaxError by repairing a corrupted section where getYouTubeId
- *      was overwritten with useCSV internals. Restored missing helpers
- *      (youtubeThumb, useCSV, IG constants) and ensured all JSX blocks close.
- *      Also keeps previous feature work: axis alignment, single‑color CVC bar,
- *      sheet‑only Featured Universe, bigger zoom + click‑to‑watch tiles.
+ * Mothership V13.2 — Luxe overhaul + bugfix
+ * - FIX: Unterminated string in CharacterCard <img className> + prior truncation.
+ * - FIX: Restored missing components (ChatbotWidget, AppShell) and ensured WorkWithMe exists.
+ * - Theme: richer glass, deeper gradients, neon accents.
+ * - Back‑to‑top: always visible.
+ * - Chatbot: compact dock + unread badge + minimize.
+ * - Hero: animated showcase slider (reel, photo, epic edit, universe art).
+ * - Portfolio: stronger fill + harder hover zoom.
+ * - Schedule: days mode for ≤2 weeks; weeks >2. Distribution phase removed.
+ * - Featured Universe: robust CSV + Drive image normalization.
+ * - MMM Galleries: Google Photos album embeds with modal lightbox.
+ * - Self‑tests: added assertions for helpers and component presence.
  */
 
 // ========= FACTUAL LINKS ========= //
@@ -52,22 +64,105 @@ const LINKS = {
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
-// Publish the Characters tab to the web and set the correct gid
-const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+  workflow: "/workflow/cQltZgIikkp4fFER",
+};
+const CHATBOT_NAME = "Zara";
+const CHATBOT_TAGLINE = "Menelek's AI Assistant";
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ensureArray = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
+};
 
-function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const query = window.matchMedia("(pointer: coarse)");
+    const update = () => setIsTouch(query.matches);
+    update();
+    if (query.addEventListener) {
+      query.addEventListener("change", update);
+      return () => query.removeEventListener("change", update);
+    }
+    query.addListener(update);
+    return () => query.removeListener(update);
+  }, []);
+
+  return isTouch;
+}
+
+async function postJSONWithFallback(paths, payload, { headers = {}, signal } = {}) {
+  const attempts = ensureArray(paths);
+  let lastError = null;
+  for (const path of attempts) {
+    try {
+      const res = await fetch(`${CHATBOT_BASE_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(payload),
+        mode: "cors",
+        signal,
+      });
+      if (!res.ok) {
+        lastError = new Error(`Request failed with status ${res.status}`);
+        continue;
+      }
+      return res;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) throw lastError;
+  throw new Error("No endpoints available");
+}
+const shuffleArray = (arr) => {
+  const next = [...arr];
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
+
+const createSeededRandom = (seed = 1) => {
+  let s = Math.floor(seed) % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+};
+
+const shuffleWithSeed = (arr, seed = 1) => {
+  if (!Number.isFinite(seed)) return shuffleArray(arr);
+  const random = createSeededRandom(seed);
+  const next = [...arr];
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
+
+function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title, ...rest }) {
   const palettes = {
     default: "bg-white/10 hover:bg-white/15",
     ghost: "bg-white/5 hover:bg-white/10",
-    accent: "bg-gradient-to-tr from-amber-400/20 to-fuchsia-400/20 hover:from-amber-400/25 hover:to-fuchsia-400/25",
+    accent: "bg-gradient-to-tr from-cyan-300/20 via-fuchsia-400/20 to-amber-300/20 hover:from-cyan-300/30 hover:to-amber-300/30",
   };
   const base = cn(
-    "px-4 py-2.5 rounded-xl border border-white/15 text-white",
-    "shadow-[0_10px_30px_rgba(0,0,0,0.25)] active:translate-y-px backdrop-blur transition-all",
+    "px-4 py-2.5 rounded-2xl border border-white/15 text-white",
+    "shadow-[0_12px_40px_rgba(0,0,0,0.35)] active:translate-y-px backdrop-blur-xl transition-all",
     palettes[variant],
     className
   );
@@ -79,23 +174,21 @@ function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, class
   );
   if (href)
     return (
-      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title}>
+      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title} {...rest}>
         {inner}
       </a>
     );
-  return (
-    <Cmp onClick={onClick} className={base} title={title}>
-      {inner}
-    </Cmp>
-  );
+  const props = { onClick, className: base, title, target, rel, ...rest };
+  if (Cmp === "button" && props.type === undefined) props.type = "button";
+  return <Cmp {...props}>{inner}</Cmp>;
 }
 
 function Card({ className = "", children }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-white/10 bg-white/5 backdrop-blur",
-        "shadow-[0_12px_50px_rgba(0,0,0,0.35)] p-5 transition-transform hover:-translate-y-[2px]",
+        "rounded-3xl border border-white/10 bg-[radial-gradient(1200px_600px_at_10%_-20%,rgba(111,66,193,0.18),transparent_60%),radial-gradient(1200px_600px_at_110%_120%,rgba(0,180,255,0.15),transparent_60%)]",
+        "backdrop-blur-xl p-5 shadow-[0_15px_70px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_80px_rgba(0,0,0,0.55)] transition-all",
         className
       )}
     >
@@ -115,15 +208,17 @@ function Modal({ open, onClose, title, children }) {
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
           <motion.div
-            initial={{ y: 20, scale: 0.98, opacity: 0 }}
+            initial={{ y: 24, scale: 0.98, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 10, scale: 0.98, opacity: 0 }}
+            exit={{ y: 12, scale: 0.98, opacity: 0 }}
             className={cn(
-              "relative z-10 mx-auto mt-[8vh] w-[92vw] max-w-5xl",
+              "relative z-10 mx-auto mt-[6vh] w-[92vw] max-w-5xl",
               "rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 text-white"
             )}
+            role="dialog"
+            aria-modal="true"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
@@ -155,10 +250,9 @@ function DiamondsCanvas({ className }) {
     const ctx = canvas.getContext("2d");
 
     const scale = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const { offsetWidth, offsetHeight } = canvas;
-      canvas.width = offsetWidth * dpr;
-      canvas.height = offsetHeight * dpr;
+      const dpr = devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
     };
@@ -172,29 +266,33 @@ function DiamondsCanvas({ className }) {
     const onLeave = () => (mouseRef.current = { x: -9999, y: -9999 });
     const onClick = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      ripplesRef.current.push({ x, y, t: 0 });
+      ripplesRef.current.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, t: 0 });
     };
 
     scale();
+    console.debug("DiamondsCanvas mounted", {
+      width: canvas.offsetWidth,
+      height: canvas.offsetHeight,
+      dpr: typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1,
+    });
 
-    const cell = 10; // density
+    const cell = 9;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.02; // darker default
-    const auraR = 95; // hover radius
-    const size = 2.1;
+    const baseAlpha = 0.08;
+    const auraR = 90;
+    const size = 3.5;
+    const defaultGlow = 0.12;
 
     const draw = () => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
       const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, "#03050a");
-      g.addColorStop(1, "#070a12");
+      g.addColorStop(0, "#050611");
+      g.addColorStop(1, "#0b0f1a");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
-      ripplesRef.current = ripplesRef.current.map((r) => ({ ...r, t: r.t + 1 })).filter((r) => r.t < 300);
+      ripplesRef.current = ripplesRef.current.map((r) => ({ ...r, t: r.t + 1 })).filter((r) => r.t < 260);
 
       const { x: mx, y: my } = mouseRef.current;
 
@@ -205,18 +303,15 @@ function DiamondsCanvas({ className }) {
 
           const dxh = cx - mx;
           const dyh = cy - my;
-          const distHover = Math.hypot(dxh, dyh);
-          const hoverK = Math.max(0, 1 - distHover / auraR);
+          const hoverK = Math.max(0, 1 - Math.hypot(dxh, dyh) / auraR);
 
           let clickGlow = 0;
           for (const r of ripplesRef.current) {
-            const k = r.t / 300;
-            const radius = 14 + k * 340; // expands
-            const thickness = 16;
-            const dxc = cx - r.x;
-            const dyc = cy - r.y;
-            const d = Math.hypot(dxc, dyc);
-            const ring = Math.max(0, 1 - Math.abs(d - radius) / thickness);
+            const k = r.t / 260;
+            const R = 12 + k * 320;
+            const thick = 14;
+            const d = Math.hypot(cx - r.x, cy - r.y);
+            const ring = Math.max(0, 1 - Math.abs(d - R) / thick);
             clickGlow = Math.max(clickGlow, ring * (1 - k));
           }
 
@@ -227,7 +322,7 @@ function DiamondsCanvas({ className }) {
           ctx.fillStyle = `rgba(255,255,255,${baseAlpha})`;
           ctx.fillRect(-size / 2, -size / 2, size, size);
 
-          const a = Math.min(0.6, hoverK * 0.5 + clickGlow * 0.85);
+          const a = Math.min(0.7, defaultGlow + hoverK * 0.5 + clickGlow * 0.85);
           if (a > 0) {
             const grad = ctx.createRadialGradient(0, 0, 0.2, 0, 0, 10);
             grad.addColorStop(0, `rgba(255,255,255,${a})`);
@@ -245,13 +340,13 @@ function DiamondsCanvas({ className }) {
     };
 
     draw();
-    window.addEventListener("resize", onResize);
+    addEventListener("resize", onResize);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerleave", onLeave);
     canvas.addEventListener("pointerdown", onClick);
     return () => {
       cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", onResize);
+      removeEventListener("resize", onResize);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("pointerdown", onClick);
@@ -274,12 +369,59 @@ const SERVICES = [
 const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s.name]));
 
 const PROJECTS = [
-  { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D" },
-  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj" },
-  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D" },
-  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Director, Cinematographer, Editor", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: "https://www.youtube.com/watch?v=4q6X6prhVOE" },
-  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv" },
-  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
+  {
+    id: "im-alright",
+    title: "I'm Alright (2024)",
+    role: "Writer–Director",
+    runtime: "8 min",
+    summary: "Addiction & depression inside a lockdown flat.",
+    url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D",
+    thumbZoom: { base: 1.36, hover: 1.58 },
+  },
+  {
+    id: "blinded-by-magic",
+    title: "Blinded by Magic (2022)",
+    role: "Writer–Director",
+    runtime: "12 min",
+    summary: "A possessed camera blinds its user while granting powers.",
+    url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj",
+    thumbZoom: { base: 1.38, hover: 1.6 },
+  },
+  {
+    id: "heroes-gods",
+    title: "Heroes & Gods (2024)",
+    role: "Writer–Director, Editor",
+    runtime: "120 min",
+    summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.",
+    url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D",
+    thumbZoom: { base: 1.34, hover: 1.56 },
+  },
+  {
+    id: "spar-bts",
+    title: "SPAR (Doc, 2024)",
+    role: "Director, Cinematographer, Editor",
+    runtime: "14 min",
+    summary: "BTS doc for a boxing pilot in London — Left Hook Gym.",
+    url: "https://www.youtube.com/watch?v=4q6X6prhVOE",
+    thumbZoom: { base: 1.4, hover: 1.62 },
+  },
+  {
+    id: "soldier-mv",
+    title: "Soldier (Music Video)",
+    role: "Director, Editor",
+    runtime: "3 min",
+    summary: "Concept-to-delivery music video including cover art.",
+    url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv",
+    thumbZoom: { base: 1.42, hover: 1.64 },
+  },
+  {
+    id: "abranteers",
+    title: "Abranteers (Proof, 2023)",
+    role: "Writer–Director",
+    runtime: "9 min",
+    summary: "Anti-magic veteran + rookie vs a dangerous magic user.",
+    url: "https://www.youtube.com/shorts/CPPkq5zsXgE",
+  },
 ];
 
 function getYouTubeId(url) {
@@ -300,70 +442,294 @@ function youtubeThumb(url) {
   return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
 }
 
-// Best‑effort Instagram thumb (may be blocked by CORS; fallback to gradient)
-const IG_REEL_ID = "DI6NjVNN0tS";
-const IG_THUMB_URL = `https://www.instagram.com/p/${IG_REEL_ID}/media/?size=l`;
-
 // ========= HERO ========= //
-function ShimmerTitle({ children }) {
+const HERO_SLIDES = PROJECTS.slice(0, 4).map((project) => ({
+  id: project.id,
+  kind: "video",
+  title: project.title,
+  caption: project.summary,
+  videoUrl: project.url,
+  preview: youtubeThumb(project.url),
+  credit: project.role,
+}));
+
+const TRUSTED_CLIENTS = [
+  { name: "ICUNI" },
+  { name: "Left Hook Gym" },
+  { name: "Loremaker" },
+  { name: "MMM Media" },
+];
+
+const SOCIAL_METRICS = [
+  { value: "70+", label: "Projects delivered" },
+  { value: "1.2M+", label: "Cumulative views" },
+  { value: "89%", label: "Client retention" },
+];
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "Menelek turns loose ideas into visuals that actually sell the story. He keeps crews calm and clients confident.",
+    author: "Creative Producer, ICUNI",
+  },
+  {
+    quote:
+      "Our campaign needed a cinematic punch on a lean budget. The final edit outperformed the studio benchmark by threefold.",
+    author: "Campaign Lead, Momentum Boxing",
+  },
+  {
+    quote:
+      "He handles pre-production like a showrunner and post like a finishing artist. Every deliverable was on-brand and on time.",
+    author: "Content Director, MMM Media",
+  },
+];
+
+function Hero({ onScrollFeatured, onScrollCalculator }) {
+  const [idx, setIdx] = useState(0);
+  const slides = HERO_SLIDES;
+  const slidesLength = slides.length || 1;
+  const awaitingSlides = slidesLength === 0;
+  const touchStartRef = useRef(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
+    return () => clearInterval(t);
+  }, [slidesLength]);
+
+  useEffect(() => {
+    if (idx >= slidesLength) setIdx(0);
+  }, [idx, slidesLength]);
+
+  const goPrev = () => setIdx((i) => (i - 1 + slidesLength) % slidesLength);
+  const goNext = () => setIdx((i) => (i + 1) % slidesLength);
+
+  const onTouchStart = (event) => {
+    if (!event.touches?.length) return;
+    touchStartRef.current = event.touches[0].clientX;
+  };
+
+  const onTouchEnd = (event) => {
+    if (touchStartRef.current === null) return;
+    const endX = event.changedTouches?.[0]?.clientX ?? touchStartRef.current;
+    const delta = endX - touchStartRef.current;
+    touchStartRef.current = null;
+    if (Math.abs(delta) < 40) return;
+    if (delta > 0) goPrev();
+    else goNext();
+  };
+
+  const baseSlide = HERO_SLIDES[0];
+  const slide = slides[idx] || slides[0];
+  const activeSlide = slide || {
+    id: baseSlide.id,
+    title: baseSlide.title,
+    preview: baseSlide.preview,
+    videoUrl: baseSlide.videoUrl,
+    caption: baseSlide.caption,
+    credit: baseSlide.credit,
+  };
+  const openVideo = () => {
+    if (!activeSlide?.videoUrl || activeSlide.kind === "loading") return;
+    window.open(activeSlide.videoUrl, "_blank", "noopener,noreferrer");
+  };
+  const imageSrc = activeSlide?.preview || activeSlide?.thumb || activeSlide?.src || "";
+  const ctaLabel = activeSlide?.videoUrl
+    ? activeSlide.videoUrl.includes("instagram.com")
+      ? "View on Instagram"
+      : activeSlide.videoUrl.includes("youtube.com") || activeSlide.videoUrl.includes("youtu.be")
+        ? "Watch on YouTube"
+        : "Open video"
+    : "";
   return (
-    <motion.h1
-      className="text-4xl sm:text-6xl font-extrabold leading-[1.05] select-none"
-      style={{
-        backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.45), rgba(255,255,255,0.95))",
-        backgroundSize: "200% 100%",
-        backgroundClip: "text",
-        WebkitBackgroundClip: "text",
-        color: "transparent",
-        backgroundPosition: "0% 50%",
-      }}
-      whileHover={{ backgroundPosition: "100% 50%" }}
-      transition={{ duration: 0.8 }}
-    >
-      {children}
-    </motion.h1>
+    <section className="relative pt-24 pb-10" id="hero">
+      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <motion.h1
+            className="text-5xl sm:text-7xl font-extrabold leading-[1.05] select-none"
+            animate={{ textShadow: ["0 0 0 rgba(255,255,255,0)", "0 0 22px rgba(255,255,255,0.35)", "0 0 0 rgba(255,255,255,0)"] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            style={{
+              backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.98), rgba(255,255,255,0.5), rgba(255,255,255,0.98))",
+              backgroundSize: "200% 100%",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            Menelek Makonnen
+          </motion.h1>
+          <div className="mt-2 text-xl text-white/85 select-none">Worldbuilder. Filmmaker. Storyteller.</div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              onClick={() => onScrollFeatured?.()}
+              variant="accent"
+              icon={ExternalLink}
+            >
+              View My Work
+            </Button>
+            <Button
+              onClick={() => onScrollCalculator?.()}
+              icon={Phone}
+            >
+              Get a Free Quote
+            </Button>
+            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">
+              Explore Loremaker
+            </Button>
+          </div>
+        </div>
+        <Card className="relative overflow-hidden">
+          <div className="text-sm uppercase tracking-[0.25em] text-white/60 flex items-center justify-between">
+            <span>Showcase</span>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span>{awaitingSlides ? "Loading…" : `${idx + 1}/${slidesLength}`}</span>
+              {slidesLength > 1 ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={goPrev}
+                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
+                    aria-label="Previous showcase"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={goNext}
+                    className="rounded-full bg-black/30 border border-white/20 p-1.5 text-white hover:bg-black/50"
+                    aria-label="Next showcase"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+            <div
+              className="mt-3 aspect-video w-full rounded-2xl overflow-hidden border border-white/10 relative group"
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeSlide.id}
+                  className="absolute inset-0"
+                  initial={{ opacity: 0, scale: 1.02 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.6 }}
+                >
+                {activeSlide.kind === "loading" ? (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70 text-sm">
+                    Loading showcase…
+                  </div>
+                ) : imageSrc ? (
+                  <img
+                    src={imageSrc}
+                    alt={activeSlide.title}
+                    className="w-full h-full object-cover object-center scale-[1.12] group-hover:scale-[1.18] transition-transform duration-700"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70">
+                    {activeSlide.title}
+                  </div>
+                )}
+                {activeSlide.videoUrl && activeSlide.kind !== "loading" ? (
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
+                    <button
+                      onClick={openVideo}
+                      className="rounded-full bg-white/15 border border-white/40 backdrop-blur px-5 py-3 inline-flex items-center gap-2 text-sm font-semibold text-white hover:bg-white/20"
+                    >
+                      <Play className="h-4 w-4" /> {ctaLabel || "Play"}
+                    </button>
+                  </div>
+                ) : null}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          {slide.caption ? (
+            <motion.p
+              key={`${activeSlide.id}-caption`}
+              className="mt-4 text-sm text-white/75"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4 }}
+            >
+              {activeSlide.caption}
+            </motion.p>
+          ) : null}
+          {activeSlide.credit ? (
+            <div className="mt-2 text-xs text-white/60">{activeSlide.credit}</div>
+          ) : null}
+        </Card>
+      </div>
+    </section>
   );
 }
 
-function Hero({ onWatch, onOpenLinksModal }) {
-  const [imgOk, setImgOk] = useState(true);
+function SocialProof() {
+  const [active, setActive] = useState(0);
+  const testimonialCount = TESTIMONIALS.length;
+  useEffect(() => {
+    if (!testimonialCount) return undefined;
+    const id = setInterval(() => {
+      setActive((i) => (i + 1) % testimonialCount);
+    }, 6000);
+    return () => clearInterval(id);
+  }, [testimonialCount]);
+
+  const testimonial = TESTIMONIALS[active] || null;
+
   return (
-    <section className="relative pt-24 pb-10">
-      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
-        <div>
-          <ShimmerTitle>Menelek Makonnen</ShimmerTitle>
-          <div className="mt-2 text-xl text-white/80 select-none">
-            <span className="group inline-block mr-2">
-              <motion.span whileHover={{ letterSpacing: 2, scale: 1.02 }} className="transition-all">Worldbuilder.</motion.span>
-              <span className="block h-[2px] w-0 bg-white/30 group-hover:w-full transition-all"></span>
+    <section className="pb-10" aria-label="Social proof">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="rounded-full border border-white/15 bg-white/10 backdrop-blur px-5 py-2 flex flex-wrap items-center gap-3 justify-center text-xs sm:text-sm text-white/70">
+          <span className="font-semibold text-white/80">Trusted by</span>
+          {TRUSTED_CLIENTS.map((client) => (
+            <span key={client.name} className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-white/15 bg-white/5 text-white/80">
+              {client.name}
             </span>
-            <span className="group inline-block mr-2">
-              <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">Filmmaker.</motion.span>
-            </span>
-            <span className="group inline-block">
-              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">Storyteller.</motion.span>
-            </span>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button onClick={onWatch} icon={Play}>Watch Instagram Reel</Button>
-            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">Explore the Loremaker Universe</Button>
-            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
-            <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
-          </div>
+          ))}
         </div>
-        <Card>
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">Showreel</div>
-          <button onClick={onWatch} className="mt-3 aspect-video w-full rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative group" title="Open Instagram reel">
-            {imgOk ? (
-              <img src={IG_THUMB_URL} onError={() => setImgOk(false)} alt="Instagram Reel thumbnail" className="w-full h-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/0" />
-            )}
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="rounded-full p-3 bg-black/50 border border-white/20 group-hover:scale-105 transition-transform"><Play className="h-6 w-6" /></div>
+        <div className="grid lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-2">
+            <div className="flex flex-wrap gap-4 justify-between">
+              {SOCIAL_METRICS.map((metric) => (
+                <div key={metric.label} className="min-w-[120px]">
+                  <div className="text-3xl font-extrabold text-white">{metric.value}</div>
+                  <div className="text-white/70 text-sm mt-1">{metric.label}</div>
+                </div>
+              ))}
             </div>
-          </button>
-        </Card>
+          </Card>
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+            <div className="relative">
+              <div className="text-xs uppercase tracking-[0.3em] text-white/60">Testimonials</div>
+              {testimonial ? (
+                <>
+                  <p className="mt-3 text-white/85 text-sm">“{testimonial.quote}”</p>
+                  <div className="mt-3 text-xs text-white/60">{testimonial.author}</div>
+                </>
+              ) : (
+                <p className="mt-3 text-white/60 text-sm">Collecting the latest testimonials…</p>
+              )}
+              {testimonialCount > 1 ? (
+                <div className="mt-4 flex items-center gap-2">
+                  {TESTIMONIALS.map((_, index) => (
+                    <span
+                      key={index}
+                      className={cn(
+                        "h-1.5 w-4 rounded-full",
+                        index === active ? "bg-white" : "bg-white/30"
+                      )}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </Card>
+        </div>
       </div>
     </section>
   );
@@ -373,7 +739,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
 function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) {
   const [randomKey, setRandomKey] = useState(0);
   return (
-    <section className="py-12" id="work">
+    <section className="py-12" id="value-calculator">
       <div className="max-w-7xl mx-auto px-6">
         <Card>
           <div className="flex items-end justify-between mb-1">
@@ -430,7 +796,17 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
 
 // ========= Contact ========= //
 function ContactInline({ calendarState }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subtype: "",
+    otherDetail: "",
+    message: "",
+    fitScore: "",
+    recTier: "Starter",
+    scope: "",
+  });
   useEffect(() => {
     const handlerSubtype = (e) => { if (e.detail && e.detail.subtype !== undefined) setForm((f) => ({ ...f, subtype: e.detail.subtype })); };
     const handlerFit = (e) => {
@@ -445,20 +821,62 @@ function ContactInline({ calendarState }) {
 
   const [agree, setAgree] = useState(false);
   const [ok, setOk] = useState(false);
-  const submit = () => {
-    if (!agree) return alert("Please agree to the Privacy Policy.");
-    if (!form.name || !form.email) return alert("Name and Email are required.");
-    const key = "mm_contact_submissions";
-    const list = JSON.parse(localStorage.getItem(key) || "[]");
-    list.push({ ...form, service: "Director for Hire", calendar: calendarState, ts: new Date().toISOString() });
-    localStorage.setItem(key, JSON.stringify(list));
-    setOk(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const submit = async () => {
+    if (submitting) return;
+    setError(null);
+    if (!agree) return setError("Please agree to the Privacy Policy before sending.");
+    if (!form.name.trim() || !form.email.trim()) return setError("Name and email are required.");
+    if (!form.subtype?.trim()) return setError("Pick the service that best fits your project.");
+    if (!form.message.trim()) return setError("Tell me a little about the project scope.");
+
+    try {
+      setSubmitting(true);
+      const payload = {
+        ...form,
+        otherDetail: form.subtype === "Other" ? form.otherDetail : "",
+        recTier: form.subtype === "Other" ? "" : form.recTier || "Starter",
+        service: "Director for Hire",
+        calendar: calendarState,
+        sendCopy: true,
+        submittedAt: new Date().toISOString(),
+      };
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, payload);
+      setOk(true);
+    } catch (err) {
+      console.error("Contact submission failed", err);
+      setError("Couldn't send just now—try again in a moment or email hello@menelekmakonnen.com.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const clear = () => setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const clear = () =>
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      subtype: "",
+      otherDetail: "",
+      message: "",
+      fitScore: "",
+      recTier: "Starter",
+      scope: "",
+    });
 
-  const choose = (s) => setForm((f) => ({ ...f, subtype: s }));
+  const choose = (s) =>
+    setForm((f) => ({
+      ...f,
+      subtype: s,
+      otherDetail: s === "Other" ? f.otherDetail : "",
+      fitScore: s === "Other" ? "" : f.fitScore,
+      recTier: s === "Other" ? "" : f.recTier || "Starter",
+      scope: s === "Other" ? "" : f.scope,
+    }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
+  const showFitFields = form.subtype && form.subtype !== "Other";
 
   return (
     <Card id="contact-inline">
@@ -467,6 +885,7 @@ function ContactInline({ calendarState }) {
       <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the chat bubble at bottom‑right and leave a short brief.</p>
       {!ok ? (
         <div className="grid gap-3 mt-4">
+          {error ? <div className="text-sm text-rose-300">{error}</div> : null}
           <div>
             <label className="text-white/70 text-sm mb-2 block">Select a service</label>
             <div className="flex flex-wrap gap-2">
@@ -483,24 +902,39 @@ function ContactInline({ calendarState }) {
             </div>
           ) : null}
 
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-              <input value={form.fitScore} onChange={(e) => setForm({ ...form, fitScore: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+          {showFitFields ? (
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
+                <input
+                  value={form.fitScore}
+                  onChange={(e) => setForm({ ...form, fitScore: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
+                <select
+                  value={form.recTier || "Starter"}
+                  onChange={(e) => setForm({ ...form, recTier: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
+                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                >
+                  {["Starter", "Signature", "Cinema+"].map((x) => (
+                    <option key={x} className="text-black">{x}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
+                <input
+                  value={form.scope}
+                  onChange={(e) => setForm({ ...form, scope: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-              <select value={form.recTier} onChange={(e) => setForm({ ...form, recTier: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
-                {["Starter", "Signature", "Cinema+"].map((x) => (
-                  <option key={x} className="text-black">{x}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-              <input value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
-            </div>
-          </div>
+          ) : null}
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
@@ -532,9 +966,17 @@ function ContactInline({ calendarState }) {
             <a href="#" onClick={(e) => { e.preventDefault(); alert("Privacy policy modal placeholder."); }} className="underline">Privacy Policy</a>.
           </label>
           <div className="flex gap-2">
-            <Button onClick={submit} icon={ShieldCheck}>Send Inquiry</Button>
+            <Button onClick={submit} icon={ShieldCheck} disabled={submitting}>
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                </span>
+              ) : (
+                "Send Inquiry"
+              )}
+            </Button>
             <Button href={SOCIALS.email} icon={Mail} variant="ghost">Email Instead</Button>
-            <Button onClick={clear} variant="ghost">Clear Form</Button>
+            <Button onClick={clear} variant="ghost" disabled={submitting}>Clear Form</Button>
           </div>
         </div>
       ) : (
@@ -544,17 +986,15 @@ function ContactInline({ calendarState }) {
   );
 }
 
-// ========= Calculator (CVC) ========= //
+// ========= Calculator (CVC) with days/weeks modes & no Distribution ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
   useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
-
-  const [budget, setBudget] = useState(2000);
-  const [ambition, setAmbition] = useState(6);
+  const [budget, setBudget] = useState(5000);
+  const [ambition, setAmbition] = useState(7);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
-
-  // total duration is the single source of truth
   const [total, setTotal] = useState(6); // weeks
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const RULES = {
     "Feature Film": { base: 40000, budgetRange: [15000, 250000], ambitionIdeal: [7, 10], durationIdeal: 16, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
@@ -565,62 +1005,71 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     "BTS": { base: 900, budgetRange: [300, 5000], ambitionIdeal: [3, 7], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
     "AI Advert": { base: 3000, budgetRange: [200, 20000], ambitionIdeal: [6, 10], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
   };
-
   const cfg = RULES[service] || RULES["Short Film"];
-  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
-
   const durationScoreFor = (svc, tot) => {
     const ideal = RULES[svc].durationIdeal;
     return norm(1 - Math.abs(tot - ideal) / ideal, [0, 1]);
   };
-
   const scoreFor = (svc, bgt, amb, tot) => {
-    const rcfg = RULES[svc];
-    const budgetScore = norm(bgt, rcfg.budgetRange);
-    const ambitionScore = norm(amb, rcfg.ambitionIdeal);
+    const r = RULES[svc];
+    const budgetScore = norm(bgt, r.budgetRange);
+    const ambitionScore = norm(amb, r.ambitionIdeal);
     const durationScore = durationScoreFor(svc, tot);
-    const raw = rcfg.weights.budget * budgetScore + rcfg.weights.ambition * ambitionScore + rcfg.weights.duration * durationScore;
+    const raw = r.weights.budget * budgetScore + r.weights.ambition * ambitionScore + r.weights.duration * durationScore;
     return Math.round(clamp(raw, 0, 1) * 100);
   };
 
-  const budgetScore = norm(budget, cfg.budgetRange);
-  const ambitionScore = norm(ambition, cfg.ambitionIdeal);
-  const durationScore = durationScoreFor(service, total);
-  const raw = cfg.weights.budget * budgetScore + cfg.weights.ambition * ambitionScore + cfg.weights.duration * durationScore;
-  const score = Math.round(clamp(raw, 0, 1) * 100);
-
-  // single color mapped to score: 0 (red) → 120 (green)
+  const score = scoreFor(service, budget, ambition, total);
   const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
-
   const coverage = budget / cfg.base;
   const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
   const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
 
-  // Default FS split ratios (sequential). Will also be used as baseline for 3–4 weeks cases.
-  const SPLIT = [0.2, 0.3, 0.2, 0.25, 0.05];
+  // No distribution phase. Split across: Development / Pre‑Production / Production / Post‑Production
+  const SPLIT = [0.22, 0.33, 0.22, 0.23];
+  const KEYS = ["development", "pre", "production", "post"];
+  const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
 
   const makeFSForTotal = (tWeeks) => {
-    if (tWeeks <= 1) {
-      // one-week project ⇒ each phase defaults to 1 day; FS sequential
-      const KEYS = ["development", "pre", "production", "post", "distribution"];
-      const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
+    if (tWeeks <= 2) {
+      const totalDays = Math.max(1, Math.round(tWeeks * 7));
+      const minDay = totalDays >= KEYS.length ? 1 : 0;
+      const allocations = SPLIT.map((r) => Math.max(minDay, Math.round(totalDays * r)));
+      let diff = totalDays - allocations.reduce((a, b) => a + b, 0);
+      let guard = 0;
+      while (diff !== 0 && guard < 400) {
+        const index = guard % allocations.length;
+        if (diff > 0) {
+          allocations[index] += 1;
+          diff -= 1;
+        } else if (allocations[index] > minDay) {
+          allocations[index] -= 1;
+          diff += 1;
+        }
+        guard += 1;
+        if (allocations.every((a) => a === minDay)) break;
+      }
       const out = [];
       let sd = 0;
-      for (let i = 0; i < 5; i++) {
-        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: 1 / 7 });
-        sd += 1; // 1 day each
+      for (let i = 0; i < allocations.length; i++) {
+        const days = Math.max(0, allocations[i]);
+        out.push({
+          key: KEYS[i],
+          label: LABELS[i],
+          startDays: sd,
+          weeks: days / 7,
+          minWeeks: days > 0 ? 1 / 7 : 0,
+        });
+        sd += days;
       }
       return out;
     }
-    // For 2–4 weeks use split but scale into total; FS sequential
     const parts = SPLIT.map((r) => Math.max(0.5, Math.round(tWeeks * r * 2) / 2));
     const out = [];
     let sd = 0;
-    const KEYS = ["development", "pre", "production", "post", "distribution"];
-    const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
     for (let i = 0; i < parts.length; i++) {
-      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i] });
+      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i], minWeeks: 0.5 });
       sd += Math.ceil(parts[i] * 7);
     }
     return out;
@@ -628,27 +1077,26 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
 
   const [phases, setPhases] = useState(() => makeFSForTotal(6));
 
-  // When total changes, keep FS by default but respect user drags by clamping only
   useEffect(() => {
     setPhases((prev) => {
-      if (total <= 1) return makeFSForTotal(1);
+      if (total <= 2) return makeFSForTotal(total);
       const maxDays = total * 7;
+      const minWeeksClamp = 0.5;
       return prev.map((p) => {
-        const weeks = Math.max(0.5, Math.min(26, p.weeks));
-        let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
+        const weeks = Math.max(minWeeksClamp, Math.min(26, p.weeks));
+        const allowedStart = Math.max(0, maxDays - Math.ceil(weeks * 7));
+        const startDays = Math.min(Math.max(0, p.startDays), allowedStart);
         return { ...p, weeks, startDays };
       });
     });
   }, [total]);
 
-  // push calendar state up + prefill events
   useEffect(() => {
     onCalendarChange?.(buildCalendarStateOverlapping(phases, projectDate));
     window.dispatchEvent(new CustomEvent("prefill-fit", { detail: { service, fit: score, suggestedTier, budget, timeline: total } }));
     window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: service } }));
   }, [phases, projectDate, service, score, suggestedTier, budget, total]);
 
-  // High‑fit randomizer
   useEffect(() => {
     if (randomizeKey === undefined) return;
     let best = { s: service, b: budget, a: ambition, t: total, score: -1 };
@@ -656,8 +1104,8 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       const svc = SERVICES[Math.floor(Math.random() * SERVICES.length)].name;
       const rcfg = RULES[svc];
       const bgt = Math.round((Math.random() * (rcfg.budgetRange[1] - rcfg.budgetRange[0]) + rcfg.budgetRange[0]) / 50) * 50;
-      const amb = Math.floor(Math.random() * 5) + 6; // 6–10 bias
-      const tot = Math.floor(Math.random() * 26) + 1; // 1–26 weeks
+      const amb = Math.floor(Math.random() * 5) + 6;
+      const tot = Math.floor(Math.random() * 26) + 1;
       const sc = scoreFor(svc, bgt, amb, tot);
       if (sc > best.score) best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
       if (sc >= 80) { best = { s: svc, b: bgt, a: amb, t: tot, score: sc }; break; }
@@ -669,7 +1117,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     setPhases(makeFSForTotal(best.t));
   }, [randomizeKey]);
 
-  const phaseWeeksTotal = (arr) => arr.reduce((a, b) => a + (b.weeks || 0), 0);
+  const totalSpanDays = phases.reduce((acc, p) => {
+    const durationDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+    return Math.max(acc, p.startDays + durationDays);
+  }, 0);
+  const totalLabel = totalSpanDays <= 14
+    ? `${Math.max(1, totalSpanDays)} days`
+    : `${(totalSpanDays / 7).toFixed(1)} weeks`;
 
   return (
     <div>
@@ -679,41 +1133,61 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           <div className="px-3 py-2 rounded-xl border border-white/20 bg-white/10">{service}</div>
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Budget (£{budget.toLocaleString()})</div>
-          <input type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-1">
+            <span>Budget (£{budget.toLocaleString()})</span>
+            <Info className="h-3.5 w-3.5 text-white/50" title="Indicative spend for the scope you have in mind." />
+          </div>
+          <input aria-label="Budget" type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Ambition ({ambition})</div>
-          <input type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-1">
+            <span>Ambition ({ambition})</span>
+            <Info className="h-3.5 w-3.5 text-white/50" title="How cinematic or complex the execution should feel." />
+          </div>
+          <input aria-label="Ambition" type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Proposed Project Start</div>
-          <input type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-1">
+            <span>Proposed Project Start</span>
+            <Info className="h-3.5 w-3.5 text-white/50" title="When you'd like development to kick off." />
+          </div>
+          <input aria-label="Project start" type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
         </div>
       </div>
-
       <div className="mt-5">
         <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
-        <div className="rounded-2xl p-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
-          <svg viewBox="0 0 110 6" className="w-full block">
-            <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
-            <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
+        <div className="rounded-3xl p-3 bg-gradient-to-br from-white/12 to-white/6 border border-white/15">
+          <svg viewBox="0 0 110 10" className="w-full block" aria-label={`Fit score ${score}%`}>
+            <rect x="0" y="0" width="110" height="10" rx="5" fill="rgba(255,255,255,0.12)" />
+            <rect x="0" y="0" width={score} height="10" rx="5" fill={barColor} />
           </svg>
-          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {phaseWeeksTotal(phases)} weeks</div>
+          <div className="text-white/80 text-sm mt-3">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalLabel}</div>
         </div>
       </div>
-
-      <TimelineGrid
-        phases={phases}
-        onChange={setPhases}
-        total={total}
-        onTotalChange={setTotal}
-        startDate={projectDate}
-      />
-
-      <div className="mt-4 flex gap-2">
-        <Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button>
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setShowTimeline((v) => !v)}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/10 hover:bg-white/15 text-sm"
+        >
+          {showTimeline ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {showTimeline ? "Hide schedule" : "Customize schedule"}
+        </button>
       </div>
+      <AnimatePresence initial={false}>
+        {showTimeline ? (
+          <motion.div
+            key="timeline"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <div className="mt-4 flex gap-2"><Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button></div>
     </div>
   );
 }
@@ -745,23 +1219,36 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const containerRef = useRef(null);
   const totalDays = Math.max(7, total * 7);
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
-
-  // drag state: which phase, mode ("move" | "left" | "right")
   const dragRef = useRef(null);
-
-  const clampPhase = (p) => {
-    const maxStart = Math.max(0, totalDays - Math.ceil(p.weeks * 7));
-    return { ...p, startDays: Math.min(Math.max(0, p.startDays), maxStart), weeks: Math.max(0.5, Math.min(26, p.weeks)) };
-  };
-
   const pct = (days) => `${(days / totalDays) * 100}%`;
-
+  const defaultMin = total <= 2 ? 1 / 7 : 0.5;
+  const isTouch = useIsTouchDevice();
+  const snapWeeks = (value) => {
+    if (total <= 2) {
+      return Math.max(0, Math.round(value * 7) / 7);
+    }
+    return Math.max(0, Math.round(value * 2) / 2);
+  };
+  const clampPhase = (p) => {
+    const minForPhase = p.minWeeks ?? defaultMin;
+    const snapped = snapWeeks(p.weeks);
+    const weeks = clamp(snapped, minForPhase, 26);
+    const durationDays = weeks <= 0 ? 0 : Math.max(1, Math.round(weeks * 7));
+    const maxStart = Math.max(0, totalDays - durationDays);
+    return {
+      ...p,
+      startDays: clamp(Math.round(p.startDays), 0, maxStart),
+      weeks,
+    };
+  };
   const onPointerDown = (e, idx, mode) => {
+    if (isTouch) return;
     const rect = containerRef.current.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { idx, mode, startX: e.clientX, rectW: rect.width, startStart: phases[idx].startDays, startWeeks: phases[idx].weeks };
   };
   const onPointerMove = (e) => {
+    if (isTouch) return;
     const d = dragRef.current; if (!d) return;
     const dx = e.clientX - d.startX;
     const deltaDays = Math.round((dx / d.rectW) * totalDays);
@@ -770,7 +1257,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     if (d.mode === "left") {
       const newStart = d.startStart + deltaDays;
       const newWeeks = d.startWeeks - deltaDays / 7;
-      next[d.idx].startDays = newStart; next[d.idx].weeks = newWeeks;
+      next[d.idx].startDays = newStart;
+      next[d.idx].weeks = newWeeks;
     }
     if (d.mode === "right") {
       const newWeeks = d.startWeeks + deltaDays / 7;
@@ -779,39 +1267,57 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     onChange(next.map(clampPhase));
   };
   const onPointerUp = () => { dragRef.current = null; };
-
   const cal = buildCalendarStateOverlapping(phases, startDate);
-
-  // Axis mode: days for ≤4 weeks, week numbers for >4 weeks
-  const showDays = total <= 4;
-
-  return (
-    <div className="mt-6">
-      {/* Separate header with Start/End line */}
+  const showDays = total <= 2;
+  const header = (
+    <>
       <div className="flex items-center justify-between text-white/80 text-sm mb-2">
         <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Interactive Schedule</div>
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
-          <input type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
-          <span className="text-white/70 text-xs">{total} wks</span>
+          <input
+            aria-label="Total duration"
+            type="range"
+            min={1}
+            max={26}
+            step={1}
+            value={total}
+            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
+          />
+          <span className="text-white/70 text-xs">{showDays ? `${totalDays} d` : `${total} wks`}</span>
         </div>
       </div>
-
-      {/* Start / End inline, separate from the lane grid */}
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
-
+    </>
+  );
+  if (isTouch) {
+    return (
+      <div className="mt-6">
+        {header}
+        <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 space-y-3">
+          {phases.map((p) => {
+            const duration = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+            return (
+              <div key={p.key} className="rounded-2xl border border-white/15 bg-black/30 px-4 py-3">
+                <div className="text-sm font-semibold text-white/85">{p.label}</div>
+                <div className="text-xs text-white/60 mt-1">{duration} {duration === 1 ? "day" : "days"}</div>
+                <div className="text-xs text-white/60">Starts day {p.startDays + 1}</div>
+              </div>
+            );
+          })}
+          <div className="text-white/65 text-xs">Drag-and-drop scheduling is available on desktop for finer control.</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-6">
+      {header}
       <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-        {/* X‑axis header aligned with the lanes */}
         <div className="mb-2 flex items-center gap-3">
-          {/* left spacer equal to phase label column */}
-          <div className="w-40 shrink-0" />
+          <div className="w-44 shrink-0" />
           <div ref={containerRef} className="relative h-6 flex-1 select-none">
-            {/* grid columns per day */}
-            <div
-              className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-              style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-            />
-            {/* labels aligned from 0 to totalDays */}
+            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
             {showDays ? (
               [...Array(total).keys()].map((w) => (
                 <div key={w} className="absolute top-0 text-center" style={{ left: pct(w * 7), width: pct(7) }}>
@@ -829,191 +1335,706 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
             )}
           </div>
         </div>
-
-        {/* Y‑axis phases with draggable bars (overlap allowed after user edits) */}
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => (
-            <div key={p.key} className="flex items-center gap-3">
-              <div className="w-40 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-9 flex-1">
-                {/* grid background same as header for visual alignment */}
-                <div
-                  className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-                  style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-                />
-                {/* bar */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 h-7 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
-                  style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}
-                >
-                  {/* move handle (center) */}
+          {phases.map((p, idx) => {
+            const visibleDays = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+            const widthDays = p.weeks <= 0 ? 0.75 : visibleDays;
+            return (
+              <div key={p.key} className="flex items-center gap-3">
+                <div className="w-44 shrink-0 text-[13px] text-white/80">{p.label}</div>
+                <div className="relative h-10 flex-1">
+                  <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]" style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }} />
                   <div
-                    className="absolute inset-0 cursor-grab active:cursor-grabbing"
-                    onPointerDown={(e) => onPointerDown(e, idx, "move")}
-                    title="Drag to move"
-                  />
-                  {/* left resize */}
-                  <div
-                    className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e) => onPointerDown(e, idx, "left")}
-                    title="Drag to adjust start"
+                    className="absolute top-1/2 -translate-y-1/2 h-8 rounded-xl border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
+                    style={{ left: pct(p.startDays), width: pct(widthDays) }}
                   >
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
-                  </div>
-                  {/* right resize */}
-                  <div
-                    className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e) => onPointerDown(e, idx, "right")}
-                    title="Drag to adjust end"
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
-                  </div>
-
-                  {/* duration label */}
-                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks * 10) / 10}w</div>
+                    <div className="absolute inset-0 cursor-grab active:cursor-grabbing" onPointerDown={(e) => onPointerDown(e, idx, "move")} title="Drag to move" />
+                    <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "left")} title="Drag to adjust start"><div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => onPointerDown(e, idx, "right")} title="Drag to adjust end"><div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/80" /></div>
+                    <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                      <div className="px-2 text-[11px] text-white/95 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {total <= 2 ? `${visibleDays}d` : `${Math.round(p.weeks * 10) / 10}w`}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-
-        <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases (Start‑to‑Start, etc.). Bars snap by <b>day</b>. Use the Total slider to expand/contract the full calendar.</div>
+        <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.</div>
       </div>
     </div>
   );
 }
 
-// ========= CSV helper ========= //
-function useCSV(url) {
-  const [rows, setRows] = useState([]);
-  const [headers, setHeaders] = useState([]);
-  useEffect(() => {
-    let abort = false;
-    (async () => {
-      try {
-        const res = await fetch(url, { mode: "cors" });
-        const text = await res.text();
-        if (abort) return;
-        const { headers, rows } = parseCSV(text);
-        setHeaders(headers);
-        setRows(rows);
-      } catch (e) {
-        // Sheet only: no local filler; show skeletons when empty
-        setHeaders([]);
-        setRows([]);
-      }
-    })();
-    return () => { abort = true; };
-  }, [url]);
-  return { headers, rows };
+// ========= Chatbot ========= //
+const CHATBOT_SESSION_KEYS = {
+  id: "zara_session_id",
+  firstSeen: "zara_first_seen",
+  fingerprint: "zara_fingerprint",
+  lastActive: "zara_session_time",
+  visitCount: "zara_visit_count",
+};
+const CHATBOT_SESSION_TIMEOUT = 30 * 60 * 1000;
+
+function createChatbotFingerprint() {
+  if (typeof window === "undefined") return "";
+  return JSON.stringify({
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    screen: typeof window !== "undefined" ? `${window.screen.width}x${window.screen.height}` : "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
 }
 
-function parseCSV(text) {
-  const lines = [];
-  let cur = [];
-  let val = "";
-  let inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const n = text[i + 1];
-    if (inQ) {
-      if (c === '"' && n === '"') { val += '"'; i++; }
-      else if (c === '"') { inQ = false; }
-      else { val += c; }
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',') { cur.push(val); val = ""; }
-      else if (c === "\n" || c === "\r") { if (val !== "" || cur.length) { cur.push(val); lines.push(cur); cur = []; val = ""; } }
-      else val += c;
-    }
+function ensureChatbotSession() {
+  if (typeof window === "undefined") return null;
+  const now = Date.now();
+  const storedId = localStorage.getItem(CHATBOT_SESSION_KEYS.id);
+  const storedFirstSeen = localStorage.getItem(CHATBOT_SESSION_KEYS.firstSeen);
+  const storedFingerprint = localStorage.getItem(CHATBOT_SESSION_KEYS.fingerprint);
+  const storedLastActive = parseInt(localStorage.getItem(CHATBOT_SESSION_KEYS.lastActive) || "0", 10);
+  let visitCount = parseInt(localStorage.getItem(CHATBOT_SESSION_KEYS.visitCount) || "0", 10);
+  const fingerprint = createChatbotFingerprint();
+
+  let sessionId = storedId;
+  let firstSeen = storedFirstSeen;
+  let isReturning = visitCount > 0;
+
+  const invalid =
+    !sessionId ||
+    !storedFirstSeen ||
+    !storedFingerprint ||
+    storedFingerprint !== fingerprint ||
+    now - storedLastActive > CHATBOT_SESSION_TIMEOUT;
+
+  if (invalid) {
+    sessionId = `session_${now}_${Math.random().toString(36).slice(2, 9)}`;
+    firstSeen = new Date().toISOString();
+    visitCount += 1;
+    isReturning = visitCount > 1;
+    localStorage.setItem(CHATBOT_SESSION_KEYS.visitCount, String(visitCount));
   }
-  if (val !== "" || cur.length) { cur.push(val); lines.push(cur); }
-  if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0];
-  const rows = lines.slice(1).map((arr) => Object.fromEntries(headers.map((h, i) => [h, arr[i] ?? ""])));
-  return { headers, rows };
+
+  localStorage.setItem(CHATBOT_SESSION_KEYS.id, sessionId);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.firstSeen, firstSeen);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.fingerprint, fingerprint);
+  localStorage.setItem(CHATBOT_SESSION_KEYS.lastActive, String(now));
+
+  return { id: sessionId, firstSeen, fingerprint, isReturning, visitCount };
 }
 
-// ========= Featured Universe ========= //
-function FeaturedUniverse() {
-  const { rows } = useCSV(SHEETS_CSV_URL);
+function ChatbotWidget() {
+  const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [unread, setUnread] = useState(1);
+  const [isReturning, setIsReturning] = useState(false);
+  const listRef = useRef(null);
+  const sessionRef = useRef(null);
+  const messageCountRef = useRef(0);
+  const openRef = useRef(open);
+  const minimizedRef = useRef(minimized);
 
-  const picks = useMemo(() => {
-    if (!rows?.length) return [];
-    const want = Math.min(6, Math.max(3, Math.floor(Math.random() * 4) + 3)); // 3–6
-    const idx = new Set();
-    while (idx.size < Math.min(want, rows.length)) idx.add(Math.floor(Math.random() * rows.length));
-    return [...idx].map((i) => rows[i]);
-  }, [rows]);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    minimizedRef.current = minimized;
+  }, [minimized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const session = ensureChatbotSession();
+    sessionRef.current = session;
+    setIsReturning(Boolean(session?.isReturning));
+    setMessages([
+      {
+        id: Date.now(),
+        sender: "bot",
+        text: session?.isReturning
+          ? "👋 Welcome back! Pick up where we left off—what can I line up for you today?"
+          : `Hey there! I'm ${CHATBOT_NAME}. Share your brief, budget, or timeline and I'll map next steps.`,
+      },
+    ]);
+
+    if (CHATBOT_BASE_URL && CHATBOT_ENDPOINTS.trackVisit) {
+      const payload = {
+        page: window.location.pathname,
+        referrer: document.referrer,
+        timestamp: new Date().toISOString(),
+        sessionId: session?.id,
+        firstSeen: session?.firstSeen,
+        isReturningVisitor: session?.isReturning,
+        visitCount: session?.visitCount,
+        fingerprint: session?.fingerprint,
+      };
+      postJSONWithFallback(CHATBOT_ENDPOINTS.trackVisit, payload).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && !minimized) setUnread(0);
+  }, [open, minimized, messages.length]);
+
+  useEffect(() => {
+    if (!open || minimized) return;
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, open, minimized]);
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      if (!prev) {
+        setUnread(0);
+        setMinimized(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleMinimize = () => {
+    setMinimized((prev) => {
+      const next = !prev;
+      if (!next) setUnread(0);
+      return next;
+    });
+  };
+
+  const appendMessage = (msg) => {
+    setMessages((prev) => [...prev, msg]);
+    if (msg.sender === "bot" && (!openRef.current || minimizedRef.current)) {
+      setUnread((u) => u + 1);
+    }
+  };
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+
+    const baseSession = sessionRef.current || ensureChatbotSession();
+    sessionRef.current = baseSession;
+
+    const userMsg = { id: Date.now(), sender: "user", text };
+    appendMessage(userMsg);
+    messageCountRef.current += 1;
+    setLoading(true);
+
+    const typingDelay = new Promise((resolve) => setTimeout(resolve, 450));
+
+    const failSafe = "I'm running in demo mode right now. Drop an email or call sheet and I'll loop Menelek in manually.";
+
+    try {
+      if (!CHATBOT_BASE_URL || !CHATBOT_ENDPOINTS.chatbot) {
+        await typingDelay;
+        appendMessage({ id: Date.now() + 1, sender: "bot", text: failSafe });
+        return;
+      }
+
+      const payload = {
+        message: text,
+        sessionId: baseSession?.id,
+        messageCount: messageCountRef.current,
+        firstSeen: baseSession?.firstSeen,
+        isReturningVisitor: baseSession?.isReturning,
+        conversationContext: baseSession?.isReturning ? "continuing" : "new",
+        page: typeof window !== "undefined" ? window.location.pathname : "",
+        referrer: typeof document !== "undefined" ? document.referrer : "",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        language: typeof navigator !== "undefined" ? navigator.language : "",
+      };
+
+      let res;
+      let data = null;
+      try {
+        res = await postJSONWithFallback(CHATBOT_ENDPOINTS.chatbot, payload);
+        data = await res.json();
+      } catch (err) {
+        throw err;
+      }
+
+      await typingDelay;
+
+      if (res && data) {
+        const replyText = data?.response || data?.reply || data?.message || failSafe;
+        appendMessage({ id: Date.now() + 2, sender: "bot", text: replyText });
+      } else {
+        appendMessage({ id: Date.now() + 3, sender: "bot", text: failSafe });
+      }
+    } catch (err) {
+      await typingDelay;
+      appendMessage({
+        id: Date.now() + 4,
+        sender: "bot",
+        text: "Connection hiccup. Email hello@menelekmakonnen.com and I'll jump in directly.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    sendMessage();
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={toggleOpen}
+        className="relative rounded-full px-4 py-3 bg-white/10 border border-white/20 backdrop-blur-xl text-left shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/15 w-48"
+        title="Open chat"
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="rounded-full p-2 bg-white/10 border border-white/20"><MessageSquare className="h-4 w-4" /></div>
+            {unread > 0 ? (
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-xs font-semibold px-1.5 py-0.5 rounded-full">{unread}</span>
+            ) : null}
+          </div>
+          <div>
+            <div className="font-semibold text-sm">Chat with {CHATBOT_NAME}</div>
+            <div className="text-xs text-white/70">{CHATBOT_TAGLINE}</div>
+            {isReturning ? <div className="text-[10px] text-emerald-300/80">Welcome back</div> : null}
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  const onHeaderClick = (event) => {
+    if (event.target.closest("button")) return;
+    toggleMinimize();
+  };
 
   return (
-    <section className="py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-3">
-          <h2 className="text-2xl sm:text-3xl font-bold">Featured from the Loremaker Universe</h2>
-          <span className="text-white/70 text-sm">A living, expanding canon</span>
+    <div className="w-[320px] max-w-[90vw] bg-black/70 border border-white/15 rounded-3xl backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer select-none"
+        onClick={onHeaderClick}
+        title={minimized ? "Expand Zara" : "Minimise Zara"}
+      >
+        <div>
+          <div className="font-semibold text-sm">{CHATBOT_NAME}</div>
+          <div className="text-xs text-white/70">{CHATBOT_TAGLINE}</div>
         </div>
-        <p className="text-white/75 max-w-2xl mb-4">A few signals from a much larger world. Power balances shift, alliances fracture, and ordinary people are forced to choose a side.</p>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {picks.length ? (
-            picks.map((r, i) => <CharacterCard key={`${r.Char_ID || r.id || r["Character"] || i}`} row={r} />)
-          ) : (
-            [0, 1, 2].map((i) => (
-              <Card key={i}>
-                <div className="animate-pulse h-40 rounded-xl bg-white/5 border border-white/10" />
-                <div className="mt-3 h-5 w-2/3 bg-white/10 rounded" />
-                <div className="mt-2 h-4 w-1/2 bg-white/10 rounded" />
-              </Card>
-            ))
-          )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMinimize();
+            }}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            title={minimized ? "Maximize" : "Minimize"}
+          >
+            {minimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              setMinimized(false);
+            }}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            title="Close chat"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       </div>
+      {minimized ? (
+        <button
+          onClick={() => setMinimized(false)}
+          className="w-full px-4 py-6 text-sm text-white/75 hover:bg-white/5"
+        >
+          Tap to resume conversation
+        </button>
+      ) : (
+        <div className="flex flex-col h-[380px]">
+          <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "max-w-[90%] rounded-2xl px-3 py-2 text-sm transition-all",
+                  msg.sender === "user" ? "ml-auto bg-white/20" : "bg-white/10 border border-white/15"
+                )}
+              >
+                {msg.text}
+              </div>
+            ))}
+            {loading ? (
+              <div className="flex items-center gap-2 text-xs text-white/60">
+                <span className="relative flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/70 animate-pulse" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/50 animate-pulse [animation-delay:120ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/30 animate-pulse [animation-delay:240ms]" />
+                </span>
+                {CHATBOT_NAME} is typing…
+              </div>
+            ) : null}
+          </div>
+          <form onSubmit={onSubmit} className="p-3 border-t border-white/10 bg-black/40">
+            <div className="flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-sm placeholder:text-white/50"
+                placeholder="Share your idea…"
+                maxLength={500}
+              />
+              <Button type="submit" variant="accent" disabled={loading}>
+                Send
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const INSTAGRAM_VIDEO_COLLECTIONS = [
+  {
+    id: "epic-edits",
+    title: "Epic Edits",
+    description: "Signature reels with cinematic pacing, VFX and colour stories.",
+    fallbackThumb: "https://i.imgur.com/N7w7LGz.jpg",
+    seed: 3,
+    urls: [
+      "https://www.instagram.com/p/DMKpVGwoOC2/",
+      "https://www.instagram.com/p/C7TX-jlqQFB/",
+      "https://www.instagram.com/reel/C8rQp-kq5PG/",
+      "https://www.instagram.com/reel/C8kNL16KIZc/",
+      "https://www.instagram.com/reel/C8z0DAtKq8B/",
+      "https://www.instagram.com/reel/DFPiXCOo220/",
+      "https://www.instagram.com/reel/CIDASf-n6mv/",
+    ],
+  },
+  {
+    id: "beauty-travel",
+    title: "Beauty & Travel",
+    description: "Luxe portraiture and destination vignettes shot for brands and creators.",
+    fallbackThumb: "https://i.imgur.com/1xqQwBn.jpg",
+    seed: 11,
+    urls: [
+      "https://www.instagram.com/reel/C6YtlD2Kbd6/",
+      "https://www.instagram.com/reel/C3sDA4AqP5z/",
+      "https://www.instagram.com/reel/C-VzUiFqfkm/",
+      "https://www.instagram.com/reel/DIx8Dkao7wR/",
+      "https://www.instagram.com/reel/DJZC9tpIIOF/",
+      "https://www.instagram.com/reel/DEPpHmFIGAl/",
+      "https://www.instagram.com/reel/DLfna4ao-z-/",
+      "https://www.instagram.com/reel/C7BdCzwqgKo/",
+      "https://www.instagram.com/reel/C6JjwNGIKni/",
+      "https://www.instagram.com/reel/C5N9JhvK9to/",
+      "https://www.instagram.com/reel/C4yA5RKK0zg/",
+      "https://www.instagram.com/reel/C4YBtJdqoWr/",
+      "https://www.instagram.com/reel/C4LBUi7K9wr/",
+      "https://www.instagram.com/reel/C3igTEsqyam/",
+      "https://www.instagram.com/reel/DLDh5OUt9mQ/",
+      "https://www.instagram.com/reel/DKZRaYntlpH/",
+      "https://www.instagram.com/reel/DGwLruRtP9F/",
+      "https://www.instagram.com/reel/C5BqJyMKBeD/",
+      "https://www.instagram.com/reel/C1ZHmHbKt4u/",
+    ],
+  },
+  {
+    id: "bts",
+    title: "BTS & Production Diaries",
+    description: "Behind the scenes momentum from boxing docs to commercial sets.",
+    fallbackThumb: "https://i.imgur.com/dg9lQbH.jpg",
+    seed: 7,
+    urls: [
+      "https://www.instagram.com/reel/CthPmc7OKK5/",
+      "https://www.instagram.com/reel/CtjWyXJNxwY/",
+      "https://www.instagram.com/reel/Ctlc7--veax/",
+      "https://www.instagram.com/reel/Ctn4hRENjQW/",
+      "https://www.instagram.com/reel/Cttvmy2AdWU/",
+      "https://www.instagram.com/reel/Cue_nHag-QS/",
+      "https://www.instagram.com/reel/CuhtdZYMwWj/",
+      "https://www.instagram.com/reel/C69G68OPF5N/",
+      "https://www.instagram.com/reel/C7KeP-sIHBk/",
+      "https://www.instagram.com/reel/DFNRIRqoFH_/",
+      "https://www.instagram.com/reel/DFPiY-Do1z0/",
+    ],
+  },
+  {
+    id: "ai-edu",
+    title: "AI Lab & Learning",
+    description: "AI-driven experiments plus educational reels that deconstruct the craft.",
+    fallbackThumb: "https://i.imgur.com/2h2x3sC.jpg",
+    seed: 5,
+    urls: [
+      "https://www.instagram.com/reel/DK1bY8couuK/",
+      "https://www.instagram.com/reel/DK4gIZtNB-U/",
+      "https://www.instagram.com/reel/DIvxSY9tQio/",
+      "https://www.instagram.com/reel/DLAbo5mtbC2/",
+      "https://www.instagram.com/reel/C5oZNM5KF77/",
+      "https://www.instagram.com/reel/C5fciTUqXBR/",
+      "https://www.instagram.com/reel/C5c74nYKdI2/",
+      "https://www.instagram.com/reel/DMzghyEtXu1/",
+    ],
+  },
+];
+
+function getInstagramCodeFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i] === "p" || segments[i] === "reel") {
+        return segments[i + 1] || null;
+      }
+    }
+    return segments[segments.length - 1] || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function instagramThumbnailFromUrl(url, fallback) {
+  const code = getInstagramCodeFromUrl(url);
+  if (!code) return fallback || "";
+  return `https://www.instagram.com/p/${code}/media/?size=l`;
+}
+
+function instagramEmbedFromUrl(url) {
+  const code = getInstagramCodeFromUrl(url);
+  if (!code) return url;
+  return url.includes("/reel/")
+    ? `https://www.instagram.com/reel/${code}/embed/`
+    : `https://www.instagram.com/p/${code}/embed/`;
+}
+
+function MMMBelt({ collection, onOpen }) {
+  const [hovered, setHovered] = useState(null);
+  const isTouch = useIsTouchDevice();
+  const picks = useMemo(() => {
+    const pool = collection.urls || [];
+    const randomized = shuffleWithSeed(pool, collection.seed || Date.now());
+    return randomized.slice(0, Math.min(randomized.length, 10));
+  }, [collection.urls, collection.seed]);
+
+  const media = picks.map((url) => ({
+    id: getInstagramCodeFromUrl(url) || url,
+    url,
+    thumbnail: instagramThumbnailFromUrl(url, collection.fallbackThumb),
+    embedUrl: instagramEmbedFromUrl(url),
+  }));
+  const duplicated = !isTouch && media.length ? [...media, ...media] : media;
+
+  const openAt = (index) => {
+    if (!media.length) return;
+    onOpen?.({ collection, media, initialIndex: index % media.length });
+  };
+
+  return (
+    <div className="rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 overflow-hidden">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div>
+          <div className="text-lg font-semibold">{collection.title}</div>
+          <p className="text-white/70 text-sm max-w-2xl">{collection.description}</p>
+        </div>
+        <div className="flex items-center gap-2 text-white/65 text-xs">
+          {!media.length ? <span>Loading Instagram previews…</span> : null}
+        </div>
+      </div>
+      <div className={cn("relative", isTouch ? "overflow-x-auto" : "overflow-hidden")}
+        onTouchStart={() => setHovered(null)}
+      >
+        {duplicated.length ? (
+          isTouch ? (
+            <div className="flex gap-4 pr-6">
+              {duplicated.map((item, idx) => {
+                const baseIndex = idx % media.length;
+                return (
+                  <button
+                    key={`${collection.id}-${idx}`}
+                    onClick={() => openAt(baseIndex)}
+                    className="relative h-40 w-60 shrink-0 overflow-hidden rounded-2xl border border-white/15"
+                    title="Open lightbox"
+                  >
+                    <img
+                      src={item.thumbnail || collection.fallbackThumb}
+                      alt={`${collection.title} preview`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        if (collection.fallbackThumb && e.currentTarget.src !== collection.fallbackThumb) {
+                          e.currentTarget.src = collection.fallbackThumb;
+                        }
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <motion.div
+              className="flex gap-4"
+              animate={{ x: ["0%", "-50%"] }}
+              transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
+            >
+              {duplicated.map((item, idx) => {
+                const baseIndex = idx % media.length;
+                const isActive = hovered === baseIndex;
+                const isDimmed = hovered !== null && !isActive;
+                return (
+                  <button
+                    key={`${collection.id}-${idx}`}
+                    onMouseEnter={() => setHovered(baseIndex)}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => openAt(baseIndex)}
+                    className={cn(
+                      "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                      isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                    )}
+                    title="Open lightbox"
+                  >
+                    <img
+                      src={item.thumbnail || collection.fallbackThumb}
+                      alt={`${collection.title} preview`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        if (collection.fallbackThumb && e.currentTarget.src !== collection.fallbackThumb) {
+                          e.currentTarget.src = collection.fallbackThumb;
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                  </button>
+                );
+              })}
+            </motion.div>
+          )
+        ) : (
+          <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
+            Pulling reel thumbnails…
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GalleryLightbox({ collection, media, startIndex = 0, onClose }) {
+  const [index, setIndex] = useState(startIndex);
+
+  useEffect(() => {
+    setIndex(startIndex);
+  }, [startIndex]);
+
+  if (!media?.length) return null;
+  const item = media[index % media.length];
+  const goPrev = () => setIndex((i) => (i - 1 + media.length) % media.length);
+  const goNext = () => setIndex((i) => (i + 1) % media.length);
+
+  return (
+    <Modal open={true} onClose={onClose} title={collection?.title || "Gallery"}>
+      <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
+        {item?.embedUrl ? (
+          <iframe
+            key={item.embedUrl}
+            src={item.embedUrl}
+            className="w-full h-full"
+            loading="lazy"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title={collection?.title || "Instagram reel"}
+          />
+        ) : item?.thumbnail ? (
+          <img
+            key={item.thumbnail}
+            src={item.thumbnail}
+            alt={`${collection?.title || "Gallery"} frame`}
+            className="w-full h-full object-contain bg-black"
+          />
+        ) : null}
+        {media.length > 1 ? (
+          <>
+            <button
+              onClick={goPrev}
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 border border-white/20 p-2 hover:bg-black/75"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={goNext}
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 border border-white/20 p-2 hover:bg-black/75"
+              aria-label="Next"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        ) : null}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-white/70 text-sm">
+        <span>{collection?.description}</span>
+        <span>
+          {index % media.length + 1} / {media.length}
+        </span>
+      </div>
+      <div className="mt-2 text-right text-xs text-white/60">
+        <a href={item?.url} target="_blank" rel="noreferrer" className="underline">Open on Instagram</a>
+      </div>
+    </Modal>
+  );
+}
+
+function MMMGalleries() {
+  const [lightbox, setLightbox] = useState(null);
+
+  return (
+    <section className="py-12" id="galleries">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="flex items-end justify-between">
+          <h2 className="text-2xl sm:text-3xl font-bold">MMM Galleries</h2>
+          <span className="text-white/70 text-sm">Hover to magnify • tap to open lightbox</span>
+        </div>
+        <p className="text-white/75 max-w-3xl">
+          Four belts of Instagram reels spanning epic edits, beauty work, BTS, and AI experiments. Hover to spotlight a frame; click to open the lightbox and keep watching without leaving the site.
+        </p>
+        <div className="space-y-5">
+          {INSTAGRAM_VIDEO_COLLECTIONS.map((collection) => (
+            <MMMBelt key={collection.id} collection={collection} onOpen={(payload) => setLightbox(payload)} />
+          ))}
+        </div>
+      </div>
+      {lightbox ? (
+        <GalleryLightbox
+          collection={lightbox.collection}
+          media={lightbox.media}
+          startIndex={lightbox.initialIndex || 0}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
     </section>
   );
 }
 
-function CharacterCard({ row }) {
-  const name = row["Character"] || row["Name"] || row["Title"] || "Unnamed";
-  const alias = row["Alias"] || row["AKA"] || "";
-  const alignment = row["Alignment"] || row["Faction"] || "";
-  const location = row["Location"] || "";
-  const short = row["Short Description"] || row["Summary"] || row["Bio"] || "";
-  const img = row["Cover Image"] || row["Image"] || "";
-  const long = row["Long Description"] || row["Bio"] || "";
-  const powers = row["Powers"] || row["Abilities"] || "";
-  return (
-    <Card>
-      <div className="aspect-[16/10] rounded-xl bg-black/45 border border-white/10 overflow-hidden grid place-items-center group">
-        {img ? (
-          <img src={img} alt={name} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform duration-400" />
-        ) : (
-          <div className="text-white/50 text-sm">Art / Poster</div>
-        )}
-      </div>
-      <div className="mt-3 font-semibold">{name}{alias ? <span className="text-white/60 font-normal"> — {alias}</span> : null}</div>
-      <div className="text-white/70 text-sm">{alignment}{location ? ` • ${location}` : ""}</div>
-      {short ? <p className="mt-2 text-white/80 text-sm">{short}</p> : null}
-      {(powers || long) ? (
-        <details className="mt-2 text-white/75 text-sm">
-          <summary className="cursor-pointer hover:underline">Character breakdown</summary>
-          {powers ? <p className="mt-1"><span className="text-white/60">Abilities:</span> {powers}</p> : null}
-          {long ? <p className="mt-1">{long}</p> : null}
-        </details>
-      ) : null}
-      <div className="mt-4 flex gap-2">
-        <Button href={LINKS.loremakerSite} className="bg-white/10" icon={ExternalLink}>Read more</Button>
-      </div>
-    </Card>
-  );
-}
 
 // ========= Portfolio ========= //
 function Portfolio() {
   const [modal, setModal] = useState(null);
+  const embedSrc = useMemo(() => {
+    if (!modal || modal.type !== "watch") return null;
+    const id = getYouTubeId(modal?.p?.url || "");
+    if (id) return `https://www.youtube.com/embed/${id}?rel=0`;
+    if (!modal?.p?.url) return null;
+    return modal.p.url.includes("shorts/") ? modal.p.url.replace("shorts/", "embed/") : modal.p.url;
+  }, [modal]);
   return (
-    <section className="py-12" id="featured-projects">
+    <section className="py-12" id="featured">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-1">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
@@ -1023,12 +2044,22 @@ function Portfolio() {
         <div className="grid md:grid-cols-3 gap-6">
           {PROJECTS.map((p) => (
             <Card key={p.id}>
-              <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
+              <div
+                className="aspect-[16/10] rounded-2xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer relative"
+                onClick={() => setModal({ type: "watch", p })}
+                title="Watch now"
+              >
                 {youtubeThumb(p.url) ? (
-                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform" />
+                  <img
+                    src={youtubeThumb(p.url)}
+                    alt={p.title}
+                    className="w-full h-full object-cover object-center transition-transform duration-700 [transform:scale(var(--zoom-base))] group-hover:[transform:scale(var(--zoom-hover))]"
+                    style={{ "--zoom-base": p.thumbZoom?.base ?? 1.12, "--zoom-hover": p.thumbZoom?.hover ?? 1.22 }}
+                  />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
                 )}
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="mt-3 font-semibold">{p.title}</div>
               <div className="text-white/70 text-sm">{p.role} • {p.runtime}</div>
@@ -1048,10 +2079,11 @@ function Portfolio() {
             <div className="aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
               <iframe
                 className="w-full h-full"
-                src={modal?.p?.url?.replace("watch?v=", "embed/").replace("shorts/", "embed/")}
+                src={embedSrc || modal?.p?.url}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
               />
             </div>
@@ -1080,7 +2112,7 @@ function Blog() {
     { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
   ];
   return (
-    <section className="py-12">
+    <section className="py-12" id="blog">
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Blog</h2>
         <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
@@ -1179,6 +2211,14 @@ function LogoMark() {
   );
 }
 
+const SECTION_LINKS = [
+  { id: "featured", label: "Featured" },
+  { id: "value-calculator", label: "Client Value Calculator" },
+  { id: "galleries", label: "Galleries" },
+  { id: "contact", label: "Contact Form" },
+  { id: "blog", label: "Blog" },
+];
+
 const MENU = [
   { key: "home", label: "Home" },
   { key: "bio", label: "Biography" },
@@ -1188,40 +2228,91 @@ const MENU = [
 ];
 
 function FloatingButtons({ onOpenContact }) {
-  const [showTop, setShowTop] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 300);
-    onScroll();
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
-      {/* Contact bubble */}
-      <button
-        onClick={onOpenContact}
-        className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-        title="Quick contact"
-        aria-label="Contact"
-      >
-        <MessageSquare className="h-5 w-5" />
-      </button>
-      {/* Back to top */}
-      <AnimatePresence>
-        {showTop && (
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-            title="Back to top"
-            aria-label="Back to top"
+      <ChatbotWidget />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onOpenContact}
+          className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
+          title="Quick contact"
+          aria-label="Contact"
+        >
+          <MessageSquare className="h-5 w-5" />
+        </button>
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
+          title="Back to top"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SectionNav({ variant = "floating", className = "" }) {
+  const [selected, setSelected] = useState(SECTION_LINKS[0]?.id || "");
+
+  const onNavigate = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const containerClasses = cn(
+    "hidden sm:flex flex-wrap justify-center items-center gap-2 px-4 py-3",
+    variant === "floating"
+      ? "rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+      : "rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
+  );
+  const buttonClasses =
+    variant === "floating"
+      ? "px-3 py-1.5 text-sm rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors"
+      : "px-3 py-1.5 text-sm rounded-full border border-white/15 bg-white/10 hover:bg-white/15 transition-colors";
+
+  return (
+    <div className={cn("w-full", className)}>
+      <div className="sm:hidden">
+        <label className="text-white/70 text-xs mb-2 block" htmlFor={`section-nav-${variant}`}>
+          Jump to a section
+        </label>
+        <div className="relative">
+          <select
+            id={`section-nav-${variant}`}
+            value={selected}
+            onChange={(e) => {
+              setSelected(e.target.value);
+              onNavigate(e.target.value);
+            }}
+            className="w-full appearance-none rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/80"
           >
-            <ArrowUp className="h-5 w-5" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+            {SECTION_LINKS.map((link) => (
+              <option key={link.id} value={link.id} className="text-black">
+                {link.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+        </div>
+      </div>
+      <div className={containerClasses}>
+        {SECTION_LINKS.map((link) => (
+          <button
+            key={link.id}
+            type="button"
+            onClick={() => {
+              setSelected(link.id);
+              onNavigate(link.id);
+            }}
+            className={buttonClasses}
+            title={`Jump to ${link.label}`}
+          >
+            {link.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1229,18 +2320,12 @@ function FloatingButtons({ onOpenContact }) {
 function runSelfTests() {
   try {
     console.group("Self‑tests");
+    console.assert(typeof clamp === "function", "clamp helper exists");
     // getYouTubeId
     console.assert(getYouTubeId("https://www.youtube.com/watch?v=abc123") === "abc123", "watch?v= failed");
     console.assert(getYouTubeId("https://youtu.be/xyz789") === "xyz789", "youtu.be failed");
     console.assert(getYouTubeId("https://www.youtube.com/shorts/QQ11WW22") === "QQ11WW22", "shorts failed");
     console.assert(getYouTubeId("https://www.youtube.com/embed/IDID") === "IDID", "embed failed");
-
-    // parseCSV quoted commas
-    const sample = 'Name,Desc\n"Alpha, Beta","Line one, line two"\nGamma,Plain';
-    const parsed = parseCSV(sample);
-    console.assert(parsed.rows.length === 2, "CSV rows length");
-    console.assert(parsed.rows[0].Name === "Alpha, Beta", "CSV quoted field parse");
-    console.assert(parsed.rows[0].Desc.includes("line two"), "CSV multi");
 
     // calendar calc
     const phases = [
@@ -1253,6 +2338,10 @@ function runSelfTests() {
 
     // extra test: ensure pct math stays consistent
     console.assert(typeof youtubeThumb(PROJECTS[0].url) === "string", "thumb returns string");
+    console.assert(Array.isArray(HERO_SLIDES) && HERO_SLIDES.length >= 4, "hero slides configured");
+    console.assert(typeof ChatbotWidget === "function", "chatbot widget present");
+    console.assert(typeof WorkWithMe === "function", "work with me component present");
+    console.assert(Array.isArray(INSTAGRAM_VIDEO_COLLECTIONS) && INSTAGRAM_VIDEO_COLLECTIONS.length === 4, "MMM collections configured");
 
     console.groupEnd();
   } catch (e) {
@@ -1262,11 +2351,20 @@ function runSelfTests() {
 
 export default function AppShell() {
   const [route, setRoute] = useState("home");
-  const [reelOpen, setReelOpen] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
+  const [quickNote, setQuickNote] = useState("");
+  const [quickEmail, setQuickEmail] = useState("");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickSuccess, setQuickSuccess] = useState(false);
+  const [quickError, setQuickError] = useState(null);
+
+  const scrollToId = useCallback((id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: name } }));
 
@@ -1279,6 +2377,42 @@ export default function AppShell() {
   useEffect(() => {
     runSelfTests();
   }, []);
+
+  const resetQuickContact = () => {
+    setQuickNote("");
+    setQuickEmail("");
+    setQuickSubmitting(false);
+    setQuickSuccess(false);
+    setQuickError(null);
+  };
+
+  const submitQuickContact = async () => {
+    if (quickSubmitting) return;
+    setQuickError(null);
+    if (!quickNote.trim()) {
+      setQuickError("Share a few project details so I know how to help.");
+      return;
+    }
+    if (quickEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(quickEmail.trim())) {
+      setQuickError("That email doesn’t look right—double check and try again.");
+      return;
+    }
+    try {
+      setQuickSubmitting(true);
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, {
+        source: "quick-contact",
+        message: quickNote,
+        email: quickEmail.trim() || undefined,
+        submittedAt: new Date().toISOString(),
+      });
+      setQuickSuccess(true);
+    } catch (error) {
+      console.error("Quick contact failed", error);
+      setQuickError("Couldn’t send right now. Email hello@menelekmakonnen.com instead and I’ll reply.");
+    } finally {
+      setQuickSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen text-white relative overflow-x-hidden">
@@ -1317,11 +2451,27 @@ export default function AppShell() {
       <main>
         {route === "home" && (
           <>
-            <Hero onWatch={() => setReelOpen(true)} onOpenLinksModal={() => setLinksOpen(true)} />
+            <Hero
+              onScrollFeatured={() => scrollToId("featured")}
+              onScrollCalculator={() => scrollToId("value-calculator")}
+            />
+            <div className="max-w-7xl mx-auto px-6 -mt-6">
+              <SectionNav />
+            </div>
+            <SocialProof />
             <Portfolio />
-            <FeaturedUniverse />
-            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
-            <section className="py-6"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
+            <WorkWithMe
+              currentService={currentService}
+              onSetService={(n) => setCurrentService(n)}
+              onBook={(svc) => goContactInline(svc)}
+              onCalendarChange={setCalendarState}
+            />
+            <MMMGalleries />
+            <section className="py-6" id="contact">
+              <div className="max-w-7xl mx-auto px-6">
+                <ContactInline calendarState={calendarState} />
+              </div>
+            </section>
             <Blog />
           </>
         )}
@@ -1345,6 +2495,9 @@ export default function AppShell() {
             © {new Date().getFullYear()} Loremaker • ICUNI. All rights reserved.
           </div>
         </div>
+        <div className="max-w-7xl mx-auto px-6 pb-8">
+          <SectionNav variant="footer" />
+        </div>
       </footer>
 
       {/* Floating Buttons */}
@@ -1354,29 +2507,62 @@ export default function AppShell() {
       <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
 
       {/* Quick Contact bubble modal */}
-      <Modal open={contactOpen} onClose={() => setContactOpen(false)} title="Quick Contact">
+      <Modal
+        open={contactOpen}
+        onClose={() => {
+          setContactOpen(false);
+          resetQuickContact();
+        }}
+        title="Quick Contact"
+      >
         <div className="grid gap-3">
-          <p className="text-white/75 text-sm">Leave a fast brief. I’ll reply within 24–48h.</p>
-          <a className="underline" href={SOCIALS.email}>Or email me directly</a>
-          <textarea rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" placeholder="What are we making? Scope, goals, timeline…" />
-          <div className="flex gap-2">
-            <Button onClick={() => { alert("Saved locally. I’ll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
-            <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
-          </div>
-          <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
-        </div>
-      </Modal>
-
-      <Modal open={reelOpen} onClose={() => setReelOpen(false)} title="Instagram Reel">
-        <div className="aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.instagram.com/reel/${IG_REEL_ID}/embed`}
-            title="Instagram reel"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            allowFullScreen
+          <p className="text-white/75 text-sm">
+            Leave a fast brief. I’ll route it straight to my inbox and reply within 24–48h.
+          </p>
+          <a className="underline" href={SOCIALS.email} target="_blank" rel="noreferrer">
+            Prefer email? hello@menelekmakonnen.com
+          </a>
+          {quickError ? <div className="text-sm text-rose-300">{quickError}</div> : null}
+          <textarea
+            rows={4}
+            value={quickNote}
+            onChange={(e) => setQuickNote(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            placeholder="What are we making? Scope, goals, timeline…"
           />
+          <input
+            type="email"
+            value={quickEmail}
+            onChange={(e) => setQuickEmail(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            placeholder="Optional contact email"
+          />
+          <div className="flex gap-2">
+            <Button onClick={submitQuickContact} icon={ShieldCheck} disabled={quickSubmitting}>
+              {quickSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                </span>
+              ) : (
+                "Send"
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setContactOpen(false);
+                resetQuickContact();
+              }}
+              disabled={quickSubmitting}
+            >
+              Cancel
+            </Button>
+          </div>
+          {quickSuccess ? (
+            <div className="text-xs text-emerald-300/80">Sent! I’ll confirm receipt shortly.</div>
+          ) : (
+            <div className="text-xs text-white/60">I’ll send a confirmation email if you leave an address.</div>
+          )}
         </div>
       </Modal>
     </div>
