@@ -1,3 +1,4 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +24,8 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 /**
@@ -63,9 +66,15 @@ const LINKS = {
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
-// Publish the Characters tab to the web and set the correct gid
-const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  trackVisit: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+  workflow: "/workflow/cQltZgIikkp4fFER",
+};
+const CHATBOT_NAME = "Zara";
+const CHATBOT_TAGLINE = "Menelek's AI Assistant";
 
 const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
 const CHATBOT_ENDPOINTS = {
@@ -86,6 +95,25 @@ const ensureArray = (value) => {
   if (Array.isArray(value)) return value.filter(Boolean);
   return value ? [value] : [];
 };
+
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const query = window.matchMedia("(pointer: coarse)");
+    const update = () => setIsTouch(query.matches);
+    update();
+    if (query.addEventListener) {
+      query.addEventListener("change", update);
+      return () => query.removeEventListener("change", update);
+    }
+    query.addListener(update);
+    return () => query.removeListener(update);
+  }, []);
+
+  return isTouch;
+}
 
 async function postJSONWithFallback(paths, payload, { headers = {}, signal } = {}) {
   const attempts = ensureArray(paths);
@@ -497,142 +525,53 @@ function youtubeThumb(url) {
 }
 
 // ========= HERO ========= //
-const HERO_SLIDES = [
+const HERO_SLIDES = PROJECTS.slice(0, 4).map((project) => ({
+  id: project.id,
+  kind: "video",
+  title: project.title,
+  caption: project.summary,
+  videoUrl: project.url,
+  preview: youtubeThumb(project.url),
+  credit: project.role,
+}));
+
+const TRUSTED_CLIENTS = [
+  { name: "ICUNI" },
+  { name: "Left Hook Gym" },
+  { name: "Loremaker" },
+  { name: "MMM Media" },
+];
+
+const SOCIAL_METRICS = [
+  { value: "70+", label: "Projects delivered" },
+  { value: "1.2M+", label: "Cumulative views" },
+  { value: "89%", label: "Client retention" },
+];
+
+const TESTIMONIALS = [
   {
-    id: "reel",
-    type: "video",
-    title: "2024 Showreel",
-    caption: "Latest film, commercial, and AI-assisted highlights.",
-    videoUrl: "https://www.youtube.com/watch?v=A8cGpNe2JAE",
-    thumb: youtubeThumb("https://www.youtube.com/watch?v=A8cGpNe2JAE"),
+    quote:
+      "Menelek turns loose ideas into visuals that actually sell the story. He keeps crews calm and clients confident.",
+    author: "Creative Producer, ICUNI",
   },
   {
-    id: "mmm-photo",
-    type: "instagram-image",
-    username: "mm.m.media",
-    filter: "images",
-    title: "Signature Production Still",
-    caption: "On-set stills that sell the scale and the soul.",
-    credit: "@mm.m.media",
+    quote:
+      "Our campaign needed a cinematic punch on a lean budget. The final edit outperformed the studio benchmark by threefold.",
+    author: "Campaign Lead, Momentum Boxing",
   },
   {
-    id: "mmm-reel",
-    type: "instagram-video",
-    username: "mm.m.media",
-    filter: "reels",
-    title: "Epic Edit Spotlight",
-    caption: "Cinematic reel moments with hybrid VFX and AI polish.",
-    credit: "@mm.m.media",
-  },
-  {
-    id: "lore-art",
-    type: "instagram-image",
-    username: "lore.maker_",
-    filter: "images",
-    title: "Loremaker Universe Cover",
-    caption: "Afrofuturist mythos, glyphs, and the heroes defending each realm.",
-    credit: "@lore.maker_",
+    quote:
+      "He handles pre-production like a showrunner and post like a finishing artist. Every deliverable was on-brand and on time.",
+    author: "Content Director, MMM Media",
   },
 ];
 
-const HERO_PLACEHOLDERS = {
-  "mmm-photo": {
-    preview: "https://i.imgur.com/9YI6z1g.jpg",
-  },
-  "mmm-reel": {
-    preview: "https://i.imgur.com/N7w7LGz.jpg",
-  },
-  "lore-art": {
-    preview: "https://i.imgur.com/Va6S3P4.jpg",
-  },
-};
-
-function Hero({ onOpenLinksModal }) {
+function Hero({ onScrollFeatured, onScrollCalculator }) {
   const [idx, setIdx] = useState(0);
-  const photoMedia = useInstagramMedia({ username: "mm.m.media", filter: "images", limit: 10, seed: 2 });
-  const reelMedia = useInstagramMedia({ username: "mm.m.media", filter: "reels", limit: 10, seed: 4 });
-  const loreMedia = useInstagramMedia({ username: "lore.maker_", filter: "images", limit: 10, seed: 6 });
-  const [fallbackReady, setFallbackReady] = useState(false);
-  const scrollToSection = (id) => (event) => {
-    if (event) event.preventDefault();
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const instagramResolved = !photoMedia.loading && !reelMedia.loading && !loreMedia.loading;
-  const instagramCount =
-    (photoMedia.media?.length || 0) + (reelMedia.media?.length || 0) + (loreMedia.media?.length || 0);
-  const fallbackActive = fallbackReady || photoMedia.error || reelMedia.error || loreMedia.error;
-
-  useEffect(() => {
-    if (instagramResolved && instagramCount > 0) return;
-    const timer = setTimeout(() => setFallbackReady(true), 5000);
-    return () => clearTimeout(timer);
-  }, [instagramResolved, instagramCount]);
-
-  const slides = useMemo(() => {
-    const computed = [];
-    HERO_SLIDES.forEach((entry) => {
-      if (entry.type === "video") {
-        computed.push({
-          ...entry,
-          kind: "video",
-          preview: entry.thumb,
-        });
-        return;
-      }
-
-      let pool = [];
-      if (entry.username === "mm.m.media" && entry.filter === "images") pool = photoMedia.media;
-      if (entry.username === "mm.m.media" && entry.filter === "reels") pool = reelMedia.media;
-      if (entry.username === "lore.maker_") pool = loreMedia.media;
-
-      const mediaItem = pool?.[0];
-      if (mediaItem && !fallbackActive) {
-        computed.push({
-          id: entry.id,
-          kind: mediaItem.type === "video" ? "video" : "image",
-          title: entry.title,
-          caption: mediaItem.caption || entry.caption,
-          preview: mediaItem.preview || mediaItem.src,
-          credit: entry.credit,
-          videoUrl:
-            entry.type === "instagram-video"
-              ? mediaItem.permalink || mediaItem.videoSrc
-              : mediaItem.videoSrc || null,
-        });
-        return;
-      }
-
-      const placeholder = HERO_PLACEHOLDERS[entry.id];
-      if (placeholder && fallbackActive) {
-        computed.push({
-          id: entry.id,
-          kind: "image",
-          title: entry.title,
-          caption: entry.caption,
-          preview: placeholder.preview,
-          credit: entry.credit,
-          videoUrl: null,
-        });
-      } else if (!fallbackActive) {
-        computed.push({
-          id: `${entry.id}-loading`,
-          kind: "image",
-          title: entry.title,
-          caption: entry.caption,
-          preview: placeholder?.preview || "",
-          credit: entry.credit,
-          videoUrl: null,
-          pending: true,
-        });
-      }
-    });
-    return computed;
-  }, [fallbackActive, fallbackReady, photoMedia.media, reelMedia.media, loreMedia.media]);
-
+  const slides = HERO_SLIDES;
   const slidesLength = slides.length || 1;
-  const awaitingSlides = slidesLength < HERO_SLIDES.length;
+  const awaitingSlides = slidesLength === 0;
+  const touchStartRef = useRef(null);
 
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % slidesLength), 5000);
@@ -645,6 +584,21 @@ function Hero({ onOpenLinksModal }) {
 
   const goPrev = () => setIdx((i) => (i - 1 + slidesLength) % slidesLength);
   const goNext = () => setIdx((i) => (i + 1) % slidesLength);
+
+  const onTouchStart = (event) => {
+    if (!event.touches?.length) return;
+    touchStartRef.current = event.touches[0].clientX;
+  };
+
+  const onTouchEnd = (event) => {
+    if (touchStartRef.current === null) return;
+    const endX = event.changedTouches?.[0]?.clientX ?? touchStartRef.current;
+    const delta = endX - touchStartRef.current;
+    touchStartRef.current = null;
+    if (Math.abs(delta) < 40) return;
+    if (delta > 0) goPrev();
+    else goNext();
+  };
 
   const baseSlide = HERO_SLIDES[0];
   const slide = slides[idx] || slides[0];
@@ -721,7 +675,11 @@ function Hero({ onOpenLinksModal }) {
                   exit={{ opacity: 0, scale: 1.02 }}
                   transition={{ duration: 0.6 }}
                 >
-                {imageSrc ? (
+                {activeSlide.kind === "loading" ? (
+                  <div className="w-full h-full grid place-items-center bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white/70 text-sm">
+                    Loading showcase…
+                  </div>
+                ) : imageSrc ? (
                   <img
                     src={imageSrc}
                     alt={activeSlide.title}
@@ -784,6 +742,74 @@ function Hero({ onOpenLinksModal }) {
             <div className="mt-2 text-xs text-white/60">{activeSlide.credit}</div>
           ) : null}
         </Card>
+      </div>
+    </section>
+  );
+}
+
+function SocialProof() {
+  const [active, setActive] = useState(0);
+  const testimonialCount = TESTIMONIALS.length;
+  useEffect(() => {
+    if (!testimonialCount) return undefined;
+    const id = setInterval(() => {
+      setActive((i) => (i + 1) % testimonialCount);
+    }, 6000);
+    return () => clearInterval(id);
+  }, [testimonialCount]);
+
+  const testimonial = TESTIMONIALS[active] || null;
+
+  return (
+    <section className="pb-10" aria-label="Social proof">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="rounded-full border border-white/15 bg-white/10 backdrop-blur px-5 py-2 flex flex-wrap items-center gap-3 justify-center text-xs sm:text-sm text-white/70">
+          <span className="font-semibold text-white/80">Trusted by</span>
+          {TRUSTED_CLIENTS.map((client) => (
+            <span key={client.name} className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-white/15 bg-white/5 text-white/80">
+              {client.name}
+            </span>
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-2">
+            <div className="flex flex-wrap gap-4 justify-between">
+              {SOCIAL_METRICS.map((metric) => (
+                <div key={metric.label} className="min-w-[120px]">
+                  <div className="text-3xl font-extrabold text-white">{metric.value}</div>
+                  <div className="text-white/70 text-sm mt-1">{metric.label}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+            <div className="relative">
+              <div className="text-xs uppercase tracking-[0.3em] text-white/60">Testimonials</div>
+              {testimonial ? (
+                <>
+                  <p className="mt-3 text-white/85 text-sm">“{testimonial.quote}”</p>
+                  <div className="mt-3 text-xs text-white/60">{testimonial.author}</div>
+                </>
+              ) : (
+                <p className="mt-3 text-white/60 text-sm">Collecting the latest testimonials…</p>
+              )}
+              {testimonialCount > 1 ? (
+                <div className="mt-4 flex items-center gap-2">
+                  {TESTIMONIALS.map((_, index) => (
+                    <span
+                      key={index}
+                      className={cn(
+                        "h-1.5 w-4 rounded-full",
+                        index === active ? "bg-white" : "bg-white/30"
+                      )}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </Card>
+        </div>
       </div>
     </section>
   );
@@ -1192,9 +1218,9 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           <input aria-label="Ambition" type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-1">
             <span>Proposed Project Start</span>
-            <Info className="h-3.5 w-3.5 text-white/60" title="When we’d begin pre-production." />
+            <Info className="h-3.5 w-3.5 text-white/50" title="When you'd like development to kick off." />
           </div>
           <input aria-label="Project start" type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
         </div>
@@ -1251,6 +1277,20 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           Book this Scope
         </Button>
       </div>
+      <AnimatePresence initial={false}>
+        {showTimeline ? (
+          <motion.div
+            key="timeline"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <TimelineGrid phases={phases} onChange={setPhases} total={total} onTotalChange={setTotal} startDate={projectDate} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <div className="mt-4 flex gap-2"><Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button></div>
     </div>
   );
 }
@@ -1285,6 +1325,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const dragRef = useRef(null);
   const pct = (days) => `${(days / totalDays) * 100}%`;
   const defaultMin = total <= 2 ? 1 / 7 : 0.5;
+  const isTouch = useIsTouchDevice();
   const snapWeeks = (value) => {
     if (total <= 2) {
       return Math.max(0, Math.round(value * 7) / 7);
@@ -1310,8 +1351,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     dragRef.current = { idx, mode, startX: e.clientX, rectW: rect.width, startStart: phases[idx].startDays, startWeeks: phases[idx].weeks };
   };
   const onPointerMove = (e) => {
-    const d = dragRef.current;
-    if (!d) return;
+    if (isTouch) return;
+    const d = dragRef.current; if (!d) return;
     const dx = e.clientX - d.startX;
     const deltaDays = Math.round((dx / d.rectW) * totalDays);
     const next = phases.map((p) => ({ ...p }));
@@ -1379,12 +1420,37 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
             max={26}
             step={1}
             value={total}
-            onChange={(e) => onTotalChange(parseInt(e.target.value))}
+            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
           />
-          <span className="text-white/70 text-xs">{sliderLabel}</span>
+          <span className="text-white/70 text-xs">{showDays ? `${totalDays} d` : `${total} wks`}</span>
         </div>
       </div>
       <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
+    </>
+  );
+  if (isTouch) {
+    return (
+      <div className="mt-6">
+        {header}
+        <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 space-y-3">
+          {phases.map((p) => {
+            const duration = p.weeks <= 0 ? 0 : Math.max(1, Math.round(p.weeks * 7));
+            return (
+              <div key={p.key} className="rounded-2xl border border-white/15 bg-black/30 px-4 py-3">
+                <div className="text-sm font-semibold text-white/85">{p.label}</div>
+                <div className="text-xs text-white/60 mt-1">{duration} {duration === 1 ? "day" : "days"}</div>
+                <div className="text-xs text-white/60">Starts day {p.startDays + 1}</div>
+              </div>
+            );
+          })}
+          <div className="text-white/65 text-xs">Drag-and-drop scheduling is available on desktop for finer control.</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-6">
+      {header}
       <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
         <div className="mb-2 flex items-center gap-3">
           <div className="w-44 shrink-0" />
@@ -1435,8 +1501,118 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 function useCSV(url) {
   const [rows, setRows] = useState([]);
   useEffect(() => {
-    let abort = false;
-    (async () => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    minimizedRef.current = minimized;
+  }, [minimized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const session = ensureChatbotSession();
+    sessionRef.current = session;
+    setIsReturning(Boolean(session?.isReturning));
+    setMessages([
+      {
+        id: Date.now(),
+        sender: "bot",
+        text: session?.isReturning
+          ? "👋 Welcome back! Pick up where we left off—what can I line up for you today?"
+          : `Hey there! I'm ${CHATBOT_NAME}. Share your brief, budget, or timeline and I'll map next steps.`,
+      },
+    ]);
+
+    if (CHATBOT_BASE_URL && CHATBOT_ENDPOINTS.trackVisit) {
+      const payload = {
+        page: window.location.pathname,
+        referrer: document.referrer,
+        timestamp: new Date().toISOString(),
+        sessionId: session?.id,
+        firstSeen: session?.firstSeen,
+        isReturningVisitor: session?.isReturning,
+        visitCount: session?.visitCount,
+        fingerprint: session?.fingerprint,
+      };
+      postJSONWithFallback(CHATBOT_ENDPOINTS.trackVisit, payload).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && !minimized) setUnread(0);
+  }, [open, minimized, messages.length]);
+
+  useEffect(() => {
+    if (!open || minimized) return;
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, open, minimized]);
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      if (!prev) {
+        setUnread(0);
+        setMinimized(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleMinimize = () => {
+    setMinimized((prev) => {
+      const next = !prev;
+      if (!next) setUnread(0);
+      return next;
+    });
+  };
+
+  const appendMessage = (msg) => {
+    setMessages((prev) => [...prev, msg]);
+    if (msg.sender === "bot" && (!openRef.current || minimizedRef.current)) {
+      setUnread((u) => u + 1);
+    }
+  };
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+
+    const baseSession = sessionRef.current || ensureChatbotSession();
+    sessionRef.current = baseSession;
+
+    const userMsg = { id: Date.now(), sender: "user", text };
+    appendMessage(userMsg);
+    messageCountRef.current += 1;
+    setLoading(true);
+
+    const typingDelay = new Promise((resolve) => setTimeout(resolve, 450));
+
+    const failSafe = "I'm running in demo mode right now. Drop an email or call sheet and I'll loop Menelek in manually.";
+
+    try {
+      if (!CHATBOT_BASE_URL || !CHATBOT_ENDPOINTS.chatbot) {
+        await typingDelay;
+        appendMessage({ id: Date.now() + 1, sender: "bot", text: failSafe });
+        return;
+      }
+
+      const payload = {
+        message: text,
+        sessionId: baseSession?.id,
+        messageCount: messageCountRef.current,
+        firstSeen: baseSession?.firstSeen,
+        isReturningVisitor: baseSession?.isReturning,
+        conversationContext: baseSession?.isReturning ? "continuing" : "new",
+        page: typeof window !== "undefined" ? window.location.pathname : "",
+        referrer: typeof document !== "undefined" ? document.referrer : "",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        language: typeof navigator !== "undefined" ? navigator.language : "",
+      };
+
+      let res;
+      let data = null;
       try {
         const target = proxyGoogleUrl(url);
         const attempts = [target];
@@ -2044,12 +2220,10 @@ function parseCSV(text) {
         }
       } else val += c;
     }
+    return segments[segments.length - 1] || null;
+  } catch (error) {
+    return null;
   }
-  if (val !== "" || cur.length) { cur.push(val); lines.push(cur); }
-  if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0];
-  const rows = lines.slice(1).map((arr) => Object.fromEntries(headers.map((h, i) => [h, arr[i] ?? ""])));
-  return { headers, rows };
 }
 
 // ========= Featured Universe ========= //
@@ -2057,6 +2231,9 @@ function FeaturedUniverse() {
   const { rows } = useCSV(SHEETS_CSV_URL);
   const [seed, setSeed] = useState(0);
 
+function MMMBelt({ collection, onOpen }) {
+  const [hovered, setHovered] = useState(null);
+  const isTouch = useIsTouchDevice();
   const picks = useMemo(() => {
     if (!rows?.length) return [];
     const shuffled = shuffleWithSeed(rows, seed + 1);
@@ -2092,7 +2269,83 @@ function FeaturedUniverse() {
           )}
         </div>
       </div>
-    </section>
+      <div className={cn("relative", isTouch ? "overflow-x-auto" : "overflow-hidden")}
+        onTouchStart={() => setHovered(null)}
+      >
+        {duplicated.length ? (
+          isTouch ? (
+            <div className="flex gap-4 pr-6">
+              {duplicated.map((item, idx) => {
+                const baseIndex = idx % media.length;
+                return (
+                  <button
+                    key={`${collection.id}-${idx}`}
+                    onClick={() => openAt(baseIndex)}
+                    className="relative h-40 w-60 shrink-0 overflow-hidden rounded-2xl border border-white/15"
+                    title="Open lightbox"
+                  >
+                    <img
+                      src={item.thumbnail || collection.fallbackThumb}
+                      alt={`${collection.title} preview`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        if (collection.fallbackThumb && e.currentTarget.src !== collection.fallbackThumb) {
+                          e.currentTarget.src = collection.fallbackThumb;
+                        }
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <motion.div
+              className="flex gap-4"
+              animate={{ x: ["0%", "-50%"] }}
+              transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
+            >
+              {duplicated.map((item, idx) => {
+                const baseIndex = idx % media.length;
+                const isActive = hovered === baseIndex;
+                const isDimmed = hovered !== null && !isActive;
+                return (
+                  <button
+                    key={`${collection.id}-${idx}`}
+                    onMouseEnter={() => setHovered(baseIndex)}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => openAt(baseIndex)}
+                    className={cn(
+                      "relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl border border-white/15 transition-all duration-300",
+                      isActive ? "scale-110 z-20" : isDimmed ? "scale-90 opacity-60" : "scale-100"
+                    )}
+                    title="Open lightbox"
+                  >
+                    <img
+                      src={item.thumbnail || collection.fallbackThumb}
+                      alt={`${collection.title} preview`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        if (collection.fallbackThumb && e.currentTarget.src !== collection.fallbackThumb) {
+                          e.currentTarget.src = collection.fallbackThumb;
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-2 left-3 text-xs font-medium text-white/85">Tap to expand</div>
+                  </button>
+                );
+              })}
+            </motion.div>
+          )
+        ) : (
+          <div className="h-40 grid place-items-center text-white/60 text-sm border border-dashed border-white/20 rounded-2xl">
+            Pulling reel thumbnails…
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2421,9 +2674,44 @@ function CharacterCard({ row }) {
       <div className="mt-4 flex gap-2">
         <Button href={LINKS.loremakerSite} className="bg-white/10" icon={ExternalLink}>Read more</Button>
       </div>
-    </Card>
+      <div className="mt-2 text-right text-xs text-white/60">
+        <a href={item?.url} target="_blank" rel="noreferrer" className="underline">Open on Instagram</a>
+      </div>
+    </Modal>
   );
 }
+
+function MMMGalleries() {
+  const [lightbox, setLightbox] = useState(null);
+
+  return (
+    <section className="py-12" id="galleries">
+      <div className="max-w-7xl mx-auto px-6 space-y-6">
+        <div className="flex items-end justify-between">
+          <h2 className="text-2xl sm:text-3xl font-bold">MMM Galleries</h2>
+          <span className="text-white/70 text-sm">Hover to magnify • tap to open lightbox</span>
+        </div>
+        <p className="text-white/75 max-w-3xl">
+          Four belts of Instagram reels spanning epic edits, beauty work, BTS, and AI experiments. Hover to spotlight a frame; click to open the lightbox and keep watching without leaving the site.
+        </p>
+        <div className="space-y-5">
+          {INSTAGRAM_VIDEO_COLLECTIONS.map((collection) => (
+            <MMMBelt key={collection.id} collection={collection} onOpen={(payload) => setLightbox(payload)} />
+          ))}
+        </div>
+      </div>
+      {lightbox ? (
+        <GalleryLightbox
+          collection={lightbox.collection}
+          media={lightbox.media}
+          startIndex={lightbox.initialIndex || 0}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
 
 // ========= Portfolio ========= //
 function SocialProof() {
@@ -2777,13 +3065,6 @@ function runSelfTests() {
     console.assert(getYouTubeId("https://www.youtube.com/shorts/QQ11WW22") === "QQ11WW22", "shorts failed");
     console.assert(getYouTubeId("https://www.youtube.com/embed/IDID") === "IDID", "embed failed");
 
-    // parseCSV quoted commas
-    const sample = 'Name,Desc\n"Alpha, Beta","Line one, line two"\nGamma,Plain';
-    const parsed = parseCSV(sample);
-    console.assert(parsed.rows.length === 2, "CSV rows length");
-    console.assert(parsed.rows[0].Name === "Alpha, Beta", "CSV quoted field parse");
-    console.assert(parsed.rows[0].Desc.includes("line two"), "CSV multi");
-
     // calendar calc
     const phases = [
       { key: "a", label: "A", startDays: 0, weeks: 1 },
@@ -2812,6 +3093,16 @@ export default function AppShell() {
   const [contactOpen, setContactOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
+  const [quickNote, setQuickNote] = useState("");
+  const [quickEmail, setQuickEmail] = useState("");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickSuccess, setQuickSuccess] = useState(false);
+  const [quickError, setQuickError] = useState(null);
+
+  const scrollToId = useCallback((id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const structuredData = useMemo(() => {
     const sameAs = [
@@ -2860,6 +3151,42 @@ export default function AppShell() {
   useEffect(() => {
     runSelfTests();
   }, []);
+
+  const resetQuickContact = () => {
+    setQuickNote("");
+    setQuickEmail("");
+    setQuickSubmitting(false);
+    setQuickSuccess(false);
+    setQuickError(null);
+  };
+
+  const submitQuickContact = async () => {
+    if (quickSubmitting) return;
+    setQuickError(null);
+    if (!quickNote.trim()) {
+      setQuickError("Share a few project details so I know how to help.");
+      return;
+    }
+    if (quickEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(quickEmail.trim())) {
+      setQuickError("That email doesn’t look right—double check and try again.");
+      return;
+    }
+    try {
+      setQuickSubmitting(true);
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, {
+        source: "quick-contact",
+        message: quickNote,
+        email: quickEmail.trim() || undefined,
+        submittedAt: new Date().toISOString(),
+      });
+      setQuickSuccess(true);
+    } catch (error) {
+      console.error("Quick contact failed", error);
+      setQuickError("Couldn’t send right now. Email hello@menelekmakonnen.com instead and I’ll reply.");
+    } finally {
+      setQuickSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -2917,7 +3244,10 @@ export default function AppShell() {
       <main>
         {route === "home" && (
           <>
-            <Hero onOpenLinksModal={() => setLinksOpen(true)} />
+            <Hero
+              onScrollFeatured={() => scrollToId("featured")}
+              onScrollCalculator={() => scrollToId("value-calculator")}
+            />
             <div className="max-w-7xl mx-auto px-6 -mt-6">
               <SectionNav />
             </div>
@@ -2973,19 +3303,64 @@ export default function AppShell() {
       <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
 
       {/* Quick Contact bubble modal */}
-      <Modal open={contactOpen} onClose={() => setContactOpen(false)} title="Quick Contact">
+      <Modal
+        open={contactOpen}
+        onClose={() => {
+          setContactOpen(false);
+          resetQuickContact();
+        }}
+        title="Quick Contact"
+      >
         <div className="grid gap-3">
-          <p className="text-white/75 text-sm">Leave a fast brief. I’ll reply within 24–48h.</p>
-          <a className="underline" href={SOCIALS.email}>Or email me directly</a>
-          <textarea rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" placeholder="What are we making? Scope, goals, timeline…" />
+          <p className="text-white/75 text-sm">
+            Leave a fast brief. I’ll route it straight to my inbox and reply within 24–48h.
+          </p>
+          <a className="underline" href={SOCIALS.email} target="_blank" rel="noreferrer">
+            Prefer email? hello@menelekmakonnen.com
+          </a>
+          {quickError ? <div className="text-sm text-rose-300">{quickError}</div> : null}
+          <textarea
+            rows={4}
+            value={quickNote}
+            onChange={(e) => setQuickNote(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            placeholder="What are we making? Scope, goals, timeline…"
+          />
+          <input
+            type="email"
+            value={quickEmail}
+            onChange={(e) => setQuickEmail(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            placeholder="Optional contact email"
+          />
           <div className="flex gap-2">
-            <Button onClick={() => { alert("Saved locally. I’ll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
-            <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
+            <Button onClick={submitQuickContact} icon={ShieldCheck} disabled={quickSubmitting}>
+              {quickSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                </span>
+              ) : (
+                "Send"
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setContactOpen(false);
+                resetQuickContact();
+              }}
+              disabled={quickSubmitting}
+            >
+              Cancel
+            </Button>
           </div>
-          <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
+          {quickSuccess ? (
+            <div className="text-xs text-emerald-300/80">Sent! I’ll confirm receipt shortly.</div>
+          ) : (
+            <div className="text-xs text-white/60">I’ll send a confirmation email if you leave an address.</div>
+          )}
         </div>
       </Modal>
-      </div>
-    </>
+    </div>
   );
 }
