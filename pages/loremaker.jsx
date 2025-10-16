@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Search,
-  RefreshCcw,
   X,
   ArrowDown,
   ArrowRight,
@@ -21,6 +20,15 @@ import {
   MessageCircle,
   Send,
   Bot,
+  Home,
+  BookOpen,
+  Cpu,
+  Newspaper,
+  ExternalLink,
+  Instagram,
+  Youtube,
+  Linkedin,
+  Mail,
 } from "lucide-react";
 
 /**
@@ -77,6 +85,17 @@ const Input = React.forwardRef(function Input({ className = "", ...props }, ref)
       {...props}
     />
   );
+}
+function Badge({ className = "", children }) {
+  return <span className={cx("px-2 py-1 rounded-full text-xs font-extrabold", className)}>{children}</span>;
+}
+function Switch({ checked, onChange, id }) {
+  return (
+    <button
+      id={id}
+      role="switch"
+      aria-checked={!!checked}
+      onClick={() => onChange && onChange(!checked)}
 });
 
 const Badge = ({ className = "", children }) => (
@@ -150,19 +169,62 @@ const GALLERY_ALIASES = Array.from({ length: 15 }, (_, i) => i + 1).map((n) => [
 let __SOURCE_ORDER = new Map();
 
 const toSlug = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+const directDriveUrl = (id, resourceKey) => {
+  if (!id) return undefined;
+  const url = new URL("https://drive.google.com/uc");
+  url.searchParams.set("export", "view");
+  url.searchParams.set("id", id);
+  if (resourceKey) url.searchParams.set("resourcekey", resourceKey);
+  return url.toString();
+};
 function normalizeDriveUrl(url) {
   if (!url) return undefined;
+  const input = typeof url === "string" ? url.trim() : url;
+  if (!input) return undefined;
   try {
-    const u = new URL(url);
+    const u = new URL(input);
     if (u.hostname.includes("drive.google.com")) {
+      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = (m && m[1]) || u.searchParams.get("id") || u.searchParams.get("resid");
+      const resourceKey = u.searchParams.get("resourcekey") || undefined;
+      if (id) return directDriveUrl(id, resourceKey);
+      if (u.pathname.startsWith("/uc") && u.searchParams.get("id")) {
+        if (!u.searchParams.has("export")) {
+          u.searchParams.set("export", "view");
+        }
+        return u.toString();
+      }
+      if (u.pathname.startsWith("/thumbnail") && u.searchParams.get("id")) {
+        return directDriveUrl(u.searchParams.get("id"), resourceKey);
+      }
+    }
+    if (/^lh\d+\.googleusercontent\.com$/i.test(u.hostname)) {
+      return u.toString();
       const match = u.pathname.match(/\/file\/d\/([^/]+)/);
       const id = (match && match[1]) || u.searchParams.get("id");
       if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
     }
-    return url;
+    return input;
   } catch {
-    return url;
+    return input;
   }
+}
+
+function extractDriveImages(text) {
+  if (!text) return [];
+  const urls = new Set();
+  const patterns = [
+    /https?:\/\/[^\s"']*drive\.google\.com[^\s"']*/gi,
+    /https?:\/\/lh\d+\.googleusercontent\.com[^\s"']*/gi,
+  ];
+  patterns.forEach((regex) => {
+    const matches = text.match(regex) || [];
+    matches.forEach((raw) => {
+      const normalized = normalizeDriveUrl(raw);
+      if (normalized) urls.add(normalized);
+    });
+  });
+  return Array.from(urls);
 }
 function splitList(raw) {
   if (!raw) return [];
@@ -269,6 +331,21 @@ function rowToCharacter(row, map) {
   for (let i = 1; i <= 15; i++) {
     const url = read(`gallery_${i}`);
     if (url) char.gallery.push(normalizeDriveUrl(url));
+  }
+  const descImages = extractDriveImages([char.shortDesc, char.longDesc, (row.map((cell) => cell?.v || cell?.f || "") || []).join(" ")].join(" \n "));
+  const uniqueGallery = new Set(char.gallery.filter(Boolean));
+  if (!char.cover && descImages.length) {
+    char.cover = descImages[0];
+    uniqueGallery.add(descImages[0]);
+  }
+  descImages.forEach((img) => {
+    if (!uniqueGallery.has(img)) {
+      uniqueGallery.add(img);
+    }
+  });
+  char.gallery = Array.from(uniqueGallery);
+  if (char.cover) {
+    char.gallery = [char.cover, ...char.gallery.filter((img) => img !== char.cover)];
   }
   return char;
 }
@@ -385,6 +462,54 @@ function Aurora({ className = "" }) {
   );
 }
 
+// Upright heater shield insignia (interactive)
+function Insignia({ label, size = 48, variant = "character", expandableName }) {
+  const base = label || "Lore";
+  const initials =
+    base
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase())
+      .join("") || "LM";
+  const text = variant === "site" ? base.toUpperCase().slice(0, 4) : initials;
+  const fontSize = variant === "site" ? 14 : 20;
+  const letterSpacing = variant === "site" ? 2.4 : 0;
+  const hue = Math.abs([...base].reduce((a, c) => a + c.charCodeAt(0), 0)) % 360;
+  const g1 = `hsl(${hue},85%,65%)`;
+  const g2 = `hsl(${(hue + 50) % 360},85%,60%)`;
+  const topWidth = variant === "site" ? 40 : variant === "faction" ? 36 : 32;
+  return (
+    <div className="group inline-flex items-center gap-2">
+      <svg width={size} height={size} viewBox="0 0 64 64" className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)]">
+        <defs>
+          <linearGradient id={`g-${hue}`} x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor={g1} />
+            <stop offset="100%" stopColor={g2} />
+          </linearGradient>
+        </defs>
+        <path
+          d={`M32 6 C32 6 ${32 - topWidth / 2} 10 ${32 - topWidth / 2} 10 L ${32 + topWidth / 2} 10 C ${32 + topWidth / 2} 10 32 6 32 6 L 54 16 L 54 35 C 54 46 45 55 32 58 C 19 55 10 46 10 35 L 10 16 Z`}
+          fill={`url(#g-${hue})`}
+          stroke="rgba(255,255,255,.6)"
+          strokeWidth="1.2"
+        />
+        <text
+          x="32"
+          y={variant === "site" ? 36 : 38}
+          textAnchor="middle"
+          fontFamily="ui-sans-serif,system-ui"
+          fontWeight="900"
+          fontSize={fontSize}
+          fill="#fff"
+          style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,.6))", letterSpacing }}
+        >
+          {text}
+        </text>
+      </svg>
+      {expandableName && (
+        <div className="px-2 py-1 rounded-full bg-white text-black text-xs font-extrabold opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow">{expandableName}</div>
+      )}
+    </div>
 function Insignia({ label, size = 48, variant = "character" }) {
   const fallback = label || "Lore";
   const initials = fallback
@@ -435,6 +560,17 @@ function ImageSafe({ src, alt, className = "", fallbackLabel }) {
         <Insignia label={fallbackLabel} size={64} />
       </div>
     );
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setErr(true)}
+      className={className}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
+    />
+  );
   }
   return <img src={src} alt={alt} onError={() => setError(true)} className={className} loading="lazy" />;
 }
@@ -498,6 +634,13 @@ function CharacterCard({ c, onOpen, onFacet, onUseInSim, highlight }) {
           <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
             <div onClick={openProfile} className="cursor-pointer">
               <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
+            </div>
+            <motion.button
+              onClick={triggerSim}
+              whileTap={{ scale: 0.95 }}
+              className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-extrabold bg-amber-300 text-black shadow border border-black/10"
+              aria-label="Use in Simulator"
+              title="Load into Battle Arena"
             </div>
             <motion.button
               onClick={triggerSim}
@@ -654,6 +797,20 @@ function CharacterCard({ char, onOpen, onFacet, onUseInSim, highlight }) {
             </motion.button>
           </div>
         </div>
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-3">
+            <Insignia label={c.faction?.[0] || c.name} size={32} variant={c.faction?.length ? "faction" : "character"} />
+            <CardTitle role="button" onClick={openProfile} className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-amber-200">{c.name}</span>
+            </CardTitle>
+          </div>
+          <CardDescription className="line-clamp-2 font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {c.gender && <FacetChip onClick={() => onFacet({ key: "gender", value: c.gender })}>{c.gender}</FacetChip>}
+            {c.alignment && <FacetChip onClick={() => onFacet({ key: "alignment", value: c.alignment })}>{c.alignment}</FacetChip>}
+            {c.locations?.slice(0, 2).map((loc) => (
         <CardHeader className="space-y-2">
           <div className="flex items-center gap-3">
             <Insignia label={char.faction?.[0] || char.name} size={32} variant={char.faction?.length ? "faction" : "character"} />
@@ -676,6 +833,26 @@ function CharacterCard({ char, onOpen, onFacet, onUseInSim, highlight }) {
                 {loc}
               </FacetChip>
             ))}
+            {c.faction?.slice(0, 1).map((f) => (
+              <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
+                {f}
+              </FacetChip>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between">
+          <div className="w-full">
+            {c.powers?.slice(0, 1).map((p) => (
+              <div key={p.name} className="text-xs mb-1 flex items-center justify-between text-white font-bold">
+                <span className="truncate pr-2">{p.name}</span>
+                <span>{p.level}/10</span>
+              </div>
+            ))}
+            <PowerMeter level={c.powers?.[0]?.level ?? 0} />
+          </div>
+          <div className="flex gap-2 ml-3">
+            <Button variant="secondary" className="font-bold" onClick={openProfile}>
+              Read <ArrowRight className="ml-1" size={16} />
             {(char.faction || []).slice(0, 1).map((faction) => (
               <FacetChip key={faction} onClick={() => onFacet({ key: "faction", value: faction })}>
                 {faction}
@@ -887,6 +1064,72 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** -------------------- Filters & Search -------------------- */
+function matchesFilters(c, f, combineAND, query) {
+  const terms = (query || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const hay = [
+    c.name,
+    ...(c.alias || []),
+    ...((c.powers || []).map((p) => p.name) || []),
+    ...(c.locations || []),
+    ...(c.tags || []),
+    c.shortDesc || "",
+    c.longDesc || "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  const searchMatch = terms.every((t) => hay.includes(t));
+  const norm = (v) => (Array.isArray(v) ? v : v != null ? [v] : []);
+  const checks = [];
+  const _fg = norm(f.gender).map((x) => String(x).toLowerCase());
+  if (_fg.length) checks.push(_fg.includes(String(c.gender || "").toLowerCase()));
+  const _fa = norm(f.alignment).map((x) => String(x).toLowerCase());
+  if (_fa.length) checks.push(_fa.includes(String(c.alignment || "").toLowerCase()));
+  if (f.locations?.length) checks.push(f.locations.every((v) => (c.locations || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
+  if (f.faction?.length) checks.push(f.faction.every((v) => (c.faction || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
+  if (f.tags?.length) checks.push(f.tags.every((v) => (c.tags || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
+  if (f.era?.length) checks.push(f.era.some((v) => (c.era || "").toLowerCase() === v.toLowerCase()));
+  if (f.status?.length) checks.push(f.status.some((v) => (c.status || "").toLowerCase() === v.toLowerCase()));
+  if (f.stories?.length) checks.push(f.stories.every((v) => (c.stories || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
+  if (f.alias?.length) checks.push(f.alias.some((v) => (c.alias || []).map((x) => x.toLowerCase()).includes(v.toLowerCase())));
+  if (f.powers?.length) checks.push(f.powers.every((v) => (c.powers || []).map((p) => p.name.toLowerCase()).includes(v.toLowerCase())));
+  const filterMatch = combineAND ? checks.every(Boolean) : checks.some(Boolean) || Object.keys(f).length === 0;
+  return searchMatch && filterMatch;
+}
+
+/** -------------------- Featured Hero (manual, fixed height) -------------------- */
+function pickDaily(items, salt = "") {
+  if (!items.length) return null;
+  const d = todayKey();
+  const r = seededRandom(d + salt)();
+  return items[Math.floor(r * items.length)] ?? items[0];
+}
+function HeroSection({ data, onOpen, onFacet }) {
+  const character = useMemo(() => pickDaily(data, "char"), [data]);
+  const allFactions = useMemo(() => Array.from(new Set(data.flatMap((d) => d.faction || []))), [data]);
+  const allLocations = useMemo(() => Array.from(new Set(data.flatMap((d) => d.locations || []))), [data]);
+  const allPowers = useMemo(() => Array.from(new Set(data.flatMap((d) => d.powers.map((p) => p.name)))), [data]);
+  const faction = useMemo(() => pickDaily(allFactions, "faction"), [allFactions]);
+  const location = useMemo(() => pickDaily(allLocations, "location"), [allLocations]);
+  const power = useMemo(() => pickDaily(allPowers, "power"), [allPowers]);
+  const slides = [];
+  if (character) {
+    slides.push({
+      type: "Character",
+      onClick: () => onOpen(character),
+      content: (
+        <div className="grid h-72 grid-cols-1 gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <ImageSafe src={character.cover || character.gallery[0]} alt={character.name} fallbackLabel={character.name} className="h-72 w-full object-cover" />
+          <div className="flex flex-col gap-4 p-6 text-white">
+            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest">
+              <Clock size={14} /> Featured Character
             {!!(char.stories || []).length && (
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
@@ -901,103 +1144,344 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
                 </div>
               </div>
             </div>
-          ),
-        },
-      ]
-    : [])
-    .concat(
-      faction
-        ? [
-            {
-              type: "Faction",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(faction)} size={56} variant="faction" />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
-                      <div className="text-2xl font-extrabold">{String(faction)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "faction", value: String(faction) })} className="font-bold">
-                    View Members
+            <div className="text-2xl font-extrabold">{character.name}</div>
+            <div className="font-bold line-clamp-3 text-white/90">{character.shortDesc || character.longDesc}</div>
+            <div className="mt-auto space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen(character);
+                  }}
+                  className="bg-white text-black hover:bg-amber-200 px-3 py-1 text-[11px] uppercase tracking-[0.25em]"
+                >
+                  Character Profile
+                </Button>
+                {character.gender && (
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFacet({ key: "gender", value: character.gender });
+                    }}
+                    className="bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white hover:bg-white/25"
+                  >
+                    {character.gender}
                   </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      location
-        ? [
-            {
-              type: "Location",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(location)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
-                      <div className="text-2xl font-extrabold">{String(location)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "locations", value: String(location) })} className="font-bold">
-                    View Residents
+                )}
+                {(character.faction || []).map((f) => (
+                  <Button
+                    key={`f-${f}`}
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFacet({ key: "faction", value: f });
+                    }}
+                    className="bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white hover:bg-white/25"
+                  >
+                    {f}
                   </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      power
-        ? [
-            {
-              type: "Power",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(power)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
-                      <div className="text-2xl font-extrabold">{String(power)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "powers", value: String(power) })} className="font-bold">
-                    View Wielders
+                ))}
+                {(character.powers || []).map((p) => (
+                  <Button
+                    key={`p-${p.name}`}
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFacet({ key: "powers", value: p.name });
+                    }}
+                    className="bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white hover:bg-white/25"
+                  >
+                    {p.name}
                   </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    );
+                ))}
+              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">Click hero or buttons to explore</div>
+            </div>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (faction) {
+    slides.push({
+      type: "Faction",
+      onClick: () => onFacet({ key: "faction", value: String(faction) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(faction)} size={56} variant="faction" />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
+              <div className="text-2xl font-extrabold">{String(faction)}</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFacet({ key: "faction", value: String(faction) });
+              }}
+              className="bg-white text-black px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.3em]"
+            >
+              View Members
+            </Button>
+            <span>Click card for the same</span>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (location) {
+    slides.push({
+      type: "Location",
+      onClick: () => onFacet({ key: "locations", value: String(location) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(location)} size={56} />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
+              <div className="text-2xl font-extrabold">{String(location)}</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFacet({ key: "locations", value: String(location) });
+              }}
+              className="bg-white text-black px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.3em]"
+            >
+              View Residents
+            </Button>
+            <span>Click card to filter</span>
+          </div>
+        </div>
+      ),
+    });
+  }
+  if (power) {
+    slides.push({
+      type: "Power",
+      onClick: () => onFacet({ key: "powers", value: String(power) }),
+      content: (
+        <div className="flex h-72 items-center justify-between gap-6 p-6 text-white">
+          <div className="flex items-center gap-4">
+            <Insignia label={String(power)} size={56} />
+            <div>
+              <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
+              <div className="text-2xl font-extrabold">{String(power)}</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFacet({ key: "powers", value: String(power) });
+              }}
+              className="bg-white text-black px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.3em]"
+            >
+              See Wielders
+            </Button>
+            <span>Click card to explore</span>
+          </div>
+        </div>
+      ),
+    });
+  }
   const [idx, setIdx] = useState(0);
-  const handleKey = (e) => {
-    if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
-    if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
-  };
+  const activeRef = useRef(null);
   useEffect(() => {
+    if (!slides.length) return undefined;
+    const handleKey = (e) => {
+      if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
+      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
+      if ((e.key === "Enter" || e.key === " ") && document.activeElement === activeRef.current) {
+        e.preventDefault();
+        slides[idx].onClick?.();
+      }
+    };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [slides.length]);
+  }, [slides.length, idx, slides]);
+  useEffect(() => {
+    if (idx >= slides.length) setIdx(0);
+  }, [slides.length, idx]);
   if (!slides.length) return null;
+  const activeSlide = slides[idx];
   return (
-    <Card className="bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 border-white/20 backdrop-blur-xl overflow-hidden text-white">
+    <Card className="overflow-hidden border-white/20 bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 text-white backdrop-blur-xl">
       <div className="flex items-center justify-between px-4 pt-3">
+        <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-[0.35em]">
         <div className="flex items-center gap-2 text-sm font-extrabold tracking-[0.35em] uppercase">
           <Sparkles size={16} /> Today’s Featured
         </div>
         <div className="flex gap-2 text-xs font-bold">
-          <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
+          <span>{activeSlide.type}</span> <span>•</span> <span>{todayKey()}</span>
         </div>
       </div>
+      <div className="relative border-t border-white/10">
+        <div
+          role="button"
+          tabIndex={0}
+          ref={activeRef}
+          onClick={() => activeSlide.onClick?.()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              activeSlide.onClick?.();
+            }
+          }}
+          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+        >
+          {activeSlide.content}
+        </div>
+        <button
+          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur"
+          onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)}
+          aria-label="Previous"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <button
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur"
+          onClick={() => setIdx((i) => (i + 1) % slides.length)}
+          aria-label="Next"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+/** -------------------- Story Chips -------------------- */
+function StoryChips({ data, onFacet }) {
+  const top = useMemo(() => {
+    const f = new Map();
+    for (const c of data) (c.stories || []).forEach((s) => f.set(s, (f.get(s) || 0) + 1));
+    return Array.from(f.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([k]) => k);
+  }, [data]);
+  if (!top.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {top.map((s) => (
+        <FacetChip key={s} onClick={() => onFacet({ key: "stories", value: s })}>
+          {s}
+        </FacetChip>
+      ))}
     </div>
   );
 }
 
+const HEADER_NAV = [
+  { label: "Home", href: "/" },
+  { label: "Biography", href: "/#bio" },
+  { label: "AI Consultancy", href: "https://icuni.co.uk", external: true },
+  { label: "Blog", href: "/#blog" },
+  { label: "Lore", href: "/loremaker" },
+];
+
+const SITE_MENU = [
+  { label: "Home", description: "Return to the mothership", href: "/", icon: Home },
+  { label: "Biography", description: "Meet Menelek Makonnen", href: "/#bio", icon: BookOpen },
+  { label: "AI Consultancy", description: "ICUNI — intelligence crafted", href: "https://icuni.co.uk", icon: Cpu, external: true },
+  { label: "Blog", description: "Latest essays and updates", href: "/#blog", icon: Newspaper },
+  { label: "Loremaker Database", description: "Dive deeper into the universe", href: "/loremaker", icon: Sparkles },
+];
+
+const SITE_SOCIALS = [
+  { label: "Instagram", href: "https://instagram.com/menelek.makonnen", icon: Instagram },
+  { label: "YouTube", href: "https://youtube.com/@director_menelek", icon: Youtube },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/menelekmakonnen/", icon: Linkedin },
+  { label: "Email", href: "mailto:admin@menelekmakonnen.com", icon: Mail },
+];
+
+function SiteMenuSection() {
+  return (
+    <section className="mt-12">
+      <div className="rounded-3xl border border-white/15 bg-white/5 p-6 backdrop-blur">
+        <div className="mb-4 flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.35em] text-white/70">
+          <Sparkles size={14} /> Main Navigation
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {SITE_MENU.map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noreferrer" : undefined}
+                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-white transition hover:-translate-y-1 hover:border-amber-300/50 hover:bg-black/55"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-amber-200">
+                    <Icon size={20} />
+                  </span>
+                  <div>
+                    <div className="text-sm font-black tracking-tight text-white">{item.label}</div>
+                    <div className="text-xs text-white/70">{item.description}</div>
+                  </div>
+                </div>
+                {item.external ? (
+                  <ExternalLink size={16} className="text-white/60 group-hover:text-amber-200" />
+                ) : (
+                  <ArrowRight size={16} className="text-white/40 group-hover:text-amber-200" />
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SiteFooter() {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="mt-16 border-t border-white/10 bg-black/35 backdrop-blur">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 md:grid-cols-3">
+        <div>
+          <div className="text-lg font-semibold text-white">Menelek Makonnen</div>
+          <div className="text-sm text-white/70">Filmmaker • Worldbuilder</div>
+          <div className="mt-4 flex flex-wrap gap-4 text-white/80">
+            {SITE_SOCIALS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target={item.href.startsWith("http") ? "_blank" : undefined}
+                  rel={item.href.startsWith("http") ? "noreferrer" : undefined}
+                  className="inline-flex items-center gap-2 hover:text-white"
+                >
+                  <Icon size={16} /> {item.label}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+        <div className="md:col-span-2 text-sm text-white/60">
+          <p>© {year} Loremaker • ICUNI. All rights reserved.</p>
+          <p className="mt-2 text-white/50">
+            Curated with the same palette as the main site so you can traverse Menelek’s worlds without losing your bearings.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/** -------------------- Infinite Grid -------------------- */
 const PAGE_SIZE = 24;
 function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
   const [page, setPage] = useState(1);
@@ -1274,6 +1758,82 @@ function ArenaCard({ char, position, onRelease, onOpen, health, isWinner, showX 
   );
 }
 
+// Animated Lore shield with dramatic plasma aura
+function LoreGlyph({ onRefresh }) {
+  const [seed] = useState(() => Math.floor(Math.random() * 1000));
+  const hue = (seed * 47) % 360;
+  return (
+    <motion.button
+      type="button"
+      onClick={onRefresh}
+      whileTap={{ scale: 0.95, rotate: [-3, 3, 0] }}
+      animate={{ rotate: [0, -3, 2, -1, 0], scale: [1, 1.04, 1], filter: [
+        "drop-shadow(0 0 18px rgba(255,255,255,0.35))",
+        `drop-shadow(0 0 28px hsla(${hue},100%,65%,0.75))`,
+        "drop-shadow(0 0 18px rgba(255,255,255,0.35))",
+      ] }}
+      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+      className="relative grid h-14 w-14 place-items-center overflow-visible"
+      title="Refresh Lore data"
+      aria-label="Refresh Lore data"
+    >
+      <motion.span
+        className="absolute inset-0 -z-10 rounded-[1.35rem] bg-gradient-to-br from-indigo-500/60 via-fuchsia-400/55 to-amber-300/55 blur-lg"
+        animate={{ opacity: [0.55, 0.9, 0.55], scale: [1, 1.18, 1] }}
+        transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+      />
+      <motion.span
+        className="absolute -inset-2 -z-20 rounded-[1.6rem] bg-gradient-to-tr from-white/10 via-transparent to-white/10"
+        animate={{ rotate: [0, 180, 360] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+      />
+      <Insignia label="LORE" size={56} variant="site" />
+      <motion.span
+        className="absolute -bottom-2 right-0 text-amber-200"
+        animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.1, 0.8] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Sparkles size={16} />
+      </motion.span>
+    </motion.button>
+  );
+}
+
+function TopNavigation({ onRefresh }) {
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/60 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:flex-nowrap">
+        <div className="flex items-center gap-3">
+          <LoreGlyph onRefresh={onRefresh} />
+          <div className="hidden sm:flex flex-col leading-tight">
+            <span className="text-[10px] uppercase tracking-[0.4em] text-white/60">Menelek Makonnen</span>
+            <span className="text-sm font-semibold text-white">Lore Division</span>
+          </div>
+        </div>
+        <nav className="ml-auto flex w-full items-center justify-end gap-4 overflow-x-auto text-[11px] font-semibold uppercase tracking-[0.35em] text-white/70 sm:w-auto sm:text-xs md:text-sm md:tracking-[0.3em]">
+          {HEADER_NAV.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noreferrer" : undefined}
+              className="relative whitespace-nowrap transition hover:text-white after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-amber-300 after:transition-transform hover:after:scale-x-100"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+/** Filters Drawer */
+function FiltersDrawer({ open, onClose, values, filters, setFilters, combineAND, setCombineAND }) {
+  if (!open) return null;
+  const toggle = (key, value) => {
+    setFilters((f) => {
+      const set = new Set([...(f[key] || [])]);
 const swordVariants = {
   idle: { rotate: 0, scale: 1, filter: "drop-shadow(0 0 0 rgba(255,255,255,0))" },
   charging: { rotate: [0, -5, 5, -8, 8, 0], scale: 1.05, filter: "drop-shadow(0 0 25px rgba(249,250,139,0.9))" },
@@ -1499,6 +2059,22 @@ function SidebarFilters({ data, filters, setFilters, combineAND, setCombineAND, 
         <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
           <Filter className="text-amber-300" /> Filters
         </div>
+        <div className="mb-5 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-white/70">
+          <span>Mode</span>
+          <div className="flex items-center gap-2 normal-case">
+            <Badge className="bg-white/15 border border-white/25 text-[10px]">{combineAND ? "AND" : "Single"}</Badge>
+            <Switch id="and-mode" checked={combineAND} onChange={setCombineAND} />
+          </div>
+        </div>
+        <div className="space-y-5">
+          {values.gender.length > 0 && <Section title="Gender" keyName="gender" items={values.gender} />}
+          {values.alignment.length > 0 && <Section title="Alignment" keyName="alignment" items={values.alignment} />}
+          {values.faction.length > 0 && <Section title="Faction" keyName="faction" items={values.faction} />}
+          {values.locations.length > 0 && <Section title="Locations" keyName="locations" items={values.locations} />}
+          {values.era.length > 0 && <Section title="Era" keyName="era" items={values.era} />}
+          {values.status.length > 0 && <Section title="Status" keyName="status" items={values.status} />}
+          {values.tags.length > 0 && <Section title="Tags" keyName="tags" items={values.tags} />}
+          {values.powers.length > 0 && <Section title="Powers" keyName="powers" items={values.powers} />}
         <div className="flex items-center gap-2 text-xs">
           <span className="font-bold uppercase tracking-wide">Mode</span>
           <Badge className="bg-white/10 text-white/80">{combineAND ? "AND" : "Blend"}</Badge>
@@ -1617,12 +2193,65 @@ function ChatWidget() {
   );
 }
 
+function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onToggleArena, arenaVisible }) {
+  const options = [
+    { id: "default", label: "Default" },
+    { id: "random", label: "Random" },
+    { id: "faction", label: "By Faction" },
+    { id: "az", label: "A-Z" },
+    { id: "za", label: "Z-A" },
+    { id: "most", label: "From Most Powerful" },
+    { id: "least", label: "From Least Powerful" },
+  ];
 function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onClear, onJumpArena }) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex-1">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters, powers, locations…" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search characters, powers, locations…"
+        />
       </div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end md:gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setSortMode(opt.id)}
+              aria-pressed={sortMode === opt.id}
+              className={cx(
+                "rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wide transition",
+                sortMode === opt.id
+                  ? "bg-gradient-to-r from-amber-300 via-rose-300 to-fuchsia-300 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] border-amber-100"
+                  : "border-white/25 bg-white/10 text-white/80 hover:bg-white/15"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+          <Button
+            variant="ghost"
+            onClick={() => setOpenFilters(true)}
+            className="font-black border border-amber-200 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 text-black shadow-[0_0_22px_rgba(251,191,36,0.45)] hover:bg-amber-200 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)]"
+          >
+            <Filter className="mr-1" size={16} /> Filters
+          </Button>
+          <Button variant="ghost" onClick={onClear} className="font-bold">
+            Clear
+          </Button>
+          <Button
+            variant={arenaVisible ? "secondary" : "ghost"}
+            onClick={onToggleArena}
+            className={cx("font-bold", arenaVisible ? "bg-emerald-400 text-black" : "border border-white/40 text-white/90 hover:bg-white/10")}
+          >
+            Arena
+            <Badge className={cx("ml-2 text-[10px]", arenaVisible ? "bg-black/80 text-emerald-300" : "bg-white/15 text-white/70 border border-white/30")}>{arenaVisible ? "On" : "Off"}</Badge>
+          </Button>
+        </div>
       <div className="flex items-center gap-2">
         <select
           value={sortMode}
@@ -1665,7 +2294,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
   const originRight = right ? powerOriginProfile(right) : null;
 
   useEffect(() => {
-    if (selectedIds.length) {
+    if (selectedIds.some(Boolean)) {
       setShake(true);
       const t = setTimeout(() => setShake(false), 500);
       return () => clearTimeout(t);
@@ -1678,6 +2307,40 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     const t = setTimeout(() => setShake(false), 600);
     return () => clearTimeout(t);
   }, [pulse]);
+
+  const setSlotValue = (side, value) => {
+    setSelectedIds((ids) => {
+      const next = Array.isArray(ids) && ids.length === 2 ? [...ids] : [ids[0] || null, ids[1] || null];
+      next[side === "left" ? 0 : 1] = value;
+      return next;
+    });
+  };
+
+  const release = (side) => {
+    setSlotValue(side, null);
+    setBattle(null);
+    setWinner(null);
+    setLoser(null);
+    setLoserMark(false);
+    setPhase(-1);
+    setHp((prev) => ({ ...prev, [side]: 100 }));
+  };
+
+  const randomiseCharacter = (side) => {
+    if (!data.length) return;
+    const otherId = side === "left" ? selectedIds[1] : selectedIds[0];
+    const currentId = side === "left" ? selectedIds[0] : selectedIds[1];
+    const pool = data.filter((c) => c.id !== otherId && c.id !== currentId);
+    const candidates = pool.length ? pool : data.filter((c) => c.id !== otherId);
+    if (!candidates.length) return;
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    setSlotValue(side, pick.id);
+    setHp((prev) => ({ ...prev, [side]: 100 }));
+    setWinner(null);
+    setLoser(null);
+    setLoserMark(false);
+    setBattle(null);
+    setPhase(-1);
 
 export default function LoremakerApp() {
   const { data, loading, error, refetch } = useCharacters();
@@ -1852,6 +2515,31 @@ export default function LoremakerApp() {
     </div>
   );
 
+  const Slot = ({ label, side, character, health, origin }) => {
+    if (!character)
+      return (
+        <div className="flex min-h-[16rem] flex-col gap-3 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/70 md:p-6">
+          <div className="font-extrabold uppercase tracking-widest text-white/60">{label}</div>
+          <div>Summon a character from the roster or let the arena pick one for you.</div>
+          <Button variant="secondary" onClick={() => randomiseCharacter(side)} className="font-black">
+            Random Character
+          </Button>
+        </div>
+      );
+    const isWinner = winner?.id === character.id;
+    const isLoser = loser?.id === character.id;
+    return (
+      <motion.div
+        animate={isWinner ? { scale: 1.05 } : { scale: 1 }}
+        transition={{ type: "spring", stiffness: 220, damping: 18 }}
+        className={cx(
+          "relative rounded-2xl border border-white/15 bg-white/5 p-3 md:min-h-[20rem] md:p-5",
+          isWinner ? "shadow-[0_0_30px_rgba(251,191,36,0.35)]" : ""
+        )}
+      >
+        <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/70">
+          <span>{label}</span>
+          <span>{origin?.label || "Origin"}</span>
   const Slot = ({ label, character, health, origin }) => {
     if (!character)
       return (
@@ -1944,8 +2632,80 @@ export default function LoremakerApp() {
             {animating ? "Simulating…" : "Fight"}
           </Button>
         </div>
-      </div>
+        <div className="overflow-hidden rounded-xl border border-white/15">
+          <ImageSafe
+            src={character.cover || character.gallery?.[0]}
+            alt={character.name}
+            fallbackLabel={character.name}
+            className="h-36 w-full object-cover md:h-44"
+          />
+          <AnimatePresence>
+            {loserMark && isLoser && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 flex items-center justify-center bg-red-600/40"
+              >
+                <span className="text-4xl font-black text-red-200">✕</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="text-sm font-extrabold">{character.name}</div>
+          <Badge className="bg-white/10 border border-white/20 text-[10px]">
+            {origin?.label || "Unknown"}
+          </Badge>
+        </div>
+        <div className="mt-2">
+          <HealthBar value={health} />
+        </div>
+        <div className="mt-2 text-[12px] text-white/80">
+          {character.shortDesc || character.longDesc}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button variant="ghost" onClick={() => onOpen(character)}>
+            Read More
+          </Button>
+          <Button variant="outline" onClick={() => release(side)}>
+            Release
+          </Button>
+          <Button variant="ghost" onClick={() => randomiseCharacter(side)}>
+            Random Character
+          </Button>
+        </div>
+        <div className="mt-3">
+          <StatBlock c={character} />
+        </div>
+      </motion.div>
+    );
+  };
 
+  return (
+    <Card
+      className={cx(
+        "mt-6 bg-white/5 p-4 text-white backdrop-blur-xl md:p-6",
+        shake || pulse ? "ring-2 ring-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.25)]" : "",
+        animating ? "animate-[pulse_2s_ease-in-out_infinite]" : ""
+      )}
+    >
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Swords />
+            <div className="text-lg font-black tracking-tight">Battle Arena</div>
+            <Badge className="bg-amber-300 text-black">Live</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={runFight} disabled={!canFight} className="font-black">
+              {animating ? "Simulating…" : "Fight"}
+            </Button>
+          </div>
+        </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1.2fr)] md:items-stretch">
+        <Slot label="Character One" side="left" character={left} health={hp.left} origin={originLeft} />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
         <Slot label="Fighter A" character={left} health={hp.left} origin={originLeft} />
         <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden">
@@ -1985,6 +2745,12 @@ export default function LoremakerApp() {
             </div>
           )}
           {winner && (
+            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-400 shadow-lg">
+              Champion: {winner.name}
+            </div>
+          )}
+        </div>
+        <Slot label="Character Two" side="right" character={right} health={hp.right} origin={originRight} />
             <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-200 shadow-lg">
               {winner.name}
             </div>
@@ -2153,6 +2919,10 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(null);
   const [sortMode, setSortMode] = useState("default");
+  const [selectedIds, setSelectedIds] = useState([null, null]);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const [arenaPulse, setArenaPulse] = useState(false);
+  const [arenaVisible, setArenaVisible] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
   const [highlightedId, setHighlightedId] = useState(null);
   const [arenaPulse, setArenaPulse] = useState(false);
@@ -2163,14 +2933,20 @@ export default function App() {
   // if both slots full and user adds a third, replace the oldest
   const onUseInSim = (id) => {
     setSelectedIds((ids) => {
-      if (ids.includes(id)) return ids;
-      if (ids.length < 2) return [...ids, id];
-      return [ids[1], id]; // replace oldest
+      const next = Array.isArray(ids) && ids.length === 2 ? [...ids] : [ids[0] || null, ids[1] || null];
+      if (next.includes(id)) return next;
+      const emptyIdx = next.findIndex((slot) => !slot);
+      if (emptyIdx !== -1) {
+        next[emptyIdx] = id;
+        return next;
+      }
+      return [next[1], id];
     });
     setHighlightedId(id);
     setArenaPulse(true);
     setTimeout(() => setHighlightedId(null), 900);
     setTimeout(() => setArenaPulse(false), 900);
+    setArenaVisible(true);
     // scroll to arena
     const anchor = document.getElementById("arena-anchor");
     if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2227,9 +3003,46 @@ export default function App() {
     }).catch(() => {});
   }, [data.length]);
 
+  useEffect(() => {
+    if (visitTracked.current) return;
+    if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
+    if (!data.length) return;
+    visitTracked.current = true;
+    fetch(TRACK_VISIT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        characters: data.length,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }, [data.length]);
+
   return (
     <div className="relative min-h-screen bg-[#070813] text-white">
       <Aurora />
+      <TopNavigation onRefresh={refetch} />
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") window.location.href = "/loremaker";
+              }}
+              className="text-left text-2xl md:text-3xl font-black tracking-tight text-white transition hover:text-amber-200"
+            >
+              Loremaker Universe
+            </button>
+            <p className="max-w-2xl text-sm leading-relaxed text-white/80">
+              Explore every storyline, faction, and mythic ability woven through Menelek Makonnen’s expanding cosmos. Filter the archive, dive into detailed dossiers, and summon characters into the Arena.
+            </p>
+          </div>
+          <div className="flex items-end gap-3">
+            <Badge className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.3em] text-white/80">
+              {data.length ? `${data.length} Characters` : "Loading roster"}
+            </Badge>
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -2269,6 +3082,19 @@ export default function App() {
 
         {/* Arena pinned right under Hero */}
         <div id="arena-anchor">
+          <AnimatePresence>
+            {arenaVisible && (
+              <motion.div
+                key="arena"
+                initial={{ opacity: 0, y: -18 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -18 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
         </div>
 
@@ -2280,7 +3106,8 @@ export default function App() {
             sortMode={sortMode}
             setSortMode={setSortMode}
             onClear={clearAll}
-            onJumpArena={() => document.getElementById("arena-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onToggleArena={() => setArenaVisible((v) => !v)}
+            arenaVisible={arenaVisible}
           />
         </div>
 
@@ -2300,6 +3127,8 @@ export default function App() {
             highlightId={highlightedId}
           />
         </div>
+
+        <SiteMenuSection />
       </div>
 
         <CharacterGrid
@@ -2311,6 +3140,11 @@ export default function App() {
         />
       </main>
 
+      <FiltersDrawer open={openFilters} onClose={() => setOpenFilters(false)} values={allValues} filters={filters} setFilters={setFilters} combineAND={combineAND} setCombineAND={setCombineAND} />
+
+      <BackToTop />
+      <ChatDock />
+      <SiteFooter />
       <CharacterModal
         open={openModal}
         onClose={closeCharacter}
