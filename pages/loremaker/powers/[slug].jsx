@@ -1,0 +1,112 @@
+import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import LoreLayout from "../../../components/LoreLayout";
+import { loadCharacters, toSlug } from "../../../lib/loremaker-data";
+
+function CharacterPowerSummary({ character, power }) {
+  return (
+    <Link
+      href={`/loremaker/${character.slug}`}
+      className="group flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-white/30 transition"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-lg font-semibold text-white group-hover:text-amber-200 transition">{character.name}</div>
+          <div className="text-xs text-white/60">{character.faction?.[0] || character.era || ""}</div>
+        </div>
+        <div className="text-sm font-semibold text-white/70">Level {power.level}/10</div>
+      </div>
+      <p className="text-sm text-white/70 line-clamp-3">{character.shortDesc || character.longDesc || "No summary yet."}</p>
+      <div className="flex flex-wrap gap-2 text-xs text-white/60">
+        {(character.tags || []).slice(0, 3).map((tag) => (
+          <span key={tag} className="px-2 py-1 rounded-full bg-white/10 border border-white/10">
+            {tag}
+          </span>
+        ))}
+      </div>
+    </Link>
+  );
+}
+
+export default function PowerDetail() {
+  const router = useRouter();
+  const { slug } = router.query;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [entries, setEntries] = useState([]);
+
+  useEffect(() => {
+    if (!slug) return;
+    let mounted = true;
+    const run = async () => {
+      setLoading(true);
+      const { data, error: fetchError } = await loadCharacters();
+      if (!mounted) return;
+      if (fetchError) setError(fetchError);
+      const matches = [];
+      data.forEach((c) => {
+        (c.powers || []).forEach((p) => {
+          if (toSlug(p.name) === slug) matches.push({ character: c, power: p });
+        });
+      });
+      if (!matches.length) setError("Power not found");
+      setEntries(matches);
+      setLoading(false);
+    };
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, [slug]);
+
+  const powerName = entries[0]?.power?.name || (slug ? slug.replace(/-/g, " ") : "Power");
+  const averageLevel = useMemo(() => {
+    if (!entries.length) return null;
+    const total = entries.reduce((sum, entry) => sum + (entry.power.level || 0), 0);
+    return Math.round((total / entries.length) * 10) / 10;
+  }, [entries]);
+
+  return (
+    <LoreLayout>
+      <Head>
+        <title>{powerName} • Loremaker Power</title>
+      </Head>
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#111a2c] via-[#05070d] to-[#0a0c16]" />
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <Link href="/loremaker" className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-semibold">
+            <ArrowLeft className="h-4 w-4" /> Back to Lore index
+          </Link>
+
+          {loading ? (
+            <div className="mt-16 text-white/70 font-semibold">Loading power…</div>
+          ) : error && !entries.length ? (
+            <div className="mt-16 text-white/70 font-semibold">{error}</div>
+          ) : (
+            <div className="mt-10 space-y-10">
+              <div className="max-w-3xl space-y-4">
+                <div className="text-white/60 uppercase tracking-[0.35em] text-xs">Lore Ability</div>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white drop-shadow-[0_6px_25px_rgba(9,12,22,0.35)]">
+                  {powerName}
+                </h1>
+                <p className="text-white/75 text-lg">
+                  {entries.length} character{entries.length === 1 ? "" : "s"} • Average mastery {averageLevel ?? "—"}/10.
+                </p>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2">
+                {entries.map(({ character, power }) => (
+                  <CharacterPowerSummary key={`${character.id}-${power.name}`} character={character} power={power} />
+                ))}
+                {!entries.length && <div className="text-white/60">No characters listed with this power yet.</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </LoreLayout>
+  );
+}
