@@ -832,51 +832,53 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 
         {/* Y‑axis phases with draggable bars (overlap allowed after user edits) */}
         <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => (
-            <div key={p.key} className="flex items-center gap-3">
-              <div className="w-40 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-9 flex-1">
-                {/* grid background same as header for visual alignment */}
-                <div
-                  className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-                  style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-                />
-                {/* bar */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 h-7 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
-                  style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}
-                >
-                  {/* move handle (center) */}
+          {phases.map((p, idx) => {
+            return (
+              <div key={p.key} className="flex items-center gap-3">
+                <div className="w-40 shrink-0 text-[13px] text-white/80">{p.label}</div>
+                <div className="relative h-9 flex-1">
+                  {/* grid background same as header for visual alignment */}
                   <div
-                    className="absolute inset-0 cursor-grab active:cursor-grabbing"
-                    onPointerDown={(e) => onPointerDown(e, idx, "move")}
-                    title="Drag to move"
+                    className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
+                    style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
                   />
-                  {/* left resize */}
+                  {/* bar */}
                   <div
-                    className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e) => onPointerDown(e, idx, "left")}
-                    title="Drag to adjust start"
+                    className="absolute top-1/2 -translate-y-1/2 h-7 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+                    style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}
                   >
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
-                  </div>
-                  {/* right resize */}
-                  <div
-                    className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
-                    onPointerDown={(e) => onPointerDown(e, idx, "right")}
-                    title="Drag to adjust end"
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
-                  </div>
+                    {/* move handle (center) */}
+                    <div
+                      className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                      onPointerDown={(e) => onPointerDown(e, idx, "move")}
+                      title="Drag to move"
+                    />
+                    {/* left resize */}
+                    <div
+                      className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
+                      onPointerDown={(e) => onPointerDown(e, idx, "left")}
+                      title="Drag to adjust start"
+                    >
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
+                    </div>
+                    {/* right resize */}
+                    <div
+                      className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
+                      onPointerDown={(e) => onPointerDown(e, idx, "right")}
+                      title="Drag to adjust end"
+                    >
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
+                    </div>
 
-                  {/* duration label */}
-                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks * 10) / 10}w</div>
+                    {/* duration label */}
+                    <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                      <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks * 10) / 10}w</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases (Start‑to‑Start, etc.). Bars snap by <b>day</b>. Use the Total slider to expand/contract the full calendar.</div>
