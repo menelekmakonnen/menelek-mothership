@@ -17,6 +17,10 @@ import {
   Info,
   ArrowUp,
   MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Minimize2,
 } from "lucide-react";
 
 /**
@@ -56,8 +60,95 @@ const LINKS = {
 const SHEETS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
 
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  track: ["/webhook/track-visit", "/webhook-test/track-visit"],
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+};
+
+const MMM_REELS = {
+  "Epic Edits": [
+    "https://www.instagram.com/p/DMKpVGwoOC2/",
+    "https://www.instagram.com/p/C7TX-jlqQFB/",
+    "https://www.instagram.com/reel/C8rQp-kq5PG/",
+    "https://www.instagram.com/reel/C8kNL16KIZc/",
+    "https://www.instagram.com/reel/C8z0DAtKq8B/",
+    "https://www.instagram.com/reel/DFPiXCOo220/",
+    "https://www.instagram.com/reel/CIDASf-n6mv/",
+  ],
+  "Beauty & Travel": [
+    "https://www.instagram.com/reel/C6YtlD2Kbd6/",
+    "https://www.instagram.com/reel/C3sDA4AqP5z/",
+    "https://www.instagram.com/reel/C-VzUiFqfkm/",
+    "https://www.instagram.com/reel/DIx8Dkao7wR/",
+    "https://www.instagram.com/reel/DJZC9tpIIOF/",
+    "https://www.instagram.com/reel/DEPpHmFIGAl/",
+    "https://www.instagram.com/reel/DLfna4ao-z-/",
+    "https://www.instagram.com/reel/C7BdCzwqgKo/",
+    "https://www.instagram.com/reel/C6JjwNGIKni/",
+    "https://www.instagram.com/reel/C5N9JhvK9to/",
+    "https://www.instagram.com/reel/C4yA5RKK0zg/",
+    "https://www.instagram.com/reel/C4YBtJdqoWr/",
+    "https://www.instagram.com/reel/C4LBUi7K9wr/",
+    "https://www.instagram.com/reel/C3igTEsqyam/",
+    "https://www.instagram.com/reel/DLDh5OUt9mQ/",
+    "https://www.instagram.com/reel/DKZRaYntlpH/",
+    "https://www.instagram.com/reel/DGwLruRtP9F/",
+    "https://www.instagram.com/reel/C5BqJyMKBeD/",
+    "https://www.instagram.com/reel/C1ZHmHbKt4u/",
+  ],
+  BTS: [
+    "https://www.instagram.com/reel/CthPmc7OKK5/",
+    "https://www.instagram.com/reel/CtjWyXJNxwY/",
+    "https://www.instagram.com/reel/Ctlc7--veax/",
+    "https://www.instagram.com/reel/Ctn4hRENjQW/",
+    "https://www.instagram.com/reel/Cttvmy2AdWU/",
+    "https://www.instagram.com/reel/Cue_nHag-QS/",
+    "https://www.instagram.com/reel/CuhtdZYMwWj/",
+    "https://www.instagram.com/reel/C69G68OPF5N/",
+    "https://www.instagram.com/reel/C7KeP-sIHBk/",
+    "https://www.instagram.com/reel/DFNRIRqoFH_/",
+    "https://www.instagram.com/reel/DFPiY-Do1z0/",
+  ],
+  "AI & Learning": [
+    "https://www.instagram.com/reel/DK1bY8couuK/",
+    "https://www.instagram.com/reel/DK4gIZtNB-U/",
+    "https://www.instagram.com/reel/DIvxSY9tQio/",
+    "https://www.instagram.com/reel/DLAbo5mtbC2/",
+    "https://www.instagram.com/reel/C5oZNM5KF77/",
+    "https://www.instagram.com/reel/C5fciTUqXBR/",
+    "https://www.instagram.com/reel/C5c74nYKdI2/",
+    "https://www.instagram.com/reel/DMzghyEtXu1/",
+  ],
+};
+
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
+
+async function postJSONWithFallback(paths, payload) {
+  for (const path of paths) {
+    try {
+      const response = await fetch(`${CHATBOT_BASE_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) continue;
+      try {
+        return await response.json();
+      } catch (error) {
+        return {};
+      }
+    } catch (error) {
+      console.warn("Request failed", path, error);
+    }
+  }
+  throw new Error("All endpoints failed");
+}
+
+const uniqueId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 
 function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
   const palettes = {
@@ -179,11 +270,14 @@ function DiamondsCanvas({ className }) {
 
     scale();
 
-    const cell = 10; // density
+    const cell = 10;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.02; // darker default
-    const auraR = 95; // hover radius
-    const size = 2.1;
+    const baseAlpha = 0.08;
+    const auraR = 110;
+    const size = 3.5;
+    const baseGlow = 0.12;
+
+    console.debug("DiamondsCanvas", canvas.offsetWidth, canvas.offsetHeight);
 
     const draw = () => {
       const w = canvas.offsetWidth;
@@ -227,7 +321,7 @@ function DiamondsCanvas({ className }) {
           ctx.fillStyle = `rgba(255,255,255,${baseAlpha})`;
           ctx.fillRect(-size / 2, -size / 2, size, size);
 
-          const a = Math.min(0.6, hoverK * 0.5 + clickGlow * 0.85);
+          const a = Math.min(0.75, baseGlow + hoverK * 0.5 + clickGlow * 0.85);
           if (a > 0) {
             const grad = ctx.createRadialGradient(0, 0, 0.2, 0, 0, 10);
             grad.addColorStop(0, `rgba(255,255,255,${a})`);
@@ -326,46 +420,168 @@ function ShimmerTitle({ children }) {
 }
 
 function Hero({ onWatch, onOpenLinksModal }) {
-  const [imgOk, setImgOk] = useState(true);
+  const slides = useMemo(
+    () =>
+      PROJECTS.slice(0, 4).map((project) => ({
+        id: project.id,
+        title: project.title,
+        caption: project.summary,
+        credit: `${project.role} • ${project.runtime}`,
+        url: project.url,
+        thumb: youtubeThumb(project.url),
+      })),
+    [],
+  );
+
+  const [index, setIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!slides.length) return undefined;
+    const timer = setInterval(() => {
+      setIndex((value) => (value + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  useEffect(() => {
+    setLoading(true);
+  }, [index]);
+
+  const goPrev = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
+  const goNext = () => setIndex((value) => (value + 1) % slides.length);
+
+  const slide = slides[index];
+
+  const openSlide = () => {
+    if (slide?.url) window.open(slide.url, "_blank", "noopener,noreferrer");
+  };
+
   return (
-    <section className="relative pt-24 pb-10">
-      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
+    <section className="relative pt-24 pb-14">
+      <DiamondsCanvas className="opacity-90" />
+      <div className="relative max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
         <div>
           <ShimmerTitle>Menelek Makonnen</ShimmerTitle>
-          <div className="mt-2 text-xl text-white/80 select-none">
+          <div className="mt-2 text-xl text-white/85 select-none">
             <span className="group inline-block mr-2">
-              <motion.span whileHover={{ letterSpacing: 2, scale: 1.02 }} className="transition-all">Worldbuilder.</motion.span>
-              <span className="block h-[2px] w-0 bg-white/30 group-hover:w-full transition-all"></span>
+              <motion.span whileHover={{ letterSpacing: 2, scale: 1.02 }} className="transition-all">
+                Worldbuilder.
+              </motion.span>
+              <span className="block h-[2px] w-0 bg-white/30 group-hover:w-full transition-all" />
             </span>
             <span className="group inline-block mr-2">
-              <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">Filmmaker.</motion.span>
+              <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">
+                Filmmaker.
+              </motion.span>
             </span>
             <span className="group inline-block">
-              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">Storyteller.</motion.span>
+              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">
+                Storyteller.
+              </motion.span>
             </span>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button onClick={onWatch} icon={Play}>Watch Instagram Reel</Button>
-            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">Explore the Loremaker Universe</Button>
-            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
-            <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
+            <Button variant="accent" onClick={() => document.getElementById("featured-projects")?.scrollIntoView({ behavior: "smooth" })}>
+              View My Work
+            </Button>
+            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Get a Free Quote</Button>
+            <Button onClick={onWatch} icon={Play} variant="ghost">
+              Watch Reel
+            </Button>
+            <Button onClick={onOpenLinksModal} variant="ghost">
+              All Links
+            </Button>
           </div>
         </div>
-        <Card>
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">Showreel</div>
-          <button onClick={onWatch} className="mt-3 aspect-video w-full rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative group" title="Open Instagram reel">
-            {imgOk ? (
-              <img src={IG_THUMB_URL} onError={() => setImgOk(false)} alt="Instagram Reel thumbnail" className="w-full h-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/0" />
-            )}
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="rounded-full p-3 bg-black/50 border border-white/20 group-hover:scale-105 transition-transform"><Play className="h-6 w-6" /></div>
+        <Card className="relative overflow-hidden">
+          <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/60">
+            <span>Showcase</span>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span>{loading ? "Loading…" : `${index + 1}/${slides.length || 1}`}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={goPrev}
+                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  aria-label="Previous showcase"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={goNext}
+                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  aria-label="Next showcase"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </button>
+          </div>
+          <div className="mt-4 aspect-video rounded-2xl overflow-hidden border border-white/10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={slide?.id || index}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.6 }}
+                className="relative h-full w-full"
+              >
+                {slide?.thumb ? (
+                  <img
+                    src={slide.thumb}
+                    alt={slide?.title || "Project preview"}
+                    className="h-full w-full object-cover"
+                    onLoad={() => setLoading(false)}
+                    onError={() => setLoading(false)}
+                  />
+                ) : (
+                  <div className="h-full w-full grid place-items-center bg-black/40 text-white/70 text-sm">Loading showcase…</div>
+                )}
+                <button
+                  onClick={openSlide}
+                  className="absolute inset-0 grid place-items-center text-white/80 hover:text-white"
+                  aria-label="Play project"
+                >
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2">
+                    <Play className="h-4 w-4" /> Watch
+                  </span>
+                </button>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="mt-4 space-y-1">
+            <div className="text-lg font-semibold">{slide?.title}</div>
+            <p className="text-white/70 text-sm">{slide?.caption}</p>
+            <div className="text-white/50 text-xs">{slide?.credit}</div>
+          </div>
         </Card>
       </div>
     </section>
+  );
+}
+
+function SectionNav() {
+  const items = [
+    { id: "featured-projects", label: "Featured" },
+    { id: "work", label: "Value Calculator" },
+    { id: "galleries", label: "Galleries" },
+    { id: "contact", label: "Contact" },
+    { id: "blog", label: "Blog" },
+  ];
+
+  return (
+    <nav className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
+          className="px-3 py-1.5 text-sm text-white/80 hover:text-white border border-white/10 rounded-full"
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -430,48 +646,108 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
 
 // ========= Contact ========= //
 function ContactInline({ calendarState }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subtype: "",
+    otherDetail: "",
+    message: "",
+    fitScore: "",
+    recTier: "Starter",
+    scope: "",
+  });
   useEffect(() => {
-    const handlerSubtype = (e) => { if (e.detail && e.detail.subtype !== undefined) setForm((f) => ({ ...f, subtype: e.detail.subtype })); };
-    const handlerFit = (e) => {
-      if (!e.detail) return;
-      const { service, fit, budget, timeline } = e.detail;
-      setForm((f) => ({ ...f, subtype: service || f.subtype, fitScore: `${fit}%`, scope: `~£${budget.toLocaleString()} • ${timeline}w` }));
+    const handlerSubtype = (event) => {
+      if (event.detail && event.detail.subtype !== undefined) {
+        setForm((state) => ({ ...state, subtype: event.detail.subtype }));
+      }
+    };
+    const handlerFit = (event) => {
+      if (!event.detail) return;
+      const { service, fit, budget, timeline } = event.detail;
+      setForm((state) => ({
+        ...state,
+        subtype: service || state.subtype,
+        fitScore: `${fit}%`,
+        scope: `~£${budget.toLocaleString()} • ${timeline}w`,
+      }));
     };
     window.addEventListener("prefill-subtype", handlerSubtype);
     window.addEventListener("prefill-fit", handlerFit);
-    return () => { window.removeEventListener("prefill-subtype", handlerSubtype); window.removeEventListener("prefill-fit", handlerFit); };
+    return () => {
+      window.removeEventListener("prefill-subtype", handlerSubtype);
+      window.removeEventListener("prefill-fit", handlerFit);
+    };
   }, []);
 
   const [agree, setAgree] = useState(false);
   const [ok, setOk] = useState(false);
-  const submit = () => {
-    if (!agree) return alert("Please agree to the Privacy Policy.");
-    if (!form.name || !form.email) return alert("Name and Email are required.");
-    const key = "mm_contact_submissions";
-    const list = JSON.parse(localStorage.getItem(key) || "[]");
-    list.push({ ...form, service: "Director for Hire", calendar: calendarState, ts: new Date().toISOString() });
-    localStorage.setItem(key, JSON.stringify(list));
-    setOk(true);
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const submit = async () => {
+    if (!agree) {
+      setStatus({ type: "error", message: "Please agree to the Privacy Policy." });
+      return;
+    }
+    if (!form.name || !form.email || !form.subtype || !form.message) {
+      setStatus({ type: "error", message: "Name, email, service, and a short message are required." });
+      return;
+    }
+    setSending(true);
+    setStatus(null);
+    try {
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        service: form.subtype == "Other" ? form.otherDetail || "Other" : form.subtype,
+        otherDetail: form.otherDetail,
+        message: form.message,
+        fitScore: form.subtype == "Other" ? undefined : form.fitScore,
+        recommendedTier: form.subtype == "Other" ? undefined : form.recTier,
+        scope: form.subtype == "Other" ? undefined : form.scope,
+        calendar: calendarState,
+        source: "contact-inline",
+      });
+      setOk(true);
+    } catch (error) {
+      setStatus({ type: "error", message: "Could not send right now. Please try email instead." });
+    } finally {
+      setSending(false);
+    }
   };
 
-  const clear = () => setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const clear = () =>
+    setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
 
-  const choose = (s) => setForm((f) => ({ ...f, subtype: s }));
+  const choose = (subtype) => setForm((state) => ({ ...state, subtype }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
 
   return (
     <Card id="contact-inline">
       <h3 className="text-xl font-semibold">Contact</h3>
-      <div className="text-white/70 text-sm">Email: <a href={SOCIALS.email} className="underline">hello@menelekmakonnen.com</a></div>
+      <div className="text-white/70 text-sm">
+        Email: <a href={SOCIALS.email} className="underline">hello@menelekmakonnen.com</a>
+      </div>
       <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the chat bubble at bottom‑right and leave a short brief.</p>
       {!ok ? (
         <div className="grid gap-3 mt-4">
           <div>
             <label className="text-white/70 text-sm mb-2 block">Select a service</label>
             <div className="flex flex-wrap gap-2">
-              {options.map((o) => (
-                <button key={o} onClick={() => choose(o)} className={cn("px-3 py-1.5 rounded-full border", form.subtype === o ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10")}>{o}</button>
+              {options.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => choose(option)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full border",
+                    form.subtype === option ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10",
+                  )}
+                >
+                  {option}
+                </button>
               ))}
             </div>
           </div>
@@ -479,71 +755,141 @@ function ContactInline({ calendarState }) {
           {form.subtype === "Other" ? (
             <div>
               <label className="text-white/70 text-sm mb-1 block">Other service</label>
-              <input value={form.otherDetail} onChange={(e) => setForm({ ...form, otherDetail: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.otherDetail}
+                onChange={(event) => setForm({ ...form, otherDetail: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           ) : null}
 
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-              <input value={form.fitScore} onChange={(e) => setForm({ ...form, fitScore: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+          {form.subtype !== "Other" ? (
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
+                <input
+                  value={form.fitScore}
+                  onChange={(event) => setForm({ ...form, fitScore: event.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
+                <select
+                  value={form.recTier}
+                  onChange={(event) => setForm({ ...form, recTier: event.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
+                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                >
+                  {["Starter", "Signature", "Cinema+"].map((option) => (
+                    <option key={option} className="text-black">
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
+                <input
+                  value={form.scope}
+                  onChange={(event) => setForm({ ...form, scope: event.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-              <select value={form.recTier} onChange={(e) => setForm({ ...form, recTier: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
-                {["Starter", "Signature", "Cinema+"].map((x) => (
-                  <option key={x} className="text-black">{x}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-              <input value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
-            </div>
-          </div>
+          ) : null}
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="text-white/70 text-sm mb-1 block">Name *</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
             <div>
               <label className="text-white/70 text-sm mb-1 block">Email *</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                type="email"
+                value={form.email}
+                onChange={(event) => setForm({ ...form, email: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="text-white/70 text-sm mb-1 block">Phone</label>
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.phone}
+                onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
             <div>
               <label className="text-white/70 text-sm mb-1 block">Service subtype (auto‑filled)</label>
-              <input value={form.subtype} onChange={(e) => setForm({ ...form, subtype: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.subtype}
+                onChange={(event) => setForm({ ...form, subtype: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           </div>
           <div>
-            <label className="text-white/70 text-sm mb-1 block">Project brief / goals</label>
-            <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+            <label className="text-white/70 text-sm mb-1 block">Project brief / goals *</label>
+            <textarea
+              value={form.message}
+              onChange={(event) => setForm({ ...form, message: event.target.value })}
+              rows={4}
+              className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            />
           </div>
-
           <label className="flex items-center gap-2 text-white/70">
-            <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I agree to the {" "}
-            <a href="#" onClick={(e) => { e.preventDefault(); alert("Privacy policy modal placeholder."); }} className="underline">Privacy Policy</a>.
+            <input type="checkbox" checked={agree} onChange={(event) => setAgree(event.target.checked)} /> I agree to the
+            <a
+              href="#"
+              onClick={(event) => {
+                event.preventDefault();
+                alert("Privacy policy modal placeholder.");
+              }}
+              className="underline"
+            >
+              Privacy Policy
+            </a>
+            .
           </label>
+          {status ? (
+            <div
+              className={cn(
+                "rounded-xl px-3 py-2 text-sm",
+                status.type === "error" ? "bg-rose-500/20 text-rose-200" : "bg-emerald-500/20 text-emerald-200",
+              )}
+            >
+              {status.message}
+            </div>
+          ) : null}
           <div className="flex gap-2">
-            <Button onClick={submit} icon={ShieldCheck}>Send Inquiry</Button>
-            <Button href={SOCIALS.email} icon={Mail} variant="ghost">Email Instead</Button>
-            <Button onClick={clear} variant="ghost">Clear Form</Button>
+            <Button onClick={submit} icon={sending ? Loader2 : ShieldCheck} className="disabled:opacity-70" disabled={sending}>
+              {sending ? "Sending..." : "Send Inquiry"}
+            </Button>
+            <Button href={SOCIALS.email} icon={Mail} variant="ghost">
+              Email Instead
+            </Button>
+            <Button onClick={clear} variant="ghost">
+              Clear Form
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="text-center py-6"><CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto" /><div className="mt-2">Thanks — I’ll reply within 24–48h.</div></div>
+        <div className="text-center py-6">
+          <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto" />
+          <div className="mt-2">Thanks — I’ll reply within 24–48h.</div>
+        </div>
       )}
     </Card>
   );
 }
-
 // ========= Calculator (CVC) ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
@@ -1072,6 +1418,97 @@ function Portfolio() {
   );
 }
 
+function InstagramEmbed({ url, title }) {
+  const embedUrl = `${url}embed/`;
+  return (
+    <div className="relative w-64 shrink-0 aspect-[9/16] overflow-hidden rounded-3xl border border-white/10 bg-black/40">
+      <iframe
+        src={embedUrl}
+        title={title}
+        className="h-full w-full"
+        allow="autoplay; clipboard-write; encrypted-media"
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
+function MMMGalleries() {
+  const belts = useMemo(() => Object.entries(MMM_REELS), []);
+
+  return (
+    <section id="galleries" className="py-16">
+      <div className="max-w-7xl mx-auto px-6 space-y-10">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold">MMM Media Galleries</h2>
+            <p className="text-white/70">
+              Hand-picked reels showing epic edits, beauty storytelling, BTS energy, and AI experiments.
+            </p>
+          </div>
+        </div>
+        {belts.map(([label, urls]) => (
+          <div key={label} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">{label}</h3>
+              <span className="text-white/60 text-sm">Instagram reels</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {urls.slice(0, 6).map((url) => (
+                <InstagramEmbed key={url} url={url} title={`${label} reel`} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SocialProof() {
+  const logos = ["Netflix", "BBC", "Spotify"];
+  const quotes = [
+    {
+      quote: "Menelek understands the assignment faster than any director we've hired.",
+      author: "Creative Director, Global Agency",
+    },
+    {
+      quote: "The worlds he builds translate perfectly on screen and socials.",
+      author: "Head of Content, Tech Startup",
+    },
+    {
+      quote: "A rare blend of visionary storytelling and reliable delivery.",
+      author: "Executive Producer, Streaming Network",
+    },
+  ];
+
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setQuoteIndex((value) => (value + 1) % quotes.length), 6000);
+    return () => clearInterval(timer);
+  }, [quotes.length]);
+
+  return (
+    <section className="py-10">
+      <div className="max-w-6xl mx-auto px-6 space-y-6">
+        <div className="flex flex-wrap items-center gap-6 text-white/60 text-sm uppercase tracking-[0.3em]">
+          <span className="text-white/70">Trusted by</span>
+          {logos.map((logo) => (
+            <span key={logo} className="rounded-full border border-white/10 px-4 py-2">
+              {logo}
+            </span>
+          ))}
+        </div>
+        <Card className="bg-white/5">
+          <div className="text-lg text-white/90">“{quotes[quoteIndex].quote}”</div>
+          <div className="mt-2 text-sm text-white/60">{quotes[quoteIndex].author}</div>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
 // ========= Blog ========= //
 function Blog() {
   const POSTS = [
@@ -1112,6 +1549,156 @@ function Biography() {
         </Card>
       </div>
     </section>
+  );
+}
+
+function ZaraChatbot() {
+  const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [messages, setMessages] = useState([
+    { id: "welcome", from: "bot", text: "Hey there! I'm Zara. What brings you here today?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, open, minimized]);
+
+  useEffect(() => {
+    postJSONWithFallback(CHATBOT_ENDPOINTS.track, {
+      page: window.location.pathname,
+      timestamp: new Date().toISOString(),
+    }).catch(() => {});
+  }, []);
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    const text = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { id: uniqueId(), from: "user", text }]);
+    setLoading(true);
+    try {
+      const sessionId = (() => {
+        if (typeof window === "undefined") return uniqueId();
+        let existing = window.localStorage.getItem("zara-session");
+        if (!existing) {
+          existing = uniqueId();
+          window.localStorage.setItem("zara-session", existing);
+        }
+        return existing;
+      })();
+
+      const response = await postJSONWithFallback(CHATBOT_ENDPOINTS.chatbot, {
+        message: text,
+        sessionId,
+        timestamp: new Date().toISOString(),
+      });
+      const reply = response?.response || "I'm routing this to Menelek right now. Could you drop an email just in case?";
+      setMessages((prev) => [...prev, { id: uniqueId(), from: "bot", text: reply }]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uniqueId(),
+          from: "bot",
+          text: "I can't reach the studio right now, but email admin@menelekmakonnen.com and we'll reply asap.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed right-5 bottom-20 z-50">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="mb-3 w-80 overflow-hidden rounded-3xl border border-white/10 bg-black/70 backdrop-blur-xl shadow-2xl"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div>
+                <div className="font-semibold text-white">Zara</div>
+                <div className="text-xs text-white/60">Menelek's AI Assistant</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setMinimized((value) => !value)} className="text-white/60 hover:text-white">
+                  {minimized ? <MaximizeIcon /> : <Minimize2 className="h-4 w-4" />}
+                </button>
+                <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            {!minimized ? (
+              <div className="flex h-96 flex-col">
+                <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
+                        message.from === "bot"
+                          ? "bg-white/10 text-white/90"
+                          : "ml-auto bg-gradient-to-tr from-cyan-500/60 to-fuchsia-500/60 text-white",
+                      )}
+                    >
+                      {message.text}
+                    </div>
+                  ))}
+                  {loading ? <div className="text-xs text-white/60">Zara is typing…</div> : null}
+                  <div ref={messagesEndRef} />
+                </div>
+                <div className="flex items-center gap-2 border-t border-white/10 bg-black/60 px-4 py-3">
+                  <input
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    className="flex-1 rounded-2xl border border-white/15 bg-black/60 px-3 py-2 text-sm text-white"
+                    placeholder="Write a message..."
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                  />
+                  <button onClick={sendMessage} className="rounded-full bg-white/15 p-2 text-white hover:bg-white/25">
+                    <MessageSquare className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        onClick={() => {
+          setOpen((value) => !value);
+          setMinimized(false);
+        }}
+        className="relative flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500/70 to-fuchsia-500/70 px-4 py-2 text-sm text-white shadow-lg"
+      >
+        <Sparkles className="h-4 w-4" /> Chat with Zara
+        {!open ? <span className="absolute -top-2 -right-2 h-3 w-3 rounded-full bg-emerald-400 animate-ping" /> : null}
+      </button>
+    </div>
+  );
+}
+
+function MaximizeIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 8V4h4" />
+      <path d="M20 16v4h-4" />
+      <path d="M4 4l6 6" />
+      <path d="M20 20l-6-6" />
+    </svg>
   );
 }
 
@@ -1318,10 +1905,22 @@ export default function AppShell() {
         {route === "home" && (
           <>
             <Hero onWatch={() => setReelOpen(true)} onOpenLinksModal={() => setLinksOpen(true)} />
+            <SectionNav />
+            <SocialProof />
             <Portfolio />
+            <MMMGalleries />
+            <WorkWithMe
+              currentService={currentService}
+              onSetService={(n) => setCurrentService(n)}
+              onBook={(svc) => goContactInline(svc)}
+              onCalendarChange={setCalendarState}
+            />
+            <section id="contact" className="py-6">
+              <div className="max-w-7xl mx-auto px-6">
+                <ContactInline calendarState={calendarState} />
+              </div>
+            </section>
             <FeaturedUniverse />
-            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
-            <section className="py-6"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
             <Blog />
           </>
         )}
@@ -1349,6 +1948,7 @@ export default function AppShell() {
 
       {/* Floating Buttons */}
       <FloatingButtons onOpenContact={() => setContactOpen(true)} />
+      <ZaraChatbot />
 
       {/* Modals */}
       <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
