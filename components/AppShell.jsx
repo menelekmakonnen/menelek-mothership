@@ -59,6 +59,8 @@ const N8N_ENDPOINTS = {
   contact: ["/webhook/contact", "/webhook-test/contact"],
 };
 
+const IG_REEL_ID = "C8rQp-kq5PG";
+
 const MMM_REELS = {
   "Epic Edits": [
     "https://www.instagram.com/p/DMKpVGwoOC2/",
@@ -117,7 +119,8 @@ const MMM_REELS = {
 
 const MAX_REELS_PER_BELT = 6;
 
-const cn = (...classes) => classes.filter(Boolean).join(" ");
+const uniqueId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 
 const randomSample = (list, limit) => {
   const copy = [...list];
@@ -148,9 +151,6 @@ async function postJSONWithFallback(paths, payload) {
   }
   throw new Error("All endpoints failed");
 }
-
-const uniqueId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 
 function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
   const palettes = {
@@ -338,9 +338,6 @@ function Hero({ onOpenLinks }) {
     }, 5000);
     return () => clearInterval(timer);
   }, [slides.length]);
-
-  const goPrev = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
-  const goNext = () => setIndex((value) => (value + 1) % slides.length);
 
 // ========= HERO ========= //
 function ShimmerTitle({ children }) {
@@ -1063,6 +1060,20 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
         />
       )}
 
+      {!showSchedule ? (
+        <div className="mt-4 text-white/65 text-sm">
+          This scope assumes {LABELS.length} phases running sequentially. Open the scheduler to overlap or stretch milestones.
+        </div>
+      ) : (
+        <TimelineGrid
+          phases={phases}
+          onChange={setPhases}
+          total={total}
+          onTotalChange={setTotal}
+          startDate={projectDate}
+        />
+      )}
+
       <button
         type="button"
         onClick={() => setShowSchedule((value) => !value)}
@@ -1238,75 +1249,19 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 }
 
   return (
-    <section id="contact" className="py-16">
-      <div className="max-w-5xl mx-auto px-6">
-        <Card>
-          <h2 className="text-3xl font-bold">Start a Project</h2>
-          <p className="mt-2 text-white/70">
-            Ready for cinematic storytelling? Share a few details and I'll reply personally with next steps.
-          </p>
-          <form className="mt-6 space-y-4" onSubmit={submit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm text-white/70">
-                Name *
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm text-white/70">
-                Email *
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
-                />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1 text-sm text-white/70">
-              Service Type
-              <select
-                value={service}
-                onChange={(event) => setService(event.target.value)}
-                className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
-              >
-                {SERVICES.map((item) => (
-                  <option key={item} value={item} className="text-black">
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm text-white/70">
-              Message *
-              <textarea
-                value={message}
-                rows={4}
-                onChange={(event) => setMessage(event.target.value)}
-                className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
-              />
-            </label>
-            <div className="flex flex-wrap gap-3 items-center">
-              <Button type="submit" icon={sending ? Loader2 : ShieldCheck} disabled={sending}>
-                {sending ? "Sending..." : "Send message"}
-              </Button>
-              <Button type="button" variant="ghost" icon={Mail} href="mailto:admin@menelekmakonnen.com">
-                Email instead
-              </Button>
-            </div>
-            {status ? (
-              <div
-                className={cn(
-                  "rounded-2xl px-4 py-3 text-sm",
-                  status.type === "success" ? "bg-emerald-500/20 text-emerald-200" : "bg-rose-500/20 text-rose-200",
-                )}
-              >
-                {status.message}
-              </div>
-            ) : null}
-          </form>
+    <section className="py-10">
+      <div className="max-w-6xl mx-auto px-6 space-y-6">
+        <div className="flex flex-wrap items-center gap-6 text-white/60 text-sm uppercase tracking-[0.3em]">
+          <span className="text-white/70">Trusted by</span>
+          {logos.map((logo) => (
+            <span key={logo} className="rounded-full border border-white/10 px-4 py-2">
+              {logo}
+            </span>
+          ))}
+        </div>
+        <Card className="bg-white/5">
+          <div className="text-lg text-white/90">“{quotes[quoteIndex].quote}”</div>
+          <div className="mt-2 text-sm text-white/60">{quotes[quoteIndex].author}</div>
         </Card>
       </div>
     </section>
