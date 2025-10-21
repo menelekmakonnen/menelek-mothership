@@ -1,14 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play,
-  Phone,
-  Mail,
+  ArrowUp,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
-  CheckCircle2,
-  Youtube,
-  Instagram,
-  Linkedin,
+  Info,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Minimize2,
+  Play,
   ShieldCheck,
   Sparkles,
   X,
@@ -35,6 +40,8 @@ import {
 */
 
 // ========= FACTUAL LINKS ========= //
+} from "lucide-react";
+
 const SOCIALS = {
   instagram: "https://instagram.com/menelek.makonnen",
   youtube: "https://youtube.com/@director_menelek",
@@ -43,22 +50,51 @@ const SOCIALS = {
 };
 
 const LINKS = {
-  personalYouTube: "https://www.youtube.com/@menelekmakonnen",
-  directorYouTube: "https://www.youtube.com/@director_menelek",
-  personalIG: "https://www.instagram.com/menelek.makonnen/",
-  loremakerIG: "https://www.instagram.com/lore.maker_",
-  icuniIG: "https://www.instagram.com/icuni_",
-  mmmIG: "https://www.instagram.com/mm.m.media/",
-  aiIG: "https://www.instagram.com/mr.mikaelgabriel/",
-  personalLI: "https://www.linkedin.com/in/menelekmakonnen/",
-  businessLI: "https://www.linkedin.com/in/mikaelgabriel/",
   loremakerSite: "https://menelekmakonnen.com/loremaker",
   icuniSite: "https://icuni.co.uk",
-  oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
 const N8N_BASE_URL = "https://mmmai.app.n8n.cloud";
 const N8N_ENDPOINTS = {
+const PROJECTS = [
+  {
+    id: "im-alright",
+    title: "I'm Alright (2024)",
+    role: "Writer–Director",
+    runtime: "8 min",
+    summary: "Addiction & depression inside a lockdown flat.",
+    url: "https://www.youtube.com/watch?v=A8cGpNe2JAE",
+  },
+  {
+    id: "blinded-by-magic",
+    title: "Blinded by Magic (2022)",
+    role: "Writer–Director",
+    runtime: "12 min",
+    summary: "A possessed camera blinds its user while granting powers.",
+    url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ",
+  },
+  {
+    id: "heroes-gods",
+    title: "Heroes & Gods (2024)",
+    role: "Writer–Director, Editor",
+    runtime: "120 min",
+    summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.",
+    url: "https://www.youtube.com/watch?v=jtiOv0OvD-0",
+  },
+  {
+    id: "soldier-mv",
+    title: "Soldier (Music Video)",
+    role: "Director, Editor",
+    runtime: "3 min",
+    summary: "Concept‑to‑delivery music video including cover art.",
+    url: "https://www.youtube.com/watch?v=BHPaJieCAXY",
+  },
+];
+
+const CHATBOT_BASE_URL = "https://mmmai.app.n8n.cloud";
+const CHATBOT_ENDPOINTS = {
+  chatbot: ["/webhook/chatbot", "/webhook-test/chatbot"],
+  track: ["/webhook/track-visit", "/webhook-test/track-visit"],
   contact: ["/webhook/contact", "/webhook-test/contact"],
 };
 
@@ -94,6 +130,7 @@ const MMM_REELS = {
     "https://www.instagram.com/reel/C1ZHmHbKt4u/",
   ],
   BTS: [
+  "BTS": [
     "https://www.instagram.com/reel/CthPmc7OKK5/",
     "https://www.instagram.com/reel/CtjWyXJNxwY/",
     "https://www.instagram.com/reel/Ctlc7--veax/",
@@ -141,9 +178,18 @@ async function fetchInstagramMeta(url) {
   instagramMetaCache.set(url, payload);
   return payload;
 }
+const SERVICES = [
+  "Feature Film",
+  "Short Film",
+  "AI Film",
+  "Music Video",
+  "Documentary",
+  "BTS",
+  "AI Advert",
+  "Other",
+];
 
-// ========= UTIL ========= //
-const cn = (...a) => a.filter(Boolean).join(" ");
+const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const randomSample = (list, limit) => {
   const copy = [...list];
@@ -181,31 +227,36 @@ const uniqueId = () =>
 function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
   const palettes = {
     default: "bg-white/10 hover:bg-white/15",
+    accent: "bg-gradient-to-tr from-cyan-300/30 via-fuchsia-500/30 to-amber-300/30 hover:from-cyan-300/40 hover:to-amber-300/40",
     ghost: "bg-white/5 hover:bg-white/10",
-    accent: "bg-gradient-to-tr from-amber-400/20 to-fuchsia-400/20 hover:from-amber-400/25 hover:to-fuchsia-400/25",
-  };
+  }[variant];
+
   const base = cn(
-    "px-4 py-2.5 rounded-xl border border-white/15 text-white",
-    "shadow-[0_10px_30px_rgba(0,0,0,0.25)] active:translate-y-px backdrop-blur transition-all",
-    palettes[variant],
-    className
+    "inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 text-white",
+    "shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all",
+    palette,
+    className,
   );
-  const inner = (
+
+  const contents = (
     <span className="inline-flex items-center gap-2">
       {children}
       {Icon ? <Icon className="h-4 w-4" /> : null}
     </span>
   );
-  if (href)
+
+  if (href) {
     return (
-      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title}>
-        {inner}
+      <a href={href} className={base} onClick={onClick} {...rest}>
+        {contents}
       </a>
     );
+  }
+
   return (
-    <Cmp onClick={onClick} className={base} title={title}>
-      {inner}
-    </Cmp>
+    <button type={type} className={base} onClick={onClick} {...rest}>
+      {contents}
+    </button>
   );
 }
 
@@ -213,9 +264,9 @@ function Card({ className = "", children }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-white/10 bg-white/5 backdrop-blur",
-        "shadow-[0_12px_50px_rgba(0,0,0,0.35)] p-5 transition-transform hover:-translate-y-[2px]",
-        className
+        "rounded-3xl border border-white/10 bg-[radial-gradient(1200px_600px_at_10%_-20%,rgba(111,66,193,0.18),transparent_60%),radial-gradient(1200px_600px_at_110%_120%,rgba(0,180,255,0.18),transparent_60%)]",
+        "backdrop-blur-xl p-6 shadow-[0_15px_70px_rgba(0,0,0,0.45)] transition-all",
+        className,
       )}
     >
       {children}
@@ -223,49 +274,10 @@ function Card({ className = "", children }) {
   );
 }
 
-function Modal({ open, onClose, title, children }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
-    if (open) window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-          <motion.div
-            initial={{ y: 20, scale: 0.98, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 10, scale: 0.98, opacity: 0 }}
-            className={cn(
-              "relative z-10 mx-auto mt-[8vh] w-[92vw] max-w-5xl",
-              "rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 text-white"
-            )}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                {title}
-              </h3>
-              <button onClick={onClose} aria-label="Close" className="rounded-full p-2 hover:bg-white/10">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            {children}
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-}
-
-// ========= BACKGROUND ========= //
 function DiamondsCanvas({ className }) {
   const canvasRef = useRef(null);
+  const rafRef = useRef();
   const mouseRef = useRef({ x: -9999, y: -9999 });
-  const rafRef = useRef(0);
   const ripplesRef = useRef([]);
 
   useEffect(() => {
@@ -273,30 +285,23 @@ function DiamondsCanvas({ className }) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    const scale = () => {
+    const resize = () => {
       const dpr = window.devicePixelRatio || 1;
-      const { offsetWidth, offsetHeight } = canvas;
-      canvas.width = offsetWidth * dpr;
-      canvas.height = offsetHeight * dpr;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+      console.debug("Diamonds canvas", canvas.offsetWidth, canvas.offsetHeight);
     };
 
-    const onResize = scale;
-    const onMove = (e) => {
+    const onMove = (event) => {
       const rect = canvas.getBoundingClientRect();
-      mouseRef.current.x = e.clientX - rect.left;
-      mouseRef.current.y = e.clientY - rect.top;
-    };
-    const onLeave = () => (mouseRef.current = { x: -9999, y: -9999 });
-    const onClick = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      ripplesRef.current.push({ x, y, t: 0 });
+      mouseRef.current = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     };
 
-    scale();
+    const onLeave = () => {
+      mouseRef.current = { x: -9999, y: -9999 };
+    };
 
     const cell = 10;
     const rot = Math.PI / 4;
@@ -306,44 +311,45 @@ function DiamondsCanvas({ className }) {
     const baseGlow = 0.12;
 
     const draw = () => {
+      const { width, height } = canvas;
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
-      const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, "#03050a");
-      g.addColorStop(1, "#070a12");
-      ctx.fillStyle = g;
+      ctx.clearRect(0, 0, w, h);
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      gradient.addColorStop(0, "#04060f");
+      gradient.addColorStop(1, "#0b1224");
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, w, h);
 
-      ripplesRef.current = ripplesRef.current.map((r) => ({ ...r, t: r.t + 1 })).filter((r) => r.t < 300);
+      const cell = 10;
+      const size = 3.5;
+      const baseAlpha = 0.08;
+      const auraRadius = 110;
 
+      ripplesRef.current = ripplesRef.current.map((ripple) => ({ ...ripple, t: ripple.t + 1 })).filter((ripple) => ripple.t < 240);
       const { x: mx, y: my } = mouseRef.current;
 
       for (let y = 0; y < h + cell; y += cell) {
         for (let x = 0; x < w + cell; x += cell) {
           const cx = x + cell / 2;
           const cy = y + cell / 2;
-
-          const dxh = cx - mx;
-          const dyh = cy - my;
-          const distHover = Math.hypot(dxh, dyh);
-          const hoverK = Math.max(0, 1 - distHover / auraR);
+          const dx = cx - mx;
+          const dy = cy - my;
+          const hoverStrength = Math.max(0, 1 - Math.hypot(dx, dy) / auraRadius);
 
           let clickGlow = 0;
-          for (const r of ripplesRef.current) {
-            const k = r.t / 300;
-            const radius = 14 + k * 340; // expands
-            const thickness = 16;
-            const dxc = cx - r.x;
-            const dyc = cy - r.y;
-            const d = Math.hypot(dxc, dyc);
-            const ring = Math.max(0, 1 - Math.abs(d - radius) / thickness);
-            clickGlow = Math.max(clickGlow, ring * (1 - k));
+          for (const ripple of ripplesRef.current) {
+            const progress = ripple.t / 240;
+            const radius = 12 + progress * 320;
+            const thickness = 18;
+            const distance = Math.hypot(cx - ripple.x, cy - ripple.y);
+            const ring = Math.max(0, 1 - Math.abs(distance - radius) / thickness);
+            clickGlow = Math.max(clickGlow, ring * (1 - progress));
           }
 
           ctx.save();
           ctx.translate(cx, cy);
-          ctx.rotate(rot);
-
+          ctx.rotate(Math.PI / 4);
           ctx.fillStyle = `rgba(255,255,255,${baseAlpha})`;
           ctx.fillRect(-size / 2, -size / 2, size, size);
 
@@ -353,97 +359,67 @@ function DiamondsCanvas({ className }) {
             grad.addColorStop(0, `rgba(255,255,255,${a})`);
             grad.addColorStop(1, `rgba(255,255,255,0)`);
             ctx.globalCompositeOperation = "lighter";
-            ctx.fillStyle = grad;
+            ctx.fillStyle = radial;
             ctx.fillRect(-size / 2, -size / 2, size, size);
             ctx.globalCompositeOperation = "source-over";
           }
-
           ctx.restore();
         }
       }
+
       rafRef.current = requestAnimationFrame(draw);
     };
 
+    resize();
     draw();
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", resize);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerleave", onLeave);
     canvas.addEventListener("pointerdown", onClick);
+
     return () => {
       cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", resize);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("pointerdown", onClick);
     };
   }, []);
 
-  return <canvas ref={canvasRef} className={cn("absolute inset-0 -z-10 h-full w-full", className)} style={{ pointerEvents: "auto" }} />;
+  return <canvas ref={canvasRef} className={cn("absolute inset-0 -z-10 h-full w-full", className)} />;
 }
 
-// ========= DATA ========= //
-const SERVICES = [
-  { id: "feature", name: "Feature Film" },
-  { id: "short", name: "Short Film" },
-  { id: "ai-film", name: "AI Film" },
-  { id: "music-video", name: "Music Video" },
-  { id: "doc", name: "Documentary" },
-  { id: "bts", name: "BTS" },
-  { id: "ai-ad", name: "AI Advert" },
-];
-const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s.name]));
+function Hero({ onOpenLinks }) {
+  const slides = useMemo(() =>
+    PROJECTS.map((project) => ({
+      id: project.id,
+      title: project.title,
+      caption: project.summary,
+      credit: project.role,
+      url: project.url,
+      thumb: youtubeThumb(project.url),
+    }))
+  , []);
 
-const PROJECTS = [
-  { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D" },
-  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj" },
-  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D" },
-  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Director, Cinematographer, Editor", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: "https://www.youtube.com/watch?v=4q6X6prhVOE" },
-  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv" },
-  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
-];
+  const [index, setIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-function getYouTubeId(url) {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtube.com")) {
-      if (u.pathname.startsWith("/watch")) return u.searchParams.get("v");
-      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/shorts/")[1].split("/")[0];
-      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/embed/")[1];
-    }
-    if (u.hostname === "youtu.be") return u.pathname.slice(1);
-  } catch (e) {}
-  return null;
-}
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((value) => (value + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
 
-function youtubeThumb(url) {
-  const id = getYouTubeId(url);
-  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
-}
+  const goPrev = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
+  const goNext = () => setIndex((value) => (value + 1) % slides.length);
 
-// Best‑effort Instagram thumb (may be blocked by CORS; fallback to gradient)
-const IG_REEL_ID = "DI6NjVNN0tS";
-const IG_THUMB_URL = `https://www.instagram.com/p/${IG_REEL_ID}/media/?size=l`;
+  const slide = slides[index];
 
-// ========= HERO ========= //
-function ShimmerTitle({ children }) {
-  return (
-    <motion.h1
-      className="text-4xl sm:text-6xl font-extrabold leading-[1.05] select-none"
-      style={{
-        backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.45), rgba(255,255,255,0.95))",
-        backgroundSize: "200% 100%",
-        backgroundClip: "text",
-        WebkitBackgroundClip: "text",
-        color: "transparent",
-        backgroundPosition: "0% 50%",
-      }}
-      whileHover={{ backgroundPosition: "100% 50%" }}
-      transition={{ duration: 0.8 }}
-    >
-      {children}
-    </motion.h1>
-  );
-}
+  const openVideo = () => {
+    if (!slide?.url) return;
+    window.open(slide.url, "_blank", "noopener,noreferrer");
+  };
 
 function Hero({ onWatch, onOpenLinksModal }) {
   const slides = useMemo(
@@ -621,48 +597,43 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
           <div className="flex items-end justify-between mb-1">
             <h2 className="text-2xl sm:text-3xl font-bold">Director for Hire • Client Value Calculator</h2>
           </div>
-          <p className="text-white/80">
-            Scope your idea in minutes. I’ll show you fit, budget bands, and a realistic timeline. No fluff—just the plan.
-          </p>
-
-          {/* Service chips + Randomizer */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {SERVICES.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onSetService(s.name)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full border",
-                  currentService === s.name ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10"
-                )}
+          <div className="mt-4 aspect-video rounded-2xl overflow-hidden border border-white/10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={slide?.id}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.6 }}
+                className="relative h-full w-full"
               >
-                <span className="inline-flex items-center gap-2">{s.name}
-                  {(s.id === "music-video" || s.id === "ai-ad") && (
-                    <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-white/20 bg-white/10">from £200*</span>
-                  )}
-                </span>
-              </button>
-            ))}
-            <button
-              onClick={() => setRandomKey((k) => k + 1)}
-              className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"
-              title="Suggest a high‑fit configuration"
-            >
-              <Shuffle className="h-4 w-4" /> Randomize (High‑Fit)
-            </button>
+                {slide?.thumb ? (
+                  <img
+                    src={slide.thumb}
+                    alt={slide?.title || "Project preview"}
+                    className="h-full w-full object-cover"
+                    onLoad={() => setLoading(false)}
+                    onError={() => setLoading(false)}
+                  />
+                ) : (
+                  <div className="h-full w-full grid place-items-center bg-black/40">Loading showcase…</div>
+                )}
+                <button
+                  onClick={openVideo}
+                  className="absolute inset-0 grid place-items-center text-white/80 hover:text-white"
+                  aria-label="Play video"
+                >
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2">
+                    <Play className="h-4 w-4" /> Watch
+                  </span>
+                </button>
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <div className="text-white/60 text-xs mt-3 inline-flex items-center gap-2">
-            <Info className="h-4 w-4" /> <span>* Only for Music Video & AI Advert when <em>you provide all</em> assets & logistics.</span>
-          </div>
-
-          {/* Inline CVC */}
-          <div className="mt-6">
-            <ValueCalculator
-              service={currentService}
-              onBook={onBook}
-              onCalendarChange={onCalendarChange}
-              randomizeKey={randomKey}
-            />
+          <div className="mt-4 space-y-1">
+            <div className="text-lg font-semibold">{slide?.title}</div>
+            <p className="text-white/70 text-sm">{slide?.caption}</p>
+            <div className="text-white/50 text-xs">{slide?.credit}</div>
           </div>
         </Card>
       </div>
@@ -670,469 +641,124 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
   );
 }
 
-// ========= Contact ========= //
-function ContactInline({ calendarState }) {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    subtype: "",
-    otherDetail: "",
-    message: "",
-    fitScore: "",
-    recTier: "Starter",
-    scope: "",
-  });
-  useEffect(() => {
-    const handlerSubtype = (event) => {
-      if (event.detail && event.detail.subtype !== undefined) {
-        setForm((state) => ({ ...state, subtype: event.detail.subtype }));
-      }
-    };
-    const handlerFit = (event) => {
-      if (!event.detail) return;
-      const { service, fit, budget, timeline } = event.detail;
-      setForm((state) => ({
-        ...state,
-        subtype: service || state.subtype,
-        fitScore: `${fit}%`,
-        scope: `~£${budget.toLocaleString()} • ${timeline}w`,
-      }));
-    };
-    window.addEventListener("prefill-subtype", handlerSubtype);
-    window.addEventListener("prefill-fit", handlerFit);
-    return () => {
-      window.removeEventListener("prefill-subtype", handlerSubtype);
-      window.removeEventListener("prefill-fit", handlerFit);
-    };
-  }, []);
-
-  const [agree, setAgree] = useState(false);
-  const [ok, setOk] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [status, setStatus] = useState(null);
-
-  const submit = async () => {
-    if (!agree) {
-      setStatus({ type: "error", message: "Please agree to the Privacy Policy." });
-      return;
-    }
-    if (!form.name || !form.email || !form.subtype || !form.message) {
-      setStatus({ type: "error", message: "Name, email, service, and a short message are required." });
-      return;
-    }
-    setSending(true);
-    setStatus(null);
-    try {
-      await postJSONWithFallback(N8N_ENDPOINTS.contact, {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        service: form.subtype == "Other" ? form.otherDetail || "Other" : form.subtype,
-        otherDetail: form.otherDetail,
-        message: form.message,
-        fitScore: form.subtype == "Other" ? undefined : form.fitScore,
-        recommendedTier: form.subtype == "Other" ? undefined : form.recTier,
-        scope: form.subtype == "Other" ? undefined : form.scope,
-        calendar: calendarState,
-        source: "contact-inline",
-      });
-      setOk(true);
-    } catch (error) {
-      setStatus({ type: "error", message: "Could not send right now. Please try email instead." });
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const clear = () =>
-    setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
-
-  const choose = (subtype) => setForm((state) => ({ ...state, subtype }));
-  const options = [...SERVICES.map((s) => s.name), "Other"];
+function SectionNav() {
+  const items = [
+    { id: "featured", label: "Featured" },
+    { id: "calculator", label: "Value Calculator" },
+    { id: "galleries", label: "Galleries" },
+    { id: "contact", label: "Contact" },
+    { id: "blog", label: "Blog" },
+  ];
 
   return (
-    <Card id="contact-inline">
-      <h3 className="text-xl font-semibold">Contact</h3>
-      <div className="text-white/70 text-sm">
-        Email: <a href={SOCIALS.email} className="underline">hello@menelekmakonnen.com</a>
-      </div>
-      <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the quick note button bottom‑right and leave a short brief.</p>
-      {!ok ? (
-        <div className="grid gap-3 mt-4">
-          <div>
-            <label className="text-white/70 text-sm mb-2 block">Select a service</label>
-            <div className="flex flex-wrap gap-2">
-              {options.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => choose(option)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full border",
-                    form.subtype === option ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10",
-                  )}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {form.subtype === "Other" ? (
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Other service</label>
-              <input
-                value={form.otherDetail}
-                onChange={(event) => setForm({ ...form, otherDetail: event.target.value })}
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-              />
-            </div>
-          ) : null}
-
-          {form.subtype !== "Other" ? (
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-                <input
-                  value={form.fitScore}
-                  onChange={(event) => setForm({ ...form, fitScore: event.target.value })}
-                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-                />
-              </div>
-              <div>
-                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-                <select
-                  value={form.recTier}
-                  onChange={(event) => setForm({ ...form, recTier: event.target.value })}
-                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
-                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-                >
-                  {["Starter", "Signature", "Cinema+"].map((option) => (
-                    <option key={option} className="text-black">
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-                <input
-                  value={form.scope}
-                  onChange={(event) => setForm({ ...form, scope: event.target.value })}
-                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-                />
-              </div>
-            </div>
-          ) : null}
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Name *</label>
-              <input
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-              />
-            </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Email *</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(event) => setForm({ ...form, email: event.target.value })}
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-              />
-            </div>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Phone</label>
-              <input
-                value={form.phone}
-                onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-              />
-            </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Service subtype (auto‑filled)</label>
-              <input
-                value={form.subtype}
-                onChange={(event) => setForm({ ...form, subtype: event.target.value })}
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-white/70 text-sm mb-1 block">Project brief / goals *</label>
-            <textarea
-              value={form.message}
-              onChange={(event) => setForm({ ...form, message: event.target.value })}
-              rows={4}
-              className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-white/70">
-            <input type="checkbox" checked={agree} onChange={(event) => setAgree(event.target.checked)} /> I agree to the
-            <a
-              href="#"
-              onClick={(event) => {
-                event.preventDefault();
-                alert("Privacy policy modal placeholder.");
-              }}
-              className="underline"
-            >
-              Privacy Policy
-            </a>
-            .
-          </label>
-          {status ? (
-            <div
-              className={cn(
-                "rounded-xl px-3 py-2 text-sm",
-                status.type === "error" ? "bg-rose-500/20 text-rose-200" : "bg-emerald-500/20 text-emerald-200",
-              )}
-            >
-              {status.message}
-            </div>
-          ) : null}
-          <div className="flex gap-2">
-            <Button onClick={submit} icon={sending ? Loader2 : ShieldCheck} className="disabled:opacity-70" disabled={sending}>
-              {sending ? "Sending..." : "Send Inquiry"}
-            </Button>
-            <Button href={SOCIALS.email} icon={Mail} variant="ghost">
-              Email Instead
-            </Button>
-            <Button onClick={clear} variant="ghost">
-              Clear Form
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-6">
-          <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto" />
-          <div className="mt-2">Thanks — I’ll reply within 24–48h.</div>
-        </div>
-      )}
-    </Card>
+    <nav className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
+          className="px-3 py-1.5 text-sm text-white/80 hover:text-white border border-white/10 rounded-full"
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
   );
 }
-// ========= Calculator (CVC) ========= //
-function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
-  const [service, setService] = useState(serviceProp || SERVICES[0].name);
-  useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
 
+function FeaturedPortfolio() {
+  return (
+    <section id="featured" className="py-16">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold">Featured Work</h2>
+            <p className="text-white/70 max-w-2xl">
+              Signature directing, editing, and worldbuilding projects crafted for screen, stream, and stage.
+            </p>
+          </div>
+          <div className="text-white/60 text-sm">
+            <span className="font-semibold">70+ projects</span> delivered • <span className="font-semibold">1.2M+ views</span> •
+            <span className="font-semibold"> 89% client retention</span>
+          </div>
+        </div>
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {PROJECTS.map((project) => (
+            <Card key={project.id} className="group">
+              <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 relative">
+                <img
+                  src={youtubeThumb(project.url)}
+                  alt={`${project.title} thumbnail`}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <a
+                  href={project.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 grid place-items-center text-white/90"
+                >
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2">
+                    <Play className="h-4 w-4" /> Watch
+                  </span>
+                </a>
+              </div>
+              <div className="mt-4 space-y-1">
+                <div className="text-xl font-semibold">{project.title}</div>
+                <div className="text-white/70 text-sm">{project.summary}</div>
+                <div className="text-white/50 text-xs">{project.role} • {project.runtime}</div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ValueCalculator() {
+  const [service, setService] = useState(SERVICES[0]);
   const [budget, setBudget] = useState(5000);
   const [ambition, setAmbition] = useState(7);
-  const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [timeline, setTimeline] = useState(6);
   const [showSchedule, setShowSchedule] = useState(false);
 
-  // total duration is the single source of truth
-  const [total, setTotal] = useState(6); // weeks
+  const fitScore = useMemo(() => {
+    const weights = { budget: 0.4, ambition: 0.35, timeline: 0.25 };
+    const normalizedBudget = Math.min(1, budget / 15000);
+    const normalizedAmbition = ambition / 10;
+    const idealTimeline = service === "Feature Film" ? 16 : service === "Music Video" ? 4 : 8;
+    const timelineScore = Math.max(0, 1 - Math.abs(timeline - idealTimeline) / idealTimeline);
+    const score = Math.round(
+      (weights.budget * normalizedBudget + weights.ambition * normalizedAmbition + weights.timeline * timelineScore) * 100,
+    );
+    return Math.max(10, Math.min(99, score));
+  }, [ambition, budget, service, timeline]);
 
-  const RULES = {
-    "Feature Film": { base: 40000, budgetRange: [15000, 250000], ambitionIdeal: [7, 10], durationIdeal: 16, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-    "Short Film": { base: 8000, budgetRange: [1500, 30000], ambitionIdeal: [6, 10], durationIdeal: 6, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-    "AI Film": { base: 5000, budgetRange: [1000, 20000], ambitionIdeal: [6, 10], durationIdeal: 4, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-    "Music Video": { base: 3500, budgetRange: [200, 20000], ambitionIdeal: [7, 10], durationIdeal: 3, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-    "Documentary": { base: 4000, budgetRange: [1500, 40000], ambitionIdeal: [5, 9], durationIdeal: 8, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-    "BTS": { base: 900, budgetRange: [300, 5000], ambitionIdeal: [3, 7], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-    "AI Advert": { base: 3000, budgetRange: [200, 20000], ambitionIdeal: [6, 10], durationIdeal: 2, weights: { budget: 0.35, ambition: 0.35, duration: 0.3 } },
-  };
+  const suggestedTier = fitScore >= 80 ? "Cinema+" : fitScore >= 60 ? "Signature" : "Starter";
 
-  const cfg = RULES[service] || RULES["Short Film"];
-  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-  const norm = (x, [min, max]) => clamp((x - min) / Math.max(1, max - min), 0, 1);
-
-  const durationScoreFor = (svc, tot) => {
-    const ideal = RULES[svc].durationIdeal;
-    return norm(1 - Math.abs(tot - ideal) / ideal, [0, 1]);
-  };
-
-  const scoreFor = (svc, bgt, amb, tot) => {
-    const rcfg = RULES[svc];
-    const budgetScore = norm(bgt, rcfg.budgetRange);
-    const ambitionScore = norm(amb, rcfg.ambitionIdeal);
-    const durationScore = durationScoreFor(svc, tot);
-    const raw = rcfg.weights.budget * budgetScore + rcfg.weights.ambition * ambitionScore + rcfg.weights.duration * durationScore;
-    return Math.round(clamp(raw, 0, 1) * 100);
-  };
-
-  const budgetScore = norm(budget, cfg.budgetRange);
-  const ambitionScore = norm(ambition, cfg.ambitionIdeal);
-  const durationScore = durationScoreFor(service, total);
-  const raw = cfg.weights.budget * budgetScore + cfg.weights.ambition * ambitionScore + cfg.weights.duration * durationScore;
-  const score = Math.round(clamp(raw, 0, 1) * 100);
-
-  // single color mapped to score: 0 (red) → 120 (green)
-  const barColor = `hsl(${Math.round((score / 100) * 120)}, 85%, 55%)`;
-
-  const coverage = budget / cfg.base;
-  const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
-  const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
-
-  const SPLIT = [0.22, 0.33, 0.22, 0.23];
-  const KEYS = ["development", "pre", "production", "post"];
-  const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
-
-  const makeFSForTotal = (tWeeks) => {
-    if (tWeeks <= 2) {
-      const totalDays = Math.max(7, Math.round(tWeeks * 7));
-      const raw = SPLIT.map((ratio) => Math.max(1, Math.round(totalDays * ratio)));
-      const adjust = [...raw];
-      let diff = adjust.reduce((sum, days) => sum + days, 0) - totalDays;
-      while (diff !== 0) {
-        for (let i = adjust.length - 1; i >= 0 && diff !== 0; i--) {
-          if (diff > 0 && adjust[i] > 1) {
-            adjust[i] -= 1;
-            diff -= 1;
-          } else if (diff < 0) {
-            adjust[i] += 1;
-            diff += 1;
-          }
-        }
-      }
-      const out = [];
-      let startDays = 0;
-      for (let i = 0; i < adjust.length; i++) {
-        const days = adjust[i];
-        out.push({ key: KEYS[i], label: LABELS[i], startDays, weeks: days / 7 });
-        startDays += days;
-      }
-      return out;
-    }
-
-    const parts = SPLIT.map((ratio) => Math.max(0.5, Math.round(tWeeks * ratio * 2) / 2));
-    const out = [];
-    let startDays = 0;
-    for (let i = 0; i < parts.length; i++) {
-      const weeks = parts[i];
-      out.push({ key: KEYS[i], label: LABELS[i], startDays, weeks });
-      startDays += Math.ceil(weeks * 7);
-    }
-    return out;
-  };
-
-  const [phases, setPhases] = useState(() => makeFSForTotal(6));
-
-  // When total changes, keep FS by default but respect user drags by clamping only
-  useEffect(() => {
-    setPhases((prev) => {
-      if (total <= 2) return makeFSForTotal(total);
-      const maxDays = total * 7;
-      return prev.map((p) => {
-        const weeks = Math.max(0.5, Math.min(26, p.weeks));
-        let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
-        return { ...p, weeks, startDays };
-      });
-    });
-  }, [total]);
-
-  // push calendar state up + prefill events
-  useEffect(() => {
-    onCalendarChange?.(buildCalendarStateOverlapping(phases, projectDate));
-    window.dispatchEvent(new CustomEvent("prefill-fit", { detail: { service, fit: score, suggestedTier, budget, timeline: total } }));
-    window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: service } }));
-  }, [phases, projectDate, service, score, suggestedTier, budget, total]);
-
-  // High‑fit randomizer
-  useEffect(() => {
-    if (randomizeKey === undefined) return;
-    let best = { s: service, b: budget, a: ambition, t: total, score: -1 };
-    for (let i = 0; i < 60; i++) {
-      const svc = SERVICES[Math.floor(Math.random() * SERVICES.length)].name;
-      const rcfg = RULES[svc];
-      const bgt = Math.round((Math.random() * (rcfg.budgetRange[1] - rcfg.budgetRange[0]) + rcfg.budgetRange[0]) / 50) * 50;
-      const amb = Math.floor(Math.random() * 5) + 6; // 6–10 bias
-      const tot = Math.floor(Math.random() * 26) + 1; // 1–26 weeks
-      const sc = scoreFor(svc, bgt, amb, tot);
-      if (sc > best.score) best = { s: svc, b: bgt, a: amb, t: tot, score: sc };
-      if (sc >= 80) { best = { s: svc, b: bgt, a: amb, t: tot, score: sc }; break; }
-    }
-    setService(best.s);
-    setBudget(best.b);
-    setAmbition(best.a);
-    setTotal(best.t);
-    setPhases(makeFSForTotal(best.t));
-  }, [randomizeKey]);
-
-  const timelineSpanWeeks = (arr) => {
-    if (!arr.length) return 0;
-    const endDay = Math.max(...arr.map((p) => p.startDays + Math.ceil(p.weeks * 7)));
-    return endDay / 7;
-  };
-  const totalSpanWeeks = timelineSpanWeeks(phases);
-  const totalSpanLabel = totalSpanWeeks <= 2 ? `${Math.round(totalSpanWeeks * 7)} days` : `${totalSpanWeeks.toFixed(1)} weeks`;
-
-  return (
-    <div>
-      <div className="grid md:grid-cols-4 gap-4">
-        <div>
-          <div className="text-white/70 text-sm mb-1">Selected Service</div>
-          <div className="px-3 py-2 rounded-xl border border-white/20 bg-white/10">{service}</div>
+  const timelineSummary = useMemo(() => {
+    if (!showSchedule) return null;
+    const phases = [
+      { title: "Development", weeks: Math.max(1, Math.round(timeline * 0.25)) },
+      { title: "Pre-Production", weeks: Math.max(1, Math.round(timeline * 0.35)) },
+      { title: "Production", weeks: Math.max(1, Math.round(timeline * 0.2)) },
+      { title: "Post", weeks: Math.max(1, Math.round(timeline * 0.2)) },
+    ];
+    return (
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center gap-2 text-white/70 text-sm">
+          <CalendarIcon className="h-4 w-4" /> Timeline overview
         </div>
-        <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
-            <span>Budget (£{budget.toLocaleString()})</span>
-            <span title="Total resources you’re ready to invest across prep, shoot, and post.">
-              <Info className="h-4 w-4 text-white/40" />
-            </span>
-          </div>
-          <input
-            aria-label="Budget"
-            type="range"
-            min={200}
-            max={20000}
-            step={50}
-            value={budget}
-            onChange={(e) => setBudget(parseInt(e.target.value, 10))}
-            className="w-full"
-          />
-        </div>
-        <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
-            <span>Ambition ({ambition})</span>
-            <span title="How cinematic the execution should feel—higher numbers mean more craft.">
-              <Info className="h-4 w-4 text-white/40" />
-            </span>
-          </div>
-          <input
-            aria-label="Ambition"
-            type="range"
-            min={1}
-            max={10}
-            value={ambition}
-            onChange={(e) => setAmbition(parseInt(e.target.value, 10))}
-            className="w-full"
-          />
-        </div>
-        <div>
-          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
-            <span>Proposed Project Start</span>
-            <span title="When you’d like pre-production to begin.">
-              <Info className="h-4 w-4 text-white/40" />
-            </span>
-          </div>
-          <input
-            aria-label="Project start"
-            type="date"
-            value={projectDate}
-            onChange={(e) => setProjectDate(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10"
-          />
+        <div className="grid gap-2 md:grid-cols-2">
+          {phases.map((phase) => (
+            <div key={phase.title} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="text-white/80 font-semibold">{phase.title}</div>
+              <div className="text-white/60 text-sm">{phase.weeks} week(s)</div>
+            </div>
+          ))}
         </div>
       </div>
-
-      <div className="mt-5">
-        <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
-        <div className="rounded-2xl p-3 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
-          <div className="h-3 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full" style={{ width: `${score}%`, background: barColor }} aria-label={`Fit score ${score}%`} />
-          </div>
-          <div className="text-white/75 text-sm mt-2">
-            Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalSpanLabel}
-          </div>
-        </div>
-      </div>
+    );
+  }, [showSchedule, timeline]);
 
       {!showSchedule ? (
         <div className="mt-4 text-white/65 text-sm">
@@ -1236,7 +862,21 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   };
   const onPointerUp = () => { dragRef.current = null; };
 
-  const cal = buildCalendarStateOverlapping(phases, startDate);
+              <label className="block">
+                <span className="flex items-center justify-between text-white/70 text-sm">
+                  Budget (£{budget.toLocaleString()})
+                  <Info className="h-4 w-4" title="Approximate production spend you have in mind." />
+                </span>
+                <input
+                  type="range"
+                  min={1000}
+                  max={40000}
+                  step={250}
+                  value={budget}
+                  onChange={(event) => setBudget(Number(event.target.value))}
+                  className="w-full"
+                />
+              </label>
 
   // Axis mode: days for ≤2 weeks, week numbers otherwise
   const showDays = total <= 2;
@@ -1260,56 +900,13 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
         </div>
       </div>
 
-      {/* Start / End inline, separate from the lane grid */}
-      <div className="text-[12px] text-white/60 mb-1 flex justify-between"><span>Start: {cal.start}</span><span>End: {cal.end}</span></div>
-
-      <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-        {/* X‑axis header aligned with the lanes */}
-        <div className="mb-2 flex items-center gap-3">
-          {/* left spacer equal to phase label column */}
-          <div className="w-40 shrink-0" />
-          <div ref={containerRef} className="relative h-6 flex-1 select-none">
-            {/* grid columns per day */}
-            <div
-              className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-              style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-            />
-            {/* labels aligned from 0 to totalDays */}
-            {showDays ? (
-              [...Array(total).keys()].map((w) => (
-                <div key={w} className="absolute top-0 text-center" style={{ left: pct(w * 7), width: pct(7) }}>
-                  {dayLabels.map((d, i) => (
-                    <span key={i} className="inline-block w-[calc(100%/7)]">{d}</span>
-                  ))}
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-white/70 text-sm">
+                  <span>Fit Score</span>
+                  <span>{fitScore}% match</span>
                 </div>
-              ))
-            ) : (
-              [...Array(total).keys()].map((w) => (
-                <div key={w} className="absolute top-0 text-center font-semibold text-white/80" style={{ left: pct(w * 7), width: pct(7) }}>
-                  W{w + 1}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Y‑axis phases with draggable bars (overlap allowed after user edits) */}
-        <div className="space-y-3" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-          {phases.map((p, idx) => (
-            <div key={p.key} className="flex items-center gap-3">
-              <div className="w-40 shrink-0 text-[13px] text-white/80">{p.label}</div>
-              <div className="relative h-9 flex-1">
-                {/* grid background same as header for visual alignment */}
-                <div
-                  className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px)]"
-                  style={{ backgroundSize: `calc(100% / ${totalDays}) 100%` }}
-                />
-                {/* bar */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 h-7 rounded-xl border border-white/25 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
-                  style={{ left: pct(p.startDays), width: pct(Math.ceil(p.weeks * 7)) }}
-                >
-                  {/* move handle (center) */}
+                <div className="mt-2 h-4 rounded-full bg-white/10">
                   <div
                     className={cn("absolute inset-0", !isTouch && "cursor-grab active:cursor-grabbing")}
                     onPointerDown={(e) => onPointerDown(e, idx, "move")}
@@ -1339,10 +936,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
                     </div>
                   </div>
                 </div>
+                <div className="mt-2 text-white/70 text-sm">Recommended package: <span className="font-semibold">{suggestedTier}</span></div>
               </div>
-            </div>
-          ))}
-        </div>
 
         <div className="mt-2 text-white/65 text-xs">
           Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.
@@ -1352,66 +947,180 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
     </div>
   );
 }
+              <button
+                className="flex items-center gap-2 text-white/80 hover:text-white"
+                onClick={() => setShowSchedule((value) => !value)}
+              >
+                {showSchedule ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showSchedule ? "Hide" : "Customize"} schedule
+              </button>
 
-// ========= Portfolio ========= //
-function Portfolio() {
-  const [modal, setModal] = useState(null);
-  return (
-    <section className="py-12" id="featured-projects">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-1">
-          <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
-          <span className="text-white/70 text-sm">Proof of craft, proof of results</span>
-        </div>
-        <p className="text-white/75 max-w-2xl mb-4">Every frame serves story and strategy. Click a tile to watch or skim the case notes.</p>
-        <div className="grid md:grid-cols-3 gap-6">
-          {PROJECTS.map((p) => (
-            <Card key={p.id}>
-              <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
-                {youtubeThumb(p.url) ? (
-                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform" />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
-                )}
-              </div>
-              <div className="mt-3 font-semibold">{p.title}</div>
-              <div className="text-white/70 text-sm">{p.role} • {p.runtime}</div>
-              <p className="mt-2 text-white/80">{p.summary}</p>
-              <div className="mt-4 flex gap-2">
-                <Button onClick={() => setModal({ type: "watch", p })} icon={Play}>Watch</Button>
-                <Button onClick={() => setModal({ type: "case", p })} className="bg-white/10" icon={ExternalLink}>Case Study</Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+              {timelineSummary}
+            </div>
+          </div>
+        </Card>
       </div>
+    </section>
+  );
+}
 
-      {modal ? (
-        <Modal open={true} onClose={() => setModal(null)} title={modal?.p?.title || ""}>
-          {modal?.type === "watch" ? (
-            <div className="aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
-              <iframe
-                className="w-full h-full"
-                src={modal?.p?.url?.replace("watch?v=", "embed/").replace("shorts/", "embed/")}
-                title="YouTube video player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
+function InstagramEmbed({ url, title }) {
+  const embedUrl = `${url}embed/`;
+  return (
+    <div className="relative w-64 shrink-0 aspect-[9/16] overflow-hidden rounded-3xl border border-white/10 bg-black/40">
+      <iframe
+        src={embedUrl}
+        title={title}
+        className="h-full w-full"
+        allow="autoplay; clipboard-write; encrypted-media"
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
+function MMMGalleries() {
+  const belts = useMemo(() => Object.entries(MMM_REELS), []);
+
+  return (
+    <section id="galleries" className="py-16">
+      <div className="max-w-7xl mx-auto px-6 space-y-10">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold">MMM Media Galleries</h2>
+            <p className="text-white/70">Hand-picked reels showcasing epic edits, beauty storytelling, BTS energy, and AI experiments.</p>
+          </div>
+        </div>
+        {belts.map(([label, urls]) => (
+          <div key={label} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">{label}</h3>
+              <span className="text-white/60 text-sm">Instagram reels</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {urls.slice(0, 6).map((url) => (
+                <InstagramEmbed key={url} url={url} title={`${label} reel`} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ContactForm() {
+  const [service, setService] = useState(SERVICES[0]);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const reset = () => {
+    setName("");
+    setEmail("");
+    setMessage("");
+    setService(SERVICES[0]);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!name || !email || !message) {
+      setStatus({ type: "error", message: "Please fill in the required fields." });
+      return;
+    }
+    setSending(true);
+    setStatus(null);
+    try {
+      await postJSONWithFallback(CHATBOT_ENDPOINTS.contact, {
+        name,
+        email,
+        service,
+        message,
+        source: "website-contact",
+      });
+      setStatus({ type: "success", message: "Thanks — I'll be in touch within 48 hours." });
+      reset();
+    } catch (error) {
+      setStatus({ type: "error", message: "Something went wrong. Please try again later." });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <section id="contact" className="py-16">
+      <div className="max-w-5xl mx-auto px-6">
+        <Card>
+          <h2 className="text-3xl font-bold">Start a Project</h2>
+          <p className="mt-2 text-white/70">
+            Ready for cinematic storytelling? Share a few details and I'll reply personally with next steps.
+          </p>
+          <form className="mt-6 space-y-4" onSubmit={submit}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm text-white/70">
+                Name *
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm text-white/70">
+                Email *
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1 text-sm text-white/70">
+              Service Type
+              <select
+                value={service}
+                onChange={(event) => setService(event.target.value)}
+                className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
+              >
+                {SERVICES.map((item) => (
+                  <option key={item} value={item} className="text-black">
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-white/70">
+              Message *
+              <textarea
+                value={message}
+                rows={4}
+                onChange={(event) => setMessage(event.target.value)}
+                className="rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-white"
               />
+            </label>
+            <div className="flex flex-wrap gap-3 items-center">
+              <Button type="submit" icon={sending ? Loader2 : ShieldCheck} disabled={sending}>
+                {sending ? "Sending..." : "Send message"}
+              </Button>
+              <Button type="button" variant="ghost" icon={Mail} href="mailto:admin@menelekmakonnen.com">
+                Email instead
+              </Button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-white/85">Role: {modal?.p?.role}. Outcome: crisp narrative, solid retention; clean masters.</p>
-              <ul className="list-disc pl-6 text-white/80">
-                <li>Concept → Production → Post overview</li>
-                <li>Tools: Camera/Editor/Grading suite (replace with specifics)</li>
-                <li>Deliverables: Final cut(s), verticals, captions, thumbnails</li>
-              </ul>
-              <Button href={modal?.p?.url} icon={ExternalLink} target="_blank" rel="noreferrer">Open on YouTube</Button>
-            </div>
-          )}
-        </Modal>
-      ) : null}
+            {status ? (
+              <div
+                className={cn(
+                  "rounded-2xl px-4 py-3 text-sm",
+                  status.type === "success" ? "bg-emerald-500/20 text-emerald-200" : "bg-rose-500/20 text-rose-200",
+                )}
+              >
+                {status.message}
+              </div>
+            ) : null}
+          </form>
+        </Card>
+      </div>
     </section>
   );
 }
@@ -1640,16 +1349,30 @@ function Blog() {
     { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
   ];
   return (
-    <section className="py-12">
+    <section id="blog" className="py-16">
       <div className="max-w-6xl mx-auto px-6">
-        <h2 className="text-3xl font-bold">Blog</h2>
-        <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
-        <div className="mt-6 grid md:grid-cols-2 gap-4">
-          {POSTS.map((p) => (
-            <Card key={p.id}>
-              <div className="text-sm text-white/60">{p.date}</div>
-              <div className="font-semibold mt-1">{p.title}</div>
-              <p className="mt-2 text-white/80">{p.body}</p>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold">Latest from the Blog</h2>
+            <p className="text-white/70">Insights on storytelling craft, production process, and the evolving tech stack.</p>
+          </div>
+          <Button variant="ghost" href="https://menelekmakonnen.com/blog" target="_blank" rel="noopener noreferrer">
+            View all
+          </Button>
+        </div>
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
+          {BLOG_POSTS.map((post) => (
+            <Card key={post.id} className="flex flex-col">
+              <div className="text-lg font-semibold">{post.title}</div>
+              <p className="mt-2 text-white/70 text-sm flex-1">{post.excerpt}</p>
+              <a
+                href={post.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 text-white/80 hover:text-white"
+              >
+                Read article <ExternalLink className="h-4 w-4" />
+              </a>
             </Card>
           ))}
         </div>
@@ -1658,103 +1381,118 @@ function Blog() {
   );
 }
 
-// ========= Biography ========= //
-function Biography() {
+function FooterNav() {
+  const items = [
+    { id: "featured", label: "Featured" },
+    { id: "calculator", label: "Value Calculator" },
+    { id: "galleries", label: "Galleries" },
+    { id: "contact", label: "Contact" },
+    { id: "blog", label: "Blog" },
+  ];
+
   return (
-    <section className="py-12">
-      <div className="max-w-5xl mx-auto px-6">
-        <h2 className="text-3xl font-bold">Biography</h2>
-        <Card className="mt-4 space-y-3">
-          <p className="text-white/85">I’m a director and worldbuilder focused on audience retention and emotional payoff. I grew up on DC’s mythic weight and the MCU’s long‑arc engineering, so my work blends spectacle, clarity, and continuity. I’m building the Loremaker Universe—Afro‑mythic superheroes, supernatural intrigue, and grounded human stakes.</p>
-          <p className="text-white/80">My lane: commercials, short films, music videos, documentaries, and AI‑assisted storytelling pipelines. I write treatments that sell, run lean crews, and deliver clean masters for multi‑platform delivery. I’m as comfortable arguing for a lens choice as I am for a marketing hook.</p>
-          <p className="text-white/80">Philosophy: style serves structure. If the audience doesn’t feel something, the frame’s a screensaver. I prioritize performance direction, visual clarity, and schedules that respect people’s time. Tools are welcome—taste is mandatory.</p>
-          <p className="text-white/80">Highlights include <em>Heroes & Gods</em> (feature‑length anthology), <em>Blinded by Magic</em>, <em>Abranteers</em>, and the boxing pilot doc <em>SPAR</em>. Beyond set life, I design pipelines for brands to publish consistently without losing voice.</p>
-        </Card>
+    <footer className="border-t border-white/10 bg-black/60 backdrop-blur-xl py-10">
+      <div className="max-w-6xl mx-auto px-6 flex flex-col gap-6">
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
+              className="px-3 py-1.5 text-sm text-white/70 hover:text-white border border-white/10 rounded-full"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-white/50 text-sm">
+          © {new Date().getFullYear()} Menelek Makonnen. Crafted with intention in London.
+        </div>
       </div>
-    </section>
+    </footer>
   );
 }
 
-// ========= All Links Modal ========= //
-function AllLinksModal({ open, onClose }) {
-  return (
-    <Modal open={open} onClose={onClose} title="All my Links">
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <div className="flex items-center gap-3 mb-3"><Youtube className="h-5 w-5" /><div>
-            <div className="font-semibold">YouTube</div>
-            <div className="text-white/60 text-xs">Trailers, reels, behind‑the‑scenes</div>
-          </div></div>
-          <div className="flex flex-col gap-2">
-            <Button href={LINKS.personalYouTube} target="_blank" rel="noreferrer" icon={ExternalLink}>Personal Channel</Button>
-            <Button href={LINKS.directorYouTube} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">Director Channel</Button>
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-3 mb-3"><Instagram className="h-5 w-5" /><div>
-            <div className="font-semibold">Instagram</div>
-            <div className="text-white/60 text-xs">Stills, reels, lore snippets</div>
-          </div></div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button href={LINKS.personalIG} target="_blank" rel="noreferrer" variant="ghost">Personal</Button>
-            <Button href={LINKS.loremakerIG} target="_blank" rel="noreferrer" variant="ghost">Loremaker</Button>
-            <Button href={LINKS.icuniIG} target="_blank" rel="noreferrer" variant="ghost">ICUNI</Button>
-            <Button href={LINKS.mmmIG} target="_blank" rel="noreferrer" variant="ghost">MMM Media</Button>
-            <Button href={LINKS.aiIG} target="_blank" rel="noreferrer" variant="ghost">AI Consultancy</Button>
-          </div>
-          <div className="mt-3 flex items-center gap-2"><Linkedin className="h-4 w-4" /><a className="underline" href={LINKS.personalLI} target="_blank" rel="noreferrer">LinkedIn</a></div>
-          <div className="mt-1 flex items-center gap-2"><Linkedin className="h-4 w-4" /><a className="underline" href={LINKS.businessLI} target="_blank" rel="noreferrer">Business LinkedIn</a></div>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-3 mb-3"><ExternalLink className="h-5 w-5" /><div>
-            <div className="font-semibold">Websites</div>
-            <div className="text-white/60 text-xs">Universes, consultancy, archive</div>
-          </div></div>
-          <div className="flex flex-col gap-2">
-            <Button href={LINKS.loremakerSite} target="_blank" rel="noreferrer" icon={ExternalLink}>Loremaker Database</Button>
-            <Button href={LINKS.icuniSite} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">AI Consultancy (ICUNI)</Button>
-            <Button href={LINKS.oldBlog} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">Old Blog</Button>
-          </div>
-        </Card>
-      </div>
-    </Modal>
-  );
-}
-
-// ========= App Shell ========= //
-function LogoMark() {
-  return (
-    <div className="relative h-8 w-8 grid place-items-center">
-      <svg viewBox="0 0 64 64" className="h-8 w-8">
-        <defs>
-          <linearGradient id="mmg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopOpacity="0.85" stopColor="#ffffff" />
-            <stop offset="100%" stopOpacity="0.15" stopColor="#ffffff" />
-          </linearGradient>
-        </defs>
-        <rect x="8" y="8" width="48" height="48" rx="8" transform="rotate(45 32 32)" fill="url(#mmg)" opacity="0.12" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
-        <text x="32" y="38" textAnchor="middle" fontSize="20" fill="#ffffff" opacity="0.9" style={{ fontWeight: 800, letterSpacing: 1 }}>MM</text>
-      </svg>
-    </div>
-  );
-}
-
-const MENU = [
-  { key: "home", label: "Home" },
-  { key: "bio", label: "Biography" },
-  { key: "ai", label: "AI" }, // external link
-  { key: "loremaker", label: "Loremaker" }, // external link
-  { key: "blog", label: "Blog" },
-];
-
-function FloatingButtons({ onOpenContact }) {
-  const [showTop, setShowTop] = useState(false);
+function BackToTop() {
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 300);
+    const onScroll = () => setVisible(window.scrollY > 120);
     onScroll();
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  return (
+    <button
+      className={cn(
+        "fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full border border-white/15 bg-black/60 px-4 py-2 text-sm text-white/80 backdrop-blur",
+        visible ? "opacity-100" : "opacity-0 pointer-events-none",
+      )}
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+    >
+      <ArrowUp className="h-4 w-4" />
+      Top
+    </button>
+  );
+}
+
+function ZaraChatbot() {
+  const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [messages, setMessages] = useState([
+    { id: "welcome", from: "bot", text: "Hey there! I'm Zara. What brings you here today?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, open, minimized]);
+
+  useEffect(() => {
+    postJSONWithFallback(CHATBOT_ENDPOINTS.track, {
+      page: window.location.pathname,
+      timestamp: new Date().toISOString(),
+    }).catch(() => {});
+  }, []);
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    const text = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { id: uniqueId(), from: "user", text }]);
+    setLoading(true);
+    try {
+      const sessionId = (() => {
+        if (typeof window === "undefined") return uniqueId();
+        let existing = window.localStorage.getItem("zara-session");
+        if (!existing) {
+          existing = uniqueId();
+          window.localStorage.setItem("zara-session", existing);
+        }
+        return existing;
+      })();
+
+      const response = await postJSONWithFallback(CHATBOT_ENDPOINTS.chatbot, {
+        message: text,
+        sessionId,
+        timestamp: new Date().toISOString(),
+      });
+      const reply = response?.response || "I'm routing this to Menelek right now. Could you drop an email just in case?";
+      setMessages((prev) => [...prev, { id: uniqueId(), from: "bot", text: reply }]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uniqueId(),
+          from: "bot",
+          text: "I can't reach the studio right now, but email admin@menelekmakonnen.com and we'll reply asap.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
       {/* Contact bubble */}
@@ -1767,21 +1505,86 @@ function FloatingButtons({ onOpenContact }) {
         <Mail className="h-5 w-5" />
       </button>
       {/* Back to top */}
+    <div className="fixed right-5 bottom-20 z-50">
       <AnimatePresence>
-        {showTop && (
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
+        {open && (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="rounded-full p-3 bg-white/10 border border-white/20 backdrop-blur hover:bg-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-            title="Back to top"
-            aria-label="Back to top"
+            exit={{ opacity: 0, y: 20 }}
+            className="mb-3 w-80 overflow-hidden rounded-3xl border border-white/10 bg-black/70 backdrop-blur-xl shadow-2xl"
           >
-            <ArrowUp className="h-5 w-5" />
-          </motion.button>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div>
+                <div className="font-semibold text-white">Zara</div>
+                <div className="text-xs text-white/60">Menelek's AI Assistant</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setMinimized((value) => !value)} className="text-white/60 hover:text-white">
+                  {minimized ? <MaximizeIcon /> : <Minimize2 className="h-4 w-4" />}
+                </button>
+                <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            {!minimized ? (
+              <div className="flex h-96 flex-col">
+                <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
+                        message.from === "bot"
+                          ? "bg-white/10 text-white/90"
+                          : "ml-auto bg-gradient-to-tr from-cyan-500/60 to-fuchsia-500/60 text-white",
+                      )}
+                    >
+                      {message.text}
+                    </div>
+                  ))}
+                  {loading ? (
+                    <div className="text-xs text-white/60">Zara is typing…</div>
+                  ) : null}
+                  <div ref={messagesEndRef} />
+                </div>
+                <div className="flex items-center gap-2 border-t border-white/10 bg-black/60 px-4 py-3">
+                  <input
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    className="flex-1 rounded-2xl border border-white/15 bg-black/60 px-3 py-2 text-sm text-white"
+                    placeholder="Write a message..."
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    className="rounded-full bg-white/15 p-2 text-white hover:bg-white/25"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </motion.div>
         )}
       </AnimatePresence>
+      <button
+        onClick={() => {
+          setOpen((value) => !value);
+          setMinimized(false);
+        }}
+        className="flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 py-2 text-sm text-white/80 backdrop-blur"
+      >
+        <MessageSquare className="h-4 w-4" />
+        {open ? "Close" : "Chat with Zara"}
+      </button>
     </div>
   );
 }
@@ -1804,69 +1607,80 @@ function runSelfTests() {
     console.assert(cal.start === "2025-01-01", "cal start");
     console.assert(cal.end >= "2025-01-15", "cal end range");
 
-    // extra test: ensure pct math stays consistent
-    console.assert(typeof youtubeThumb(PROJECTS[0].url) === "string", "thumb returns string");
-
-    console.groupEnd();
-  } catch (e) {
-    console.warn("Self‑tests error:", e);
-  }
-}
-
-export default function AppShell() {
-  const [route, setRoute] = useState("home");
-  const [reelOpen, setReelOpen] = useState(false);
-  const [linksOpen, setLinksOpen] = useState(false);
-  const [contactOpen, setContactOpen] = useState(false);
-  const [calendarState, setCalendarState] = useState(null);
-  const [currentService, setCurrentService] = useState(SERVICES[0].name);
-
-  const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: name } }));
-
-  const goContactInline = (serviceName) => {
-    if (serviceName) prefillSubtype(serviceName);
-    setRoute("home");
-    setTimeout(() => { document.getElementById("contact-inline")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 0);
-  };
-
-  useEffect(() => {
-    runSelfTests();
-  }, []);
+function LinksModal({ open, onClose }) {
+  const links = [
+    { label: "Instagram", href: SOCIALS.instagram },
+    { label: "YouTube", href: SOCIALS.youtube },
+    { label: "LinkedIn", href: SOCIALS.linkedin },
+    { label: "Email", href: SOCIALS.email },
+  ];
 
   return (
-    <div className="min-h-screen text-white relative overflow-x-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.015)_0,rgba(255,255,255,0.015)_1px,transparent_1px,transparent_8px)]" />
-        <DiamondsCanvas />
-      </div>
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div className="absolute inset-0 bg-black/80" onClick={onClose} />
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="relative z-10 mx-auto mt-24 max-w-md rounded-3xl border border-white/10 bg-black/70 p-6 text-white backdrop-blur"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                <Sparkles className="h-5 w-5" /> Connect with Menelek
+              </h3>
+              <button onClick={onClose} className="text-white/60 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {links.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span>{link.label}</span>
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur bg-black/45 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+function AppShell({ children }) {
+  const [linksOpen, setLinksOpen] = useState(false);
+
+  return (
+    <div className="relative min-h-screen bg-[#05070f] text-white">
+      <DiamondsCanvas className="opacity-80" />
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/60 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="font-semibold tracking-[0.3em] uppercase text-sm">Mothership</div>
           <div className="flex items-center gap-3">
-            <LogoMark />
-            <span className="font-semibold tracking-tight">Menelek Makonnen</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-5 text-white/80">
-            {MENU.map((m) => (
-              m.key === "ai" ? (
-                <a key={m.key} href={LINKS.icuniSite} className="hover:text-white" rel="noreferrer">{m.label}</a>
-              ) : m.key === "loremaker" ? (
-                <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white">{m.label}</a>
-              ) : (
-                <a key={m.key} href="#" onClick={(e) => { e.preventDefault(); setRoute(m.key); }} className={cn("hover:text-white", route === m.key && "text-white")}>{m.label}</a>
-              )
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setLinksOpen(true)} className="hidden sm:inline-flex">All my Links</Button>
-            <a href={SOCIALS.email} className="text-white/80 hover:text-white hidden sm:inline-flex items-center gap-2"><Mail className="h-4 w-4" />Email</a>
+            <Button variant="ghost" onClick={() => setLinksOpen(true)}>All Links</Button>
+            <Button
+              variant="accent"
+              onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+            >
+              Start a Project
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Pages */}
       <main>
         {route === "home" && (
           <>
@@ -1891,58 +1705,67 @@ export default function AppShell() {
         )}
         {route === "bio" && <Biography />}
         {route === "blog" && <Blog />}
+        <Hero onOpenLinks={() => setLinksOpen(true)} />
+        <SectionNav />
+        <SocialProof />
+        <FeaturedPortfolio />
+        <ValueCalculator />
+        <MMMGalleries />
+        <ContactForm />
+        <BlogRoll />
+        {children}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-12 border-t border-white/10 bg-black/35 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-6 py-8 grid md:grid-cols-3 gap-6">
-          <div>
-            <div className="font-semibold">Menelek Makonnen</div>
-            <div className="text-white/70 text-sm mt-1">Filmmaker • Worldbuilder</div>
-            <div className="mt-3 flex items-center gap-4 text-white/80">
-              <a href={SOCIALS.instagram} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Instagram className="h-4 w-4" />Instagram</a>
-              <a href={SOCIALS.youtube} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Youtube className="h-4 w-4" />YouTube</a>
-              <a href={SOCIALS.linkedin} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Linkedin className="h-4 w-4" />LinkedIn</a>
-            </div>
-          </div>
-          <div className="md:col-span-2 text-white/70 text-sm">
-            © {new Date().getFullYear()} Loremaker • ICUNI. All rights reserved.
-          </div>
-        </div>
-      </footer>
-
-      {/* Floating Buttons */}
-      <FloatingButtons onOpenContact={() => setContactOpen(true)} />
-
-      {/* Modals */}
-      <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
-
-      {/* Quick Contact bubble modal */}
-      <Modal open={contactOpen} onClose={() => setContactOpen(false)} title="Quick Contact">
-        <div className="grid gap-3">
-          <p className="text-white/75 text-sm">Leave a fast brief. I’ll reply within 24–48h.</p>
-          <a className="underline" href={SOCIALS.email}>Or email me directly</a>
-          <textarea rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" placeholder="What are we making? Scope, goals, timeline…" />
-          <div className="flex gap-2">
-            <Button onClick={() => { alert("Saved locally. I’ll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
-            <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
-          </div>
-          <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
-        </div>
-      </Modal>
-
-      <Modal open={reelOpen} onClose={() => setReelOpen(false)} title="Instagram Reel">
-        <div className="aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.instagram.com/reel/${IG_REEL_ID}/embed`}
-            title="Instagram reel"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </div>
-      </Modal>
+      <FooterNav />
+      <BackToTop />
+      <ZaraChatbot />
+      <LinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
     </div>
   );
 }
+
+function SocialProof() {
+  const logos = ["Netflix", "BBC", "Spotify"];
+  const quotes = [
+    {
+      quote: "Menelek understands the assignment faster than any director we've hired.",
+      author: "Creative Director, Global Agency",
+    },
+    {
+      quote: "The worlds he builds translate perfectly on screen and socials.",
+      author: "Head of Content, Tech Startup",
+    },
+    {
+      quote: "A rare blend of visionary storytelling and reliable delivery.",
+      author: "Executive Producer, Streaming Network",
+    },
+  ];
+
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setQuoteIndex((value) => (value + 1) % quotes.length), 6000);
+    return () => clearInterval(timer);
+  }, [quotes.length]);
+
+  return (
+    <section className="py-10">
+      <div className="max-w-6xl mx-auto px-6 space-y-6">
+        <div className="flex flex-wrap items-center gap-6 text-white/60 text-sm uppercase tracking-[0.3em]">
+          <span className="text-white/70">Trusted by</span>
+          {logos.map((logo) => (
+            <span key={logo} className="rounded-full border border-white/10 px-4 py-2">
+              {logo}
+            </span>
+          ))}
+        </div>
+        <Card className="bg-white/5">
+          <div className="text-lg text-white/90">“{quotes[quoteIndex].quote}”</div>
+          <div className="mt-2 text-sm text-white/60">{quotes[quoteIndex].author}</div>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+export default AppShell;
