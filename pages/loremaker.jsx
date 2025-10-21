@@ -1679,7 +1679,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
     return () => clearTimeout(t);
   }, [pulse]);
 
-export default function LoremakerApp() {
+function LegacyLoremakerApp() {
   const { data, loading, error, refetch } = useCharacters();
   const [filters, setFilters] = useState({});
   const [combineAND, setCombineAND] = useState(true);
