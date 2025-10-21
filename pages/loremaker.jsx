@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Search,
@@ -1360,11 +1360,11 @@ function BattleArena({ characters, slots, setSlots, onOpenCharacter, pulseKey })
   return (
     <motion.div
       layout
-      animate={arenaPulse ? { scale: [1, 1.02, 0.99, 1.01, 1], boxShadow: "0 30px 100px rgba(244,187,74,0.25)" } : {}}
+      animate={arenaPulse ? { scale: [1, 1.02, 0.99, 1.01, 1], boxShadow: "0 30px 100px rgba(15,23,42,0.55)" } : {}}
       transition={{ type: "spring", stiffness: 200, damping: 18 }}
     >
-      <Card className="border-0 bg-slate-900 text-slate-100">
-        <CardHeader className="border-b border-white/5 pb-4">
+      <Card className="border border-white/10 bg-[#090b1a]/95 text-slate-100 shadow-[0_40px_120px_rgba(5,8,20,0.65)]">
+        <CardHeader className="border-b border-white/10 pb-4">
           <div className="flex flex-wrap items-center gap-3">
             <CardTitle className="flex items-center gap-2 text-2xl font-extrabold text-white">
               <Swords /> Battle Arena
@@ -1418,11 +1418,11 @@ function BattleArena({ characters, slots, setSlots, onOpenCharacter, pulseKey })
             />
           </div>
           {timeline.length > 0 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-xs">
+            <div className="rounded-2xl border border-white/10 bg-[#0f1329]/80 p-4 text-xs backdrop-blur">
               <div className="mb-2 text-sm font-black uppercase tracking-wide text-slate-200">Battle Flow</div>
               <div className="grid gap-3 md:grid-cols-3">
                 {timeline.map((phase) => (
-                  <div key={phase.round} className="rounded-xl border border-slate-800/80 bg-slate-900/80 p-3 text-slate-200">
+                  <div key={phase.round} className="rounded-xl border border-white/10 bg-[#141a38]/80 p-3 text-slate-200">
                     <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Round {phase.round}</div>
                     <div className="mt-2 space-y-1">
                       <div>A Strike: {phase.strikeA}</div>
@@ -1438,7 +1438,7 @@ function BattleArena({ characters, slots, setSlots, onOpenCharacter, pulseKey })
             </div>
           )}
           {result && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-5 text-center">
+            <div className="rounded-2xl border border-white/10 bg-[#0d1126] px-4 py-5 text-center">
               <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Winner</div>
               <div className="mt-2 rounded-xl bg-slate-900 px-4 py-3 text-lg font-black text-slate-100">
                 {result.winner.name}
@@ -2121,51 +2121,144 @@ function ChatDock() {
   );
 }
 
+function HeroSection({ totalCharacters, onFilterClick, onScrollToFilters }) {
+  return (
+    <section className="relative overflow-hidden rounded-[36px] border border-white/15 bg-gradient-to-br from-indigo-900/60 via-fuchsia-700/40 to-amber-500/20 shadow-[0_40px_120px_rgba(12,9,32,0.55)]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_55%)]" />
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/40 to-transparent" />
+      <div className="absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+      <div className="absolute -right-20 -top-10 h-72 w-72 rounded-full bg-fuchsia-500/10 blur-3xl" />
+      <div className="relative z-10 flex flex-col gap-12 px-6 py-16 sm:px-10 md:px-16">
+        <nav className="flex flex-col gap-4 text-[11px] font-semibold uppercase tracking-[0.4em] text-white/70 sm:flex-row sm:items-center sm:justify-between">
+          <span className="font-black text-white">Loremaker</span>
+          <div className="flex items-center gap-6">
+            <a href="/" className="transition-colors hover:text-white">
+              Home
+            </a>
+            <span className="rounded-full border border-white/35 px-3 py-1 text-white">
+              Loremaker
+            </span>
+          </div>
+        </nav>
+        <div className="grid gap-12 lg:grid-cols-[3fr_2fr]">
+          <div className="space-y-6">
+            <h1 className="text-4xl font-black leading-tight text-white drop-shadow-lg sm:text-5xl md:text-6xl">
+              Chronicle every legend in Menelek Makonnen’s expanding cosmos.
+            </h1>
+            <p className="text-lg font-semibold text-white/85 md:text-xl">
+              Filter the archive, dive into detailed dossiers, and summon characters into the Arena.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Button variant="gradient" size="lg" onClick={onFilterClick} className="shadow-[0_18px_48px_rgba(253,230,138,0.35)]">
+                Launch Filters
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onScrollToFilters}
+                className="border-white/50 text-white/85 hover:bg-white/10"
+              >
+                Browse Archive
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col justify-end gap-6">
+            <div className="rounded-3xl border border-white/25 bg-black/40 px-6 py-6 backdrop-blur-xl">
+              <div className="text-[11px] font-bold uppercase tracking-[0.4em] text-white/60">Archive</div>
+              <div className="mt-3 text-5xl font-black text-white sm:text-6xl">{totalCharacters}</div>
+              <div className="mt-2 text-sm font-semibold text-white/70">Characters catalogued</div>
+            </div>
+            <p className="text-sm font-semibold text-white/70">
+              From primordial factions to whispered alliances, every dossier is ready for your next encounter.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** -------------------- App -------------------- */
 export default function App() {
   const { data, loading, error, refetch } = useCharacters();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({});
   const [combineAND, setCombineAND] = useState(false);
-  const [openFilters, setOpenFilters] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(null);
   const [sortMode, setSortMode] = useState("default");
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [arenaSlots, setArenaSlots] = useState({ left: null, right: null });
+  const [arenaPulseKey, setArenaPulseKey] = useState(0);
   const [highlightedId, setHighlightedId] = useState(null);
-  const [arenaPulse, setArenaPulse] = useState(false);
+  const [showArena, setShowArena] = useState(true);
+  const [openModal, setOpenModal] = useState(false);
+  const [currentCharacter, setCurrentCharacter] = useState(null);
   const visitTracked = useRef(false);
 
-  const onOpen = (c) => { setActive(c); setOpen(true); };
+  const selectedIds = useMemo(
+    () => [arenaSlots.left, arenaSlots.right].filter(Boolean),
+    [arenaSlots.left, arenaSlots.right]
+  );
 
-  // if both slots full and user adds a third, replace the oldest
-  const onUseInSim = (id) => {
-    setSelectedIds((ids) => {
-      if (ids.includes(id)) return ids;
-      if (ids.length < 2) return [...ids, id];
-      return [ids[1], id]; // replace oldest
+  const openCharacter = useCallback((char) => {
+    setCurrentCharacter(char);
+    setOpenModal(true);
+  }, []);
+
+  const closeCharacter = useCallback(() => {
+    setOpenModal(false);
+    setCurrentCharacter(null);
+  }, []);
+
+  const handleFacet = useCallback(({ key, value }) => {
+    setFilters((prev) => {
+      const next = new Set(prev[key] || []);
+      next.add(value);
+      return { ...prev, [key]: Array.from(next) };
     });
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilters({});
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setFilters({});
+    setCombineAND(false);
+    setQuery("");
+    setArenaSlots({ left: null, right: null });
+    setHighlightedId(null);
+  }, []);
+
+  const onUseInSim = useCallback((id) => {
+    setArenaSlots((slots) => {
+      if (slots.left === id || slots.right === id) return slots;
+      if (!slots.left) {
+        return { left: id, right: slots.right };
+      }
+      if (!slots.right) {
+        return { left: slots.left, right: id };
+      }
+      return { left: slots.right, right: id };
+    });
+    setArenaPulseKey((key) => key + 1);
     setHighlightedId(id);
-    setArenaPulse(true);
     setTimeout(() => setHighlightedId(null), 900);
-    setTimeout(() => setArenaPulse(false), 900);
-    // scroll to arena
     const anchor = document.getElementById("arena-anchor");
     if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+    setShowArena(true);
+  }, []);
 
-  const allValues = useMemo(() => ({
-    gender: Array.from(new Set(data.map((d) => d.gender).filter(Boolean))),
-    alignment: Array.from(new Set(data.map((d) => d.alignment).filter(Boolean))),
-    faction: Array.from(new Set(data.flatMap((d) => d.faction || []))),
-    locations: Array.from(new Set(data.flatMap((d) => d.locations || []))),
-    era: Array.from(new Set(data.map((d) => d.era).filter(Boolean))),
-    status: Array.from(new Set(data.map((d) => d.status).filter(Boolean))),
-    tags: Array.from(new Set(data.flatMap((d) => d.tags || []))),
-    powers: Array.from(new Set(data.flatMap((d) => d.powers.map((p) => p.name)))),
-  }), [data]);
+  const useInSim = useCallback(
+    (id) => {
+      onUseInSim(id);
+      closeCharacter();
+    },
+    [closeCharacter, onUseInSim]
+  );
 
-  const filtered = useMemo(() => data.filter((c) => matchesFilters(c, filters, combineAND, query)), [data, filters, combineAND, query]);
+  const filtered = useMemo(
+    () => data.filter((c) => matchesFilters(c, filters, combineAND, query)),
+    [data, filters, combineAND, query]
+  );
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -2187,8 +2280,6 @@ export default function App() {
     }
   }, [filtered, sortMode]);
 
-  const hasStories = useMemo(() => data.some((item) => (item.stories || []).length), [data]);
-
   useEffect(() => {
     if (visitTracked.current) return;
     if (!TRACK_VISIT_WEBHOOK || typeof window === "undefined") return;
@@ -2205,6 +2296,10 @@ export default function App() {
     }).catch(() => {});
   }, [data.length]);
 
+  const scrollToFilters = useCallback(() => {
+    document.getElementById("filters-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-[#070813] text-white">
       <Aurora />
@@ -2216,6 +2311,12 @@ export default function App() {
             </div>
             <div className="text-2xl font-black tracking-tight">Loremaker Universe</div>
           </div>
+          <nav className="ml-6 hidden items-center gap-4 text-[11px] font-bold uppercase tracking-[0.4em] text-white/60 sm:flex">
+            <a href="/" className="transition-colors hover:text-white">
+              Home
+            </a>
+            <span className="rounded-full border border-white/35 px-3 py-1 text-white">Loremaker</span>
+          </nav>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <div className="relative">
               <Input
@@ -2226,7 +2327,7 @@ export default function App() {
               />
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
             </div>
-            <Button variant="gradient" onClick={() => setShowFilters(true)} className="shadow-[0_15px_40px_rgba(250,204,21,0.3)]">
+            <Button variant="gradient" onClick={scrollToFilters} className="shadow-[0_15px_40px_rgba(250,204,21,0.3)]">
               <Filter className="h-4 w-4" /> Filters
             </Button>
             <Button variant="outline" onClick={clearFilters}>
@@ -2243,18 +2344,28 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-10 px-4 py-8">
-        <HeroSection data={data} onOpen={openCharacter} onFacet={handleFacet} />
+        {loading && (
+          <div className="rounded-3xl border border-white/15 bg-white/5 px-6 py-4 text-sm font-semibold text-white/80">
+            Synchronising the archive…
+          </div>
+        )}
+        {!loading && error && (
+          <div className="rounded-3xl border border-red-400/40 bg-red-500/10 px-6 py-4 text-sm font-semibold text-red-200">
+            Unable to load characters right now: {error}
+          </div>
+        )}
 
-        {/* Arena pinned right under Hero */}
-        <div id="arena-anchor">
-          <Simulator data={sorted} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onOpen={onOpen} pulse={arenaPulse} />
-        </div>
+        <HeroSection
+          totalCharacters={data.length}
+          onFilterClick={scrollToFilters}
+          onScrollToFilters={scrollToFilters}
+        />
 
-        <div className="mt-6">
+        <div id="filters-panel" className="mt-10">
           <Controls
             query={query}
             setQuery={setQuery}
-            setOpenFilters={setOpenFilters}
+            setOpenFilters={() => scrollToFilters()}
             sortMode={sortMode}
             setSortMode={setSortMode}
             onClear={clearAll}
@@ -2262,31 +2373,34 @@ export default function App() {
           />
         </div>
 
+        {showArena && (
+          <div id="arena-anchor" className="mt-10">
+            <BattleArena
+              characters={sorted}
+              slots={arenaSlots}
+              setSlots={setArenaSlots}
+              onOpenCharacter={openCharacter}
+              pulseKey={arenaPulseKey}
+            />
+          </div>
+        )}
+
         <section className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
             <Users size={14} /> {filtered.length} heroes ready
           </div>
-          <SortBar option={sortOption} setOption={setSortOption} />
+          <SortBar option={sortMode} setOption={setSortMode} />
         </section>
 
         <div className="mt-6">
           <CharacterGrid
             data={sorted.filter((c) => !selectedIds.includes(c.id))}
-            onOpen={onOpen}
-            onFacet={(kv) => setFilters((f) => ({ ...f, [kv.key]: [...new Set([...(f[kv.key] || []), kv.value])] }))}
+            onOpen={openCharacter}
+            onFacet={handleFacet}
             onUseInSim={onUseInSim}
             highlightId={highlightedId}
           />
         </div>
-      </div>
-
-        <CharacterGrid
-          data={charactersForGrid}
-          onOpen={openCharacter}
-          onFacet={handleFacet}
-          onUseInSim={useInSim}
-          highlightId={highlightCard}
-        />
       </main>
 
       <CharacterModal
