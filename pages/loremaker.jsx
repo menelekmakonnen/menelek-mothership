@@ -13,7 +13,7 @@ import {
   Filter,
   Users,
   MapPin,
-  Layers3,
+  Layers,
   Atom,
   Clock,
   Crown,
@@ -734,7 +734,7 @@ function CharacterModal({ open, onClose, c, onFacet, onUseInSim }) {
             {!!(c.tags || []).length && (
               <div>
                 <div className="text-sm mb-2 font-bold flex items-center gap-2">
-                  <Layers3 size={14} /> Tags
+                  <Layers size={14} /> Tags
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {c.tags.map((t) => (
@@ -1287,7 +1287,7 @@ function Simulator({ data, selectedIds, setSelectedIds, onOpen }) {
       )}
       {!!(c.tags || []).length && (
         <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers3 size={12}/> Tags</div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers size={12}/> Tags</div>
           <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
         </div>
       )}

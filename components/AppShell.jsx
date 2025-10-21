@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -16,7 +16,12 @@ import {
   Calendar as CalendarIcon,
   Info,
   ArrowUp,
-  MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Pause,
+  Minimize2,
+  Maximize2,
 } from "lucide-react";
 
 /**
@@ -24,10 +29,10 @@ import {
  *
  * Fix: Resolved SyntaxError by repairing a corrupted section where getYouTubeId
  *      was overwritten with useCSV internals. Restored missing helpers
- *      (youtubeThumb, useCSV, IG constants) and ensured all JSX blocks close.
+ *      (youtubeThumb, IG constants) and ensured all JSX blocks close.
  *      Also keeps previous feature work: axis alignment, single‑color CVC bar,
- *      sheet‑only Featured Universe, bigger zoom + click‑to‑watch tiles.
- */
+ *      hero showcase upgrades, and click‑to‑watch tiles.
+*/
 
 // ========= FACTUAL LINKS ========= //
 const SOCIALS = {
@@ -52,12 +57,104 @@ const LINKS = {
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
-// Publish the Characters tab to the web and set the correct gid
-const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/export?format=csv&gid=0";
+const N8N_BASE_URL = "https://mmmai.app.n8n.cloud";
+const N8N_ENDPOINTS = {
+  contact: ["/webhook/contact", "/webhook-test/contact"],
+};
+
+const MMM_REELS = {
+  "Epic Edits": [
+    "https://www.instagram.com/p/DMKpVGwoOC2/",
+    "https://www.instagram.com/p/C7TX-jlqQFB/",
+    "https://www.instagram.com/reel/C8rQp-kq5PG/",
+    "https://www.instagram.com/reel/C8kNL16KIZc/",
+    "https://www.instagram.com/reel/C8z0DAtKq8B/",
+    "https://www.instagram.com/reel/DFPiXCOo220/",
+    "https://www.instagram.com/reel/CIDASf-n6mv/",
+  ],
+  "Beauty & Travel": [
+    "https://www.instagram.com/reel/C6YtlD2Kbd6/",
+    "https://www.instagram.com/reel/C3sDA4AqP5z/",
+    "https://www.instagram.com/reel/C-VzUiFqfkm/",
+    "https://www.instagram.com/reel/DIx8Dkao7wR/",
+    "https://www.instagram.com/reel/DJZC9tpIIOF/",
+    "https://www.instagram.com/reel/DEPpHmFIGAl/",
+    "https://www.instagram.com/reel/DLfna4ao-z-/",
+    "https://www.instagram.com/reel/C7BdCzwqgKo/",
+    "https://www.instagram.com/reel/C6JjwNGIKni/",
+    "https://www.instagram.com/reel/C5N9JhvK9to/",
+    "https://www.instagram.com/reel/C4yA5RKK0zg/",
+    "https://www.instagram.com/reel/C4YBtJdqoWr/",
+    "https://www.instagram.com/reel/C4LBUi7K9wr/",
+    "https://www.instagram.com/reel/C3igTEsqyam/",
+    "https://www.instagram.com/reel/DLDh5OUt9mQ/",
+    "https://www.instagram.com/reel/DKZRaYntlpH/",
+    "https://www.instagram.com/reel/DGwLruRtP9F/",
+    "https://www.instagram.com/reel/C5BqJyMKBeD/",
+    "https://www.instagram.com/reel/C1ZHmHbKt4u/",
+  ],
+  BTS: [
+    "https://www.instagram.com/reel/CthPmc7OKK5/",
+    "https://www.instagram.com/reel/CtjWyXJNxwY/",
+    "https://www.instagram.com/reel/Ctlc7--veax/",
+    "https://www.instagram.com/reel/Ctn4hRENjQW/",
+    "https://www.instagram.com/reel/Cttvmy2AdWU/",
+    "https://www.instagram.com/reel/Cue_nHag-QS/",
+    "https://www.instagram.com/reel/CuhtdZYMwWj/",
+    "https://www.instagram.com/reel/C69G68OPF5N/",
+    "https://www.instagram.com/reel/C7KeP-sIHBk/",
+    "https://www.instagram.com/reel/DFNRIRqoFH_/",
+    "https://www.instagram.com/reel/DFPiY-Do1z0/",
+  ],
+  "AI & Learning": [
+    "https://www.instagram.com/reel/DK1bY8couuK/",
+    "https://www.instagram.com/reel/DK4gIZtNB-U/",
+    "https://www.instagram.com/reel/DIvxSY9tQio/",
+    "https://www.instagram.com/reel/DLAbo5mtbC2/",
+    "https://www.instagram.com/reel/C5oZNM5KF77/",
+    "https://www.instagram.com/reel/C5fciTUqXBR/",
+    "https://www.instagram.com/reel/C5c74nYKdI2/",
+    "https://www.instagram.com/reel/DMzghyEtXu1/",
+  ],
+};
+
+const MAX_REELS_PER_BELT = 6;
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
+
+const randomSample = (list, limit) => {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, Math.min(limit, copy.length));
+};
+
+async function postJSONWithFallback(paths, payload) {
+  for (const path of paths) {
+    try {
+      const response = await fetch(`${N8N_BASE_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) continue;
+      try {
+        return await response.json();
+      } catch (error) {
+        return {};
+      }
+    } catch (error) {
+      console.warn("Request failed", path, error);
+    }
+  }
+  throw new Error("All endpoints failed");
+}
+
+const uniqueId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 
 function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
   const palettes = {
@@ -179,11 +276,12 @@ function DiamondsCanvas({ className }) {
 
     scale();
 
-    const cell = 10; // density
+    const cell = 10;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.02; // darker default
-    const auraR = 95; // hover radius
-    const size = 2.1;
+    const baseAlpha = 0.08;
+    const auraR = 110;
+    const size = 3.5;
+    const baseGlow = 0.12;
 
     const draw = () => {
       const w = canvas.offsetWidth;
@@ -227,7 +325,7 @@ function DiamondsCanvas({ className }) {
           ctx.fillStyle = `rgba(255,255,255,${baseAlpha})`;
           ctx.fillRect(-size / 2, -size / 2, size, size);
 
-          const a = Math.min(0.6, hoverK * 0.5 + clickGlow * 0.85);
+          const a = Math.min(0.75, baseGlow + hoverK * 0.5 + clickGlow * 0.85);
           if (a > 0) {
             const grad = ctx.createRadialGradient(0, 0, 0.2, 0, 0, 10);
             grad.addColorStop(0, `rgba(255,255,255,${a})`);
@@ -300,10 +398,6 @@ function youtubeThumb(url) {
   return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
 }
 
-// Best‑effort Instagram thumb (may be blocked by CORS; fallback to gradient)
-const IG_REEL_ID = "DI6NjVNN0tS";
-const IG_THUMB_URL = `https://www.instagram.com/p/${IG_REEL_ID}/media/?size=l`;
-
 // ========= HERO ========= //
 function ShimmerTitle({ children }) {
   return (
@@ -326,46 +420,168 @@ function ShimmerTitle({ children }) {
 }
 
 function Hero({ onWatch, onOpenLinksModal }) {
-  const [imgOk, setImgOk] = useState(true);
+  const slides = useMemo(
+    () =>
+      PROJECTS.slice(0, 4).map((project) => ({
+        id: project.id,
+        title: project.title,
+        caption: project.summary,
+        credit: `${project.role} • ${project.runtime}`,
+        url: project.url,
+        thumb: youtubeThumb(project.url),
+      })),
+    [],
+  );
+
+  const [index, setIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!slides.length) return undefined;
+    const timer = setInterval(() => {
+      setIndex((value) => (value + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  useEffect(() => {
+    setLoading(true);
+  }, [index]);
+
+  const goPrev = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
+  const goNext = () => setIndex((value) => (value + 1) % slides.length);
+
+  const slide = slides[index];
+
+  const openSlide = () => {
+    if (slide?.url) window.open(slide.url, "_blank", "noopener,noreferrer");
+  };
+
   return (
-    <section className="relative pt-24 pb-10">
-      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
+    <section className="relative pt-24 pb-14">
+      <DiamondsCanvas className="opacity-90" />
+      <div className="relative max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
         <div>
           <ShimmerTitle>Menelek Makonnen</ShimmerTitle>
-          <div className="mt-2 text-xl text-white/80 select-none">
+          <div className="mt-2 text-xl text-white/85 select-none">
             <span className="group inline-block mr-2">
-              <motion.span whileHover={{ letterSpacing: 2, scale: 1.02 }} className="transition-all">Worldbuilder.</motion.span>
-              <span className="block h-[2px] w-0 bg-white/30 group-hover:w-full transition-all"></span>
+              <motion.span whileHover={{ letterSpacing: 2, scale: 1.02 }} className="transition-all">
+                Worldbuilder.
+              </motion.span>
+              <span className="block h-[2px] w-0 bg-white/30 group-hover:w-full transition-all" />
             </span>
             <span className="group inline-block mr-2">
-              <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">Filmmaker.</motion.span>
+              <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">
+                Filmmaker.
+              </motion.span>
             </span>
             <span className="group inline-block">
-              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">Storyteller.</motion.span>
+              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">
+                Storyteller.
+              </motion.span>
             </span>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button onClick={onWatch} icon={Play}>Watch Instagram Reel</Button>
-            <Button href={LINKS.loremakerSite} icon={ExternalLink} variant="ghost">Explore the Loremaker Universe</Button>
-            <Button href={LINKS.icuniSite} icon={ExternalLink} variant="ghost">Hire Me via ICUNI</Button>
-            <Button onClick={onOpenLinksModal} variant="ghost">All Links</Button>
+            <Button variant="accent" onClick={() => document.getElementById("featured-projects")?.scrollIntoView({ behavior: "smooth" })}>
+              View My Work
+            </Button>
+            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Get a Free Quote</Button>
+            <Button onClick={onWatch} icon={Play} variant="ghost">
+              Watch Reel
+            </Button>
+            <Button onClick={onOpenLinksModal} variant="ghost">
+              All Links
+            </Button>
           </div>
         </div>
-        <Card>
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">Showreel</div>
-          <button onClick={onWatch} className="mt-3 aspect-video w-full rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative group" title="Open Instagram reel">
-            {imgOk ? (
-              <img src={IG_THUMB_URL} onError={() => setImgOk(false)} alt="Instagram Reel thumbnail" className="w-full h-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/0" />
-            )}
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="rounded-full p-3 bg-black/50 border border-white/20 group-hover:scale-105 transition-transform"><Play className="h-6 w-6" /></div>
+        <Card className="relative overflow-hidden">
+          <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/60">
+            <span>Showcase</span>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span>{loading ? "Loading…" : `${index + 1}/${slides.length || 1}`}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={goPrev}
+                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  aria-label="Previous showcase"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={goNext}
+                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  aria-label="Next showcase"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </button>
+          </div>
+          <div className="mt-4 aspect-video rounded-2xl overflow-hidden border border-white/10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={slide?.id || index}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.6 }}
+                className="relative h-full w-full"
+              >
+                {slide?.thumb ? (
+                  <img
+                    src={slide.thumb}
+                    alt={slide?.title || "Project preview"}
+                    className="h-full w-full object-cover"
+                    onLoad={() => setLoading(false)}
+                    onError={() => setLoading(false)}
+                  />
+                ) : (
+                  <div className="h-full w-full grid place-items-center bg-black/40 text-white/70 text-sm">Loading showcase…</div>
+                )}
+                <button
+                  onClick={openSlide}
+                  className="absolute inset-0 grid place-items-center text-white/80 hover:text-white"
+                  aria-label="Play project"
+                >
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2">
+                    <Play className="h-4 w-4" /> Watch
+                  </span>
+                </button>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="mt-4 space-y-1">
+            <div className="text-lg font-semibold">{slide?.title}</div>
+            <p className="text-white/70 text-sm">{slide?.caption}</p>
+            <div className="text-white/50 text-xs">{slide?.credit}</div>
+          </div>
         </Card>
       </div>
     </section>
+  );
+}
+
+function SectionNav() {
+  const items = [
+    { id: "featured-projects", label: "Featured" },
+    { id: "work", label: "Value Calculator" },
+    { id: "galleries", label: "Galleries" },
+    { id: "contact", label: "Contact" },
+    { id: "blog", label: "Blog" },
+  ];
+
+  return (
+    <nav className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
+          className="px-3 py-1.5 text-sm text-white/80 hover:text-white border border-white/10 rounded-full"
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -430,48 +646,108 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
 
 // ========= Contact ========= //
 function ContactInline({ calendarState }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subtype: "",
+    otherDetail: "",
+    message: "",
+    fitScore: "",
+    recTier: "Starter",
+    scope: "",
+  });
   useEffect(() => {
-    const handlerSubtype = (e) => { if (e.detail && e.detail.subtype !== undefined) setForm((f) => ({ ...f, subtype: e.detail.subtype })); };
-    const handlerFit = (e) => {
-      if (!e.detail) return;
-      const { service, fit, budget, timeline } = e.detail;
-      setForm((f) => ({ ...f, subtype: service || f.subtype, fitScore: `${fit}%`, scope: `~£${budget.toLocaleString()} • ${timeline}w` }));
+    const handlerSubtype = (event) => {
+      if (event.detail && event.detail.subtype !== undefined) {
+        setForm((state) => ({ ...state, subtype: event.detail.subtype }));
+      }
+    };
+    const handlerFit = (event) => {
+      if (!event.detail) return;
+      const { service, fit, budget, timeline } = event.detail;
+      setForm((state) => ({
+        ...state,
+        subtype: service || state.subtype,
+        fitScore: `${fit}%`,
+        scope: `~£${budget.toLocaleString()} • ${timeline}w`,
+      }));
     };
     window.addEventListener("prefill-subtype", handlerSubtype);
     window.addEventListener("prefill-fit", handlerFit);
-    return () => { window.removeEventListener("prefill-subtype", handlerSubtype); window.removeEventListener("prefill-fit", handlerFit); };
+    return () => {
+      window.removeEventListener("prefill-subtype", handlerSubtype);
+      window.removeEventListener("prefill-fit", handlerFit);
+    };
   }, []);
 
   const [agree, setAgree] = useState(false);
   const [ok, setOk] = useState(false);
-  const submit = () => {
-    if (!agree) return alert("Please agree to the Privacy Policy.");
-    if (!form.name || !form.email) return alert("Name and Email are required.");
-    const key = "mm_contact_submissions";
-    const list = JSON.parse(localStorage.getItem(key) || "[]");
-    list.push({ ...form, service: "Director for Hire", calendar: calendarState, ts: new Date().toISOString() });
-    localStorage.setItem(key, JSON.stringify(list));
-    setOk(true);
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const submit = async () => {
+    if (!agree) {
+      setStatus({ type: "error", message: "Please agree to the Privacy Policy." });
+      return;
+    }
+    if (!form.name || !form.email || !form.subtype || !form.message) {
+      setStatus({ type: "error", message: "Name, email, service, and a short message are required." });
+      return;
+    }
+    setSending(true);
+    setStatus(null);
+    try {
+      await postJSONWithFallback(N8N_ENDPOINTS.contact, {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        service: form.subtype == "Other" ? form.otherDetail || "Other" : form.subtype,
+        otherDetail: form.otherDetail,
+        message: form.message,
+        fitScore: form.subtype == "Other" ? undefined : form.fitScore,
+        recommendedTier: form.subtype == "Other" ? undefined : form.recTier,
+        scope: form.subtype == "Other" ? undefined : form.scope,
+        calendar: calendarState,
+        source: "contact-inline",
+      });
+      setOk(true);
+    } catch (error) {
+      setStatus({ type: "error", message: "Could not send right now. Please try email instead." });
+    } finally {
+      setSending(false);
+    }
   };
 
-  const clear = () => setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
+  const clear = () =>
+    setForm({ name: "", email: "", phone: "", subtype: "", otherDetail: "", message: "", fitScore: "", recTier: "Starter", scope: "" });
 
-  const choose = (s) => setForm((f) => ({ ...f, subtype: s }));
+  const choose = (subtype) => setForm((state) => ({ ...state, subtype }));
   const options = [...SERVICES.map((s) => s.name), "Other"];
 
   return (
     <Card id="contact-inline">
       <h3 className="text-xl font-semibold">Contact</h3>
-      <div className="text-white/70 text-sm">Email: <a href={SOCIALS.email} className="underline">hello@menelekmakonnen.com</a></div>
-      <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the chat bubble at bottom‑right and leave a short brief.</p>
+      <div className="text-white/70 text-sm">
+        Email: <a href={SOCIALS.email} className="underline">hello@menelekmakonnen.com</a>
+      </div>
+      <p className="text-white/70 text-sm mt-1">Prefer speed? Tap the quick note button bottom‑right and leave a short brief.</p>
       {!ok ? (
         <div className="grid gap-3 mt-4">
           <div>
             <label className="text-white/70 text-sm mb-2 block">Select a service</label>
             <div className="flex flex-wrap gap-2">
-              {options.map((o) => (
-                <button key={o} onClick={() => choose(o)} className={cn("px-3 py-1.5 rounded-full border", form.subtype === o ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10")}>{o}</button>
+              {options.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => choose(option)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full border",
+                    form.subtype === option ? "bg-white/20 border-white/30" : "border-white/15 hover:bg-white/10",
+                  )}
+                >
+                  {option}
+                </button>
               ))}
             </div>
           </div>
@@ -479,79 +755,150 @@ function ContactInline({ calendarState }) {
           {form.subtype === "Other" ? (
             <div>
               <label className="text-white/70 text-sm mb-1 block">Other service</label>
-              <input value={form.otherDetail} onChange={(e) => setForm({ ...form, otherDetail: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.otherDetail}
+                onChange={(event) => setForm({ ...form, otherDetail: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           ) : null}
 
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
-              <input value={form.fitScore} onChange={(e) => setForm({ ...form, fitScore: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+          {form.subtype !== "Other" ? (
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Fit Score %</label>
+                <input
+                  value={form.fitScore}
+                  onChange={(event) => setForm({ ...form, fitScore: event.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
+                <select
+                  value={form.recTier}
+                  onChange={(event) => setForm({ ...form, recTier: event.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white"
+                  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                >
+                  {["Starter", "Signature", "Cinema+"].map((option) => (
+                    <option key={option} className="text-black">
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
+                <input
+                  value={form.scope}
+                  onChange={(event) => setForm({ ...form, scope: event.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Recommended Package</label>
-              <select value={form.recTier} onChange={(e) => setForm({ ...form, recTier: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full text-white" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
-                {["Starter", "Signature", "Cinema+"].map((x) => (
-                  <option key={x} className="text-black">{x}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-white/70 text-sm mb-1 block">Budget • Timeline</label>
-              <input value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
-            </div>
-          </div>
+          ) : null}
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="text-white/70 text-sm mb-1 block">Name *</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
             <div>
               <label className="text-white/70 text-sm mb-1 block">Email *</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                type="email"
+                value={form.email}
+                onChange={(event) => setForm({ ...form, email: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="text-white/70 text-sm mb-1 block">Phone</label>
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.phone}
+                onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
             <div>
               <label className="text-white/70 text-sm mb-1 block">Service subtype (auto‑filled)</label>
-              <input value={form.subtype} onChange={(e) => setForm({ ...form, subtype: e.target.value })} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+              <input
+                value={form.subtype}
+                onChange={(event) => setForm({ ...form, subtype: event.target.value })}
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+              />
             </div>
           </div>
           <div>
-            <label className="text-white/70 text-sm mb-1 block">Project brief / goals</label>
-            <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" />
+            <label className="text-white/70 text-sm mb-1 block">Project brief / goals *</label>
+            <textarea
+              value={form.message}
+              onChange={(event) => setForm({ ...form, message: event.target.value })}
+              rows={4}
+              className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full"
+            />
           </div>
-
           <label className="flex items-center gap-2 text-white/70">
-            <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I agree to the {" "}
-            <a href="#" onClick={(e) => { e.preventDefault(); alert("Privacy policy modal placeholder."); }} className="underline">Privacy Policy</a>.
+            <input type="checkbox" checked={agree} onChange={(event) => setAgree(event.target.checked)} /> I agree to the
+            <a
+              href="#"
+              onClick={(event) => {
+                event.preventDefault();
+                alert("Privacy policy modal placeholder.");
+              }}
+              className="underline"
+            >
+              Privacy Policy
+            </a>
+            .
           </label>
+          {status ? (
+            <div
+              className={cn(
+                "rounded-xl px-3 py-2 text-sm",
+                status.type === "error" ? "bg-rose-500/20 text-rose-200" : "bg-emerald-500/20 text-emerald-200",
+              )}
+            >
+              {status.message}
+            </div>
+          ) : null}
           <div className="flex gap-2">
-            <Button onClick={submit} icon={ShieldCheck}>Send Inquiry</Button>
-            <Button href={SOCIALS.email} icon={Mail} variant="ghost">Email Instead</Button>
-            <Button onClick={clear} variant="ghost">Clear Form</Button>
+            <Button onClick={submit} icon={sending ? Loader2 : ShieldCheck} className="disabled:opacity-70" disabled={sending}>
+              {sending ? "Sending..." : "Send Inquiry"}
+            </Button>
+            <Button href={SOCIALS.email} icon={Mail} variant="ghost">
+              Email Instead
+            </Button>
+            <Button onClick={clear} variant="ghost">
+              Clear Form
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="text-center py-6"><CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto" /><div className="mt-2">Thanks — I’ll reply within 24–48h.</div></div>
+        <div className="text-center py-6">
+          <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto" />
+          <div className="mt-2">Thanks — I’ll reply within 24–48h.</div>
+        </div>
       )}
     </Card>
   );
 }
-
 // ========= Calculator (CVC) ========= //
 function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, randomizeKey }) {
   const [service, setService] = useState(serviceProp || SERVICES[0].name);
   useEffect(() => { if (serviceProp) setService(serviceProp); }, [serviceProp]);
 
-  const [budget, setBudget] = useState(2000);
-  const [ambition, setAmbition] = useState(6);
+  const [budget, setBudget] = useState(5000);
+  const [ambition, setAmbition] = useState(7);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [showSchedule, setShowSchedule] = useState(false);
 
   // total duration is the single source of truth
   const [total, setTotal] = useState(6); // weeks
@@ -597,31 +944,44 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   const suggestedTier = coverage < 0.85 ? "Starter" : coverage < 1.3 ? "Signature" : "Cinema+";
   const descriptor = score >= 80 ? "Strong fit" : score >= 60 ? "Good fit" : score >= 40 ? "Borderline" : "Not ideal";
 
-  // Default FS split ratios (sequential). Will also be used as baseline for 3–4 weeks cases.
-  const SPLIT = [0.2, 0.3, 0.2, 0.25, 0.05];
+  const SPLIT = [0.22, 0.33, 0.22, 0.23];
+  const KEYS = ["development", "pre", "production", "post"];
+  const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production"];
 
   const makeFSForTotal = (tWeeks) => {
-    if (tWeeks <= 1) {
-      // one-week project ⇒ each phase defaults to 1 day; FS sequential
-      const KEYS = ["development", "pre", "production", "post", "distribution"];
-      const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
+    if (tWeeks <= 2) {
+      const totalDays = Math.max(7, Math.round(tWeeks * 7));
+      const raw = SPLIT.map((ratio) => Math.max(1, Math.round(totalDays * ratio)));
+      const adjust = [...raw];
+      let diff = adjust.reduce((sum, days) => sum + days, 0) - totalDays;
+      while (diff !== 0) {
+        for (let i = adjust.length - 1; i >= 0 && diff !== 0; i--) {
+          if (diff > 0 && adjust[i] > 1) {
+            adjust[i] -= 1;
+            diff -= 1;
+          } else if (diff < 0) {
+            adjust[i] += 1;
+            diff += 1;
+          }
+        }
+      }
       const out = [];
-      let sd = 0;
-      for (let i = 0; i < 5; i++) {
-        out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: 1 / 7 });
-        sd += 1; // 1 day each
+      let startDays = 0;
+      for (let i = 0; i < adjust.length; i++) {
+        const days = adjust[i];
+        out.push({ key: KEYS[i], label: LABELS[i], startDays, weeks: days / 7 });
+        startDays += days;
       }
       return out;
     }
-    // For 2–4 weeks use split but scale into total; FS sequential
-    const parts = SPLIT.map((r) => Math.max(0.5, Math.round(tWeeks * r * 2) / 2));
+
+    const parts = SPLIT.map((ratio) => Math.max(0.5, Math.round(tWeeks * ratio * 2) / 2));
     const out = [];
-    let sd = 0;
-    const KEYS = ["development", "pre", "production", "post", "distribution"];
-    const LABELS = ["Development", "Pre‑Production", "Production", "Post‑Production", "Distribution"];
+    let startDays = 0;
     for (let i = 0; i < parts.length; i++) {
-      out.push({ key: KEYS[i], label: LABELS[i], startDays: sd, weeks: parts[i] });
-      sd += Math.ceil(parts[i] * 7);
+      const weeks = parts[i];
+      out.push({ key: KEYS[i], label: LABELS[i], startDays, weeks });
+      startDays += Math.ceil(weeks * 7);
     }
     return out;
   };
@@ -631,7 +991,7 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   // When total changes, keep FS by default but respect user drags by clamping only
   useEffect(() => {
     setPhases((prev) => {
-      if (total <= 1) return makeFSForTotal(1);
+      if (total <= 2) return makeFSForTotal(total);
       const maxDays = total * 7;
       return prev.map((p) => {
         const weeks = Math.max(0.5, Math.min(26, p.weeks));
@@ -669,7 +1029,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
     setPhases(makeFSForTotal(best.t));
   }, [randomizeKey]);
 
-  const phaseWeeksTotal = (arr) => arr.reduce((a, b) => a + (b.weeks || 0), 0);
+  const timelineSpanWeeks = (arr) => {
+    if (!arr.length) return 0;
+    const endDay = Math.max(...arr.map((p) => p.startDays + Math.ceil(p.weeks * 7)));
+    return endDay / 7;
+  };
+  const totalSpanWeeks = timelineSpanWeeks(phases);
+  const totalSpanLabel = totalSpanWeeks <= 2 ? `${Math.round(totalSpanWeeks * 7)} days` : `${totalSpanWeeks.toFixed(1)} weeks`;
 
   return (
     <div>
@@ -679,37 +1045,91 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
           <div className="px-3 py-2 rounded-xl border border-white/20 bg-white/10">{service}</div>
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Budget (£{budget.toLocaleString()})</div>
-          <input type="range" min={200} max={20000} step={50} value={budget} onChange={(e) => setBudget(parseInt(e.target.value))} className="w-full" />
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+            <span>Budget (£{budget.toLocaleString()})</span>
+            <span title="Total resources you’re ready to invest across prep, shoot, and post.">
+              <Info className="h-4 w-4 text-white/40" />
+            </span>
+          </div>
+          <input
+            aria-label="Budget"
+            type="range"
+            min={200}
+            max={20000}
+            step={50}
+            value={budget}
+            onChange={(e) => setBudget(parseInt(e.target.value, 10))}
+            className="w-full"
+          />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Ambition ({ambition})</div>
-          <input type="range" min={1} max={10} value={ambition} onChange={(e) => setAmbition(parseInt(e.target.value))} className="w-full" />
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+            <span>Ambition ({ambition})</span>
+            <span title="How cinematic the execution should feel—higher numbers mean more craft.">
+              <Info className="h-4 w-4 text-white/40" />
+            </span>
+          </div>
+          <input
+            aria-label="Ambition"
+            type="range"
+            min={1}
+            max={10}
+            value={ambition}
+            onChange={(e) => setAmbition(parseInt(e.target.value, 10))}
+            className="w-full"
+          />
         </div>
         <div>
-          <div className="text-white/70 text-sm mb-1">Proposed Project Start</div>
-          <input type="date" value={projectDate} onChange={(e) => setProjectDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10" />
+          <div className="text-white/70 text-sm mb-1 flex items-center gap-2">
+            <span>Proposed Project Start</span>
+            <span title="When you’d like pre-production to begin.">
+              <Info className="h-4 w-4 text-white/40" />
+            </span>
+          </div>
+          <input
+            aria-label="Project start"
+            type="date"
+            value={projectDate}
+            onChange={(e) => setProjectDate(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-white/20 bg-white/10"
+          />
         </div>
       </div>
 
       <div className="mt-5">
         <div className="flex items-center justify-between text-white/70 text-sm"><span>Fit Score</span><span>{descriptor}</span></div>
-        <div className="rounded-2xl p-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
-          <svg viewBox="0 0 110 6" className="w-full block">
-            <rect x="0" y="0" width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
-            <rect x="0" y="0" width={score} height="6" rx="3" fill={barColor} />
-          </svg>
-          <div className="text-white/75 text-sm mt-2">Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {phaseWeeksTotal(phases)} weeks</div>
+        <div className="rounded-2xl p-3 bg-gradient-to-br from-white/10 to-white/5 border border-white/15">
+          <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full" style={{ width: `${score}%`, background: barColor }} aria-label={`Fit score ${score}%`} />
+          </div>
+          <div className="text-white/75 text-sm mt-2">
+            Recommended: <span className="font-semibold">{suggestedTier}</span> • Total Timeline: {totalSpanLabel}
+          </div>
         </div>
       </div>
 
-      <TimelineGrid
-        phases={phases}
-        onChange={setPhases}
-        total={total}
-        onTotalChange={setTotal}
-        startDate={projectDate}
-      />
+      {!showSchedule ? (
+        <div className="mt-4 text-white/65 text-sm">
+          This scope assumes {LABELS.length} phases running sequentially. Open the scheduler to overlap or stretch milestones.
+        </div>
+      ) : (
+        <TimelineGrid
+          phases={phases}
+          onChange={setPhases}
+          total={total}
+          onTotalChange={setTotal}
+          startDate={projectDate}
+        />
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowSchedule((value) => !value)}
+        className="mt-3 inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
+      >
+        {showSchedule ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        {showSchedule ? "Hide schedule" : "Customize schedule"}
+      </button>
 
       <div className="mt-4 flex gap-2">
         <Button onClick={() => onBook?.(service)} icon={Phone} variant="ghost">Book this Scope</Button>
@@ -748,6 +1168,15 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 
   // drag state: which phase, mode ("move" | "left" | "right")
   const dragRef = useRef(null);
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const update = () => setIsTouch(window.matchMedia("(pointer: coarse)").matches);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   const clampPhase = (p) => {
     const maxStart = Math.max(0, totalDays - Math.ceil(p.weeks * 7));
@@ -757,6 +1186,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   const pct = (days) => `${(days / totalDays) * 100}%`;
 
   const onPointerDown = (e, idx, mode) => {
+    if (isTouch) return;
     const rect = containerRef.current.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { idx, mode, startX: e.clientX, rectW: rect.width, startStart: phases[idx].startDays, startWeeks: phases[idx].weeks };
@@ -782,8 +1212,8 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 
   const cal = buildCalendarStateOverlapping(phases, startDate);
 
-  // Axis mode: days for ≤4 weeks, week numbers for >4 weeks
-  const showDays = total <= 4;
+  // Axis mode: days for ≤2 weeks, week numbers otherwise
+  const showDays = total <= 2;
 
   return (
     <div className="mt-6">
@@ -792,8 +1222,15 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
         <div className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Interactive Schedule</div>
         <div className="flex items-center gap-2">
           <span className="text-white/60 text-xs">Total duration</span>
-          <input type="range" min={1} max={26} step={1} value={total} onChange={(e) => onTotalChange(parseInt(e.target.value))} />
-          <span className="text-white/70 text-xs">{total} wks</span>
+          <input
+            type="range"
+            min={1}
+            max={26}
+            step={1}
+            value={total}
+            onChange={(e) => onTotalChange(parseInt(e.target.value, 10))}
+          />
+          <span className="text-white/70 text-xs">{total <= 2 ? `${total * 7} days` : `${total} wks`}</span>
         </div>
       </div>
 
@@ -848,30 +1285,32 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
                 >
                   {/* move handle (center) */}
                   <div
-                    className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                    className={cn("absolute inset-0", !isTouch && "cursor-grab active:cursor-grabbing")}
                     onPointerDown={(e) => onPointerDown(e, idx, "move")}
-                    title="Drag to move"
+                    title={isTouch ? "Schedule editing is desktop only" : "Drag to move"}
                   />
                   {/* left resize */}
                   <div
-                    className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
+                    className={cn("absolute left-0 top-0 h-full w-3", !isTouch && "cursor-ew-resize")}
                     onPointerDown={(e) => onPointerDown(e, idx, "left")}
-                    title="Drag to adjust start"
+                    title={isTouch ? "Adjust on desktop for precision" : "Drag to adjust start"}
                   >
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
                   </div>
                   {/* right resize */}
                   <div
-                    className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
+                    className={cn("absolute right-0 top-0 h-full w-3", !isTouch && "cursor-ew-resize")}
                     onPointerDown={(e) => onPointerDown(e, idx, "right")}
-                    title="Drag to adjust end"
+                    title={isTouch ? "Adjust on desktop for precision" : "Drag to adjust end"}
                   >
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-white/75" />
                   </div>
 
                   {/* duration label */}
                   <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">{Math.round(p.weeks * 10) / 10}w</div>
+                    <div className="px-2 text-[11px] text-white/90 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {total <= 2 ? `${Math.max(1, Math.round(p.weeks * 7))}d` : `${Math.round(p.weeks * 10) / 10}w`}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -879,133 +1318,12 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
           ))}
         </div>
 
-        <div className="mt-2 text-white/65 text-xs">Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases (Start‑to‑Start, etc.). Bars snap by <b>day</b>. Use the Total slider to expand/contract the full calendar.</div>
+        <div className="mt-2 text-white/65 text-xs">
+          Default is <b>Finish‑to‑Start</b>. Drag edges to overlap phases. Bars snap by <b>day</b>. Days mode auto‑enables when total ≤ 2 weeks.
+          {isTouch ? " Tip: use a desktop or trackpad to fine-tune overlaps on touch devices." : ""}
+        </div>
       </div>
     </div>
-  );
-}
-
-// ========= CSV helper ========= //
-function useCSV(url) {
-  const [rows, setRows] = useState([]);
-  const [headers, setHeaders] = useState([]);
-  useEffect(() => {
-    let abort = false;
-    (async () => {
-      try {
-        const res = await fetch(url, { mode: "cors" });
-        const text = await res.text();
-        if (abort) return;
-        const { headers, rows } = parseCSV(text);
-        setHeaders(headers);
-        setRows(rows);
-      } catch (e) {
-        // Sheet only: no local filler; show skeletons when empty
-        setHeaders([]);
-        setRows([]);
-      }
-    })();
-    return () => { abort = true; };
-  }, [url]);
-  return { headers, rows };
-}
-
-function parseCSV(text) {
-  const lines = [];
-  let cur = [];
-  let val = "";
-  let inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const n = text[i + 1];
-    if (inQ) {
-      if (c === '"' && n === '"') { val += '"'; i++; }
-      else if (c === '"') { inQ = false; }
-      else { val += c; }
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',') { cur.push(val); val = ""; }
-      else if (c === "\n" || c === "\r") { if (val !== "" || cur.length) { cur.push(val); lines.push(cur); cur = []; val = ""; } }
-      else val += c;
-    }
-  }
-  if (val !== "" || cur.length) { cur.push(val); lines.push(cur); }
-  if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0];
-  const rows = lines.slice(1).map((arr) => Object.fromEntries(headers.map((h, i) => [h, arr[i] ?? ""])));
-  return { headers, rows };
-}
-
-// ========= Featured Universe ========= //
-function FeaturedUniverse() {
-  const { rows } = useCSV(SHEETS_CSV_URL);
-
-  const picks = useMemo(() => {
-    if (!rows?.length) return [];
-    const want = Math.min(6, Math.max(3, Math.floor(Math.random() * 4) + 3)); // 3–6
-    const idx = new Set();
-    while (idx.size < Math.min(want, rows.length)) idx.add(Math.floor(Math.random() * rows.length));
-    return [...idx].map((i) => rows[i]);
-  }, [rows]);
-
-  return (
-    <section className="py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-3">
-          <h2 className="text-2xl sm:text-3xl font-bold">Featured from the Loremaker Universe</h2>
-          <span className="text-white/70 text-sm">A living, expanding canon</span>
-        </div>
-        <p className="text-white/75 max-w-2xl mb-4">A few signals from a much larger world. Power balances shift, alliances fracture, and ordinary people are forced to choose a side.</p>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {picks.length ? (
-            picks.map((r, i) => <CharacterCard key={`${r.Char_ID || r.id || r["Character"] || i}`} row={r} />)
-          ) : (
-            [0, 1, 2].map((i) => (
-              <Card key={i}>
-                <div className="animate-pulse h-40 rounded-xl bg-white/5 border border-white/10" />
-                <div className="mt-3 h-5 w-2/3 bg-white/10 rounded" />
-                <div className="mt-2 h-4 w-1/2 bg-white/10 rounded" />
-              </Card>
-            ))
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CharacterCard({ row }) {
-  const name = row["Character"] || row["Name"] || row["Title"] || "Unnamed";
-  const alias = row["Alias"] || row["AKA"] || "";
-  const alignment = row["Alignment"] || row["Faction"] || "";
-  const location = row["Location"] || "";
-  const short = row["Short Description"] || row["Summary"] || row["Bio"] || "";
-  const img = row["Cover Image"] || row["Image"] || "";
-  const long = row["Long Description"] || row["Bio"] || "";
-  const powers = row["Powers"] || row["Abilities"] || "";
-  return (
-    <Card>
-      <div className="aspect-[16/10] rounded-xl bg-black/45 border border-white/10 overflow-hidden grid place-items-center group">
-        {img ? (
-          <img src={img} alt={name} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform duration-400" />
-        ) : (
-          <div className="text-white/50 text-sm">Art / Poster</div>
-        )}
-      </div>
-      <div className="mt-3 font-semibold">{name}{alias ? <span className="text-white/60 font-normal"> — {alias}</span> : null}</div>
-      <div className="text-white/70 text-sm">{alignment}{location ? ` • ${location}` : ""}</div>
-      {short ? <p className="mt-2 text-white/80 text-sm">{short}</p> : null}
-      {(powers || long) ? (
-        <details className="mt-2 text-white/75 text-sm">
-          <summary className="cursor-pointer hover:underline">Character breakdown</summary>
-          {powers ? <p className="mt-1"><span className="text-white/60">Abilities:</span> {powers}</p> : null}
-          {long ? <p className="mt-1">{long}</p> : null}
-        </details>
-      ) : null}
-      <div className="mt-4 flex gap-2">
-        <Button href={LINKS.loremakerSite} className="bg-white/10" icon={ExternalLink}>Read more</Button>
-      </div>
-    </Card>
   );
 }
 
@@ -1068,6 +1386,190 @@ function Portfolio() {
           )}
         </Modal>
       ) : null}
+    </section>
+  );
+}
+
+function instagramEmbedSrc(url) {
+  if (!url) return "";
+  if (url.includes("/embed")) return url;
+  return `${url.endsWith("/") ? url : `${url}/`}embed/`;
+}
+
+
+const LABEL_GRADIENTS = {
+  "Epic Edits": "from-fuchsia-500/60 via-indigo-500/50 to-sky-500/60",
+  "Beauty & Travel": "from-amber-400/60 via-rose-500/45 to-violet-500/55",
+  BTS: "from-emerald-500/55 via-cyan-500/45 to-blue-600/55",
+  "AI & Learning": "from-purple-500/60 via-blue-500/45 to-slate-900/80",
+};
+
+const MMMGalleries = memo(function MMMGalleries() {
+  const [seed, setSeed] = useState(0);
+  const [modal, setModal] = useState(null);
+  const [manualPause, setManualPause] = useState(false);
+  const [hovered, setHovered] = useState(null);
+
+  const reels = useMemo(() => Object.entries(MMM_REELS).flatMap(([label, urls]) => urls.map((url) => ({ label, url }))), []);
+
+  const picks = useMemo(() => {
+    if (!reels.length) return [];
+    const limit = Math.min(reels.length, MAX_REELS_PER_BELT * 2);
+    return randomSample(reels, limit);
+  }, [reels, seed]);
+
+  const beltItems = useMemo(() => (picks.length ? [...picks, ...picks] : []), [picks]);
+  const animationDuration = Math.max(60, beltItems.length * 8);
+  const paused = manualPause || Boolean(hovered);
+
+  const handleShuffle = () => {
+    setManualPause(false);
+    setHovered(null);
+    setSeed((value) => value + 1);
+  };
+
+  return (
+    <section id="galleries" className="py-16">
+      <div className="max-w-7xl mx-auto px-6 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold">MMM Media Belt</h2>
+            <p className="text-white/70">
+              A single slow belt of reels spanning epic edits, beauty, BTS, travel, AI experiments, and learning drops.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <button
+              type="button"
+              onClick={handleShuffle}
+              className="px-3 py-1.5 text-xs border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+              disabled={!reels.length}
+            >
+              Shuffle belt
+            </button>
+            <button
+              type="button"
+              onClick={() => setManualPause((value) => !value)}
+              className="px-3 py-1.5 text-xs border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+            >
+              {paused ? (
+                <span className="inline-flex items-center gap-1"><Play className="h-3.5 w-3.5" /> Resume</span>
+              ) : (
+                <span className="inline-flex items-center gap-1"><Pause className="h-3.5 w-3.5" /> Pause</span>
+              )}
+            </button>
+            <Button href={LINKS.mmmIG} target="_blank" rel="noreferrer" variant="ghost">
+              @mm.m.media
+            </Button>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 p-4">
+          <style>{`
+            @keyframes mmm-marquee {
+              0% { transform: translateX(0%); }
+              100% { transform: translateX(-50%); }
+            }
+          `}</style>
+          {beltItems.length ? (
+            <div
+              className="flex gap-6 w-max items-center"
+              style={{
+                animation: `mmm-marquee ${animationDuration}s linear infinite`,
+                animationPlayState: paused ? "paused" : "running",
+              }}
+              onMouseLeave={() => setHovered(null)}
+            >
+              {beltItems.map((item, index) => (
+                <button
+                  key={`${item.url}-${index}`}
+                  type="button"
+                  onClick={() => setModal({ label: item.label, url: item.url })}
+                  className={cn(
+                    "relative aspect-[9/16] w-48 rounded-3xl border border-white/10 overflow-hidden transition-transform duration-500",
+                    hovered && hovered !== item.url ? "scale-90 opacity-60" : "scale-100",
+                    hovered === item.url ? "scale-110 z-10 shadow-[0_20px_45px_rgba(0,0,0,0.5)]" : "",
+                  )}
+                  onMouseEnter={() => setHovered(item.url)}
+                >
+                  <div
+                    className={cn(
+                      "absolute inset-0 bg-gradient-to-br",
+                      LABEL_GRADIENTS[item.label] || "from-slate-600/60 via-slate-900/70 to-black/80",
+                    )}
+                  />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_55%)]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3 text-left text-xs text-white/85">
+                    <div className="font-semibold">{item.label}</div>
+                    <div className="text-white/70">Instagram reel preview</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-white/60">Unable to load Instagram previews right now.</div>
+          )}
+        </div>
+      </div>
+
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.label || "Reel"}>
+        {modal ? (
+          <div className="aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black">
+            <iframe
+              className="w-full h-full"
+              src={instagramEmbedSrc(modal.url)}
+              title={modal.label}
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+              loading="lazy"
+            />
+          </div>
+        ) : null}
+      </Modal>
+    </section>
+  );
+});
+
+function SocialProof() {
+  const logos = ["Netflix", "BBC", "Spotify"];
+  const quotes = [
+    {
+      quote: "Menelek understands the assignment faster than any director we've hired.",
+      author: "Creative Director, Global Agency",
+    },
+    {
+      quote: "The worlds he builds translate perfectly on screen and socials.",
+      author: "Head of Content, Tech Startup",
+    },
+    {
+      quote: "A rare blend of visionary storytelling and reliable delivery.",
+      author: "Executive Producer, Streaming Network",
+    },
+  ];
+
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setQuoteIndex((value) => (value + 1) % quotes.length), 6000);
+    return () => clearInterval(timer);
+  }, [quotes.length]);
+
+  return (
+    <section className="py-10">
+      <div className="max-w-6xl mx-auto px-6 space-y-6">
+        <div className="flex flex-wrap items-center gap-6 text-white/60 text-sm uppercase tracking-[0.3em]">
+          <span className="text-white/70">Trusted by</span>
+          {logos.map((logo) => (
+            <span key={logo} className="rounded-full border border-white/10 px-4 py-2">
+              {logo}
+            </span>
+          ))}
+        </div>
+        <Card className="bg-white/5">
+          <div className="text-lg text-white/90">“{quotes[quoteIndex].quote}”</div>
+          <div className="mt-2 text-sm text-white/60">{quotes[quoteIndex].author}</div>
+        </Card>
+      </div>
     </section>
   );
 }
@@ -1204,7 +1706,7 @@ function FloatingButtons({ onOpenContact }) {
         title="Quick contact"
         aria-label="Contact"
       >
-        <MessageSquare className="h-5 w-5" />
+        <Mail className="h-5 w-5" />
       </button>
       {/* Back to top */}
       <AnimatePresence>
@@ -1234,13 +1736,6 @@ function runSelfTests() {
     console.assert(getYouTubeId("https://youtu.be/xyz789") === "xyz789", "youtu.be failed");
     console.assert(getYouTubeId("https://www.youtube.com/shorts/QQ11WW22") === "QQ11WW22", "shorts failed");
     console.assert(getYouTubeId("https://www.youtube.com/embed/IDID") === "IDID", "embed failed");
-
-    // parseCSV quoted commas
-    const sample = 'Name,Desc\n"Alpha, Beta","Line one, line two"\nGamma,Plain';
-    const parsed = parseCSV(sample);
-    console.assert(parsed.rows.length === 2, "CSV rows length");
-    console.assert(parsed.rows[0].Name === "Alpha, Beta", "CSV quoted field parse");
-    console.assert(parsed.rows[0].Desc.includes("line two"), "CSV multi");
 
     // calendar calc
     const phases = [
@@ -1318,10 +1813,21 @@ export default function AppShell() {
         {route === "home" && (
           <>
             <Hero onWatch={() => setReelOpen(true)} onOpenLinksModal={() => setLinksOpen(true)} />
+            <SectionNav />
+            <SocialProof />
             <Portfolio />
-            <FeaturedUniverse />
-            <WorkWithMe currentService={currentService} onSetService={(n) => setCurrentService(n)} onBook={(svc) => goContactInline(svc)} onCalendarChange={setCalendarState} />
-            <section className="py-6"><div className="max-w-7xl mx-auto px-6"><ContactInline calendarState={calendarState} /></div></section>
+            <MMMGalleries />
+            <WorkWithMe
+              currentService={currentService}
+              onSetService={(n) => setCurrentService(n)}
+              onBook={(svc) => goContactInline(svc)}
+              onCalendarChange={setCalendarState}
+            />
+            <section id="contact" className="py-6">
+              <div className="max-w-7xl mx-auto px-6">
+                <ContactInline calendarState={calendarState} />
+              </div>
+            </section>
             <Blog />
           </>
         )}
