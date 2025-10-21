@@ -1807,30 +1807,8 @@ export default function LoremakerApp() {
       )}
       {!!(c.tags || []).length && (
         <div>
-          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
-            <Layers size={12} /> Tags
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {c.tags.map((v) => (
-              <Badge key={v} className="bg-white/10 border border-white/20">
-                {v}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-      {!!(c.stories || []).length && (
-        <div>
-          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
-            <LibraryBig size={12} /> Stories
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {c.stories.map((v) => (
-              <Badge key={v} className="bg-white/10 border border-white/20">
-                {v}
-              </Badge>
-            ))}
-          </div>
+          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers size={12}/> Tags</div>
+          <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
         </div>
       )}
       <div>
