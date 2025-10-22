@@ -2178,8 +2178,8 @@ function HeroSection({ totalCharacters, onFilterClick, onScrollToFilters }) {
   );
 }
 
-/** -------------------- App -------------------- */
-export default function App() {
+/** -------------------- Page -------------------- */
+export default function LoremakerApp() {
   const { data, loading, error, refetch } = useCharacters();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({});
