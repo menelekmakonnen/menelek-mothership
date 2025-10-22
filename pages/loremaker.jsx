@@ -17,7 +17,6 @@ import {
   Library,
   Crown,
   Swords,
-  Sparkles,
   MessageCircle,
   Send,
   Bot,
@@ -469,93 +468,6 @@ function FacetChip({ active, onClick, children }) {
 }
 
 /** -------------------- Character Card / Modal -------------------- */
-function CharacterCard({ c, onOpen, onFacet, onUseInSim, highlight }) {
-  const [pulse, setPulse] = useState(false);
-  const openProfile = () => onOpen(c);
-  const triggerSim = () => {
-    setPulse(true);
-    onUseInSim(c.id);
-    setTimeout(() => setPulse(false), 480);
-  };
-  return (
-    <motion.div
-      animate={pulse || highlight ? { scale: 1.02 } : { scale: 1 }}
-      transition={{ type: "spring", stiffness: 240, damping: 20 }}
-      className="group"
-    >
-      <Card
-        className={cx(
-          "hover:shadow-2xl hover:shadow-fuchsia-500/15 transition overflow-hidden",
-          pulse || highlight
-            ? "ring-2 ring-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.35)]"
-            : ""
-        )}
-      >
-        <div className="relative">
-          <button onClick={openProfile} className="block text-left w-full">
-            <ImageSafe src={c.cover || c.gallery[0]} alt={c.name} fallbackLabel={c.name} className="h-56 w-full object-cover" />
-          </button>
-          <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
-            <div onClick={openProfile} className="cursor-pointer">
-              <Insignia label={c.faction?.[0] || c.name} size={36} variant={c.faction?.length ? "faction" : "character"} expandableName={c.name} />
-            </div>
-            <motion.button
-              onClick={triggerSim}
-              whileTap={{ scale: 0.95 }}
-              className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-extrabold bg-amber-300 text-black shadow border border-black/10"
-              aria-label="Use in Simulator"
-              title="Load into Battle Arena"
-            >
-              <Swords size={14} /> Simulate
-            </motion.button>
-          </div>
-        </div>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-3">
-            <Insignia label={c.faction?.[0] || c.name} size={32} variant={c.faction?.length ? "faction" : "character"} />
-            <CardTitle role="button" onClick={openProfile} className="cursor-pointer text-xl font-black tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,.6)] text-white">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-amber-200">{c.name}</span>
-            </CardTitle>
-          </div>
-          <CardDescription className="line-clamp-2 font-semibold">{c.shortDesc || c.longDesc}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            {c.gender && <FacetChip onClick={() => onFacet({ key: "gender", value: c.gender })}>{c.gender}</FacetChip>}
-            {c.alignment && <FacetChip onClick={() => onFacet({ key: "alignment", value: c.alignment })}>{c.alignment}</FacetChip>}
-            {c.locations?.slice(0, 2).map((loc) => (
-              <FacetChip key={loc} onClick={() => onFacet({ key: "locations", value: loc })}>
-                {loc}
-              </FacetChip>
-            ))}
-            {c.faction?.slice(0, 1).map((f) => (
-              <FacetChip key={f} onClick={() => onFacet({ key: "faction", value: f })}>
-                {f}
-              </FacetChip>
-            ))}
-          </div>
-        </CardContent>
-        <CardFooter className="flex items-center justify-between">
-          <div className="w-full">
-            {c.powers?.slice(0, 1).map((p) => (
-              <div key={p.name} className="text-xs mb-1 flex items-center justify-between text-white font-bold">
-                <span className="truncate pr-2">{p.name}</span>
-                <span>{p.level}/10</span>
-              </div>
-            ))}
-            <PowerMeter level={c.powers?.[0]?.level ?? 0} />
-          </div>
-          <div className="flex gap-2 ml-3">
-            <Button variant="secondary" className="font-bold" onClick={openProfile}>
-              Read <ArrowRight className="ml-1" size={16} />
-            </Button>
-          </div>
-        </CardFooter>
-      </Card>
-    </motion.div>
-  );
-}
-
 function StoryChips({ data, onFacet }) {
   const stories = useMemo(() => {
     const counts = new Map();
@@ -890,7 +802,7 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
             {!!(char.stories || []).length && (
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
-                <Library size={14} /> Stories
+                  <Library size={14} /> Stories
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(char.stories || []).map((story) => (
@@ -900,98 +812,8 @@ function CharacterModal({ open, onClose, char, onFacet, onUseInSim }) {
                   ))}
                 </div>
               </div>
-            </div>
-          ),
-        },
-      ]
-    : [])
-    .concat(
-      faction
-        ? [
-            {
-              type: "Faction",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(faction)} size={56} variant="faction" />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Faction</div>
-                      <div className="text-2xl font-extrabold">{String(faction)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "faction", value: String(faction) })} className="font-bold">
-                    View Members
-                  </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      location
-        ? [
-            {
-              type: "Location",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(location)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Location</div>
-                      <div className="text-2xl font-extrabold">{String(location)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "locations", value: String(location) })} className="font-bold">
-                    View Residents
-                  </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    )
-    .concat(
-      power
-        ? [
-            {
-              type: "Power",
-              render: () => (
-                <div className="h-72 p-6 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-4">
-                    <Insignia label={String(power)} size={56} />
-                    <div>
-                      <div className="text-xs uppercase tracking-widest font-extrabold">Featured Power</div>
-                      <div className="text-2xl font-extrabold">{String(power)}</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => onFacet({ key: "powers", value: String(power) })} className="font-bold">
-                    View Wielders
-                  </Button>
-                </div>
-              ),
-            },
-          ]
-        : []
-    );
-  const [idx, setIdx] = useState(0);
-  const handleKey = (e) => {
-    if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + slides.length) % slides.length);
-    if (e.key === "ArrowRight") setIdx((i) => (i + 1) % slides.length);
-  };
-  useEffect(() => {
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [slides.length]);
-  if (!slides.length) return null;
-  return (
-    <Card className="bg-gradient-to-tr from-indigo-600/30 via-fuchsia-600/20 to-amber-400/20 border-white/20 backdrop-blur-xl overflow-hidden text-white">
-      <div className="flex items-center justify-between px-4 pt-3">
-        <div className="flex items-center gap-2 text-sm font-extrabold tracking-[0.35em] uppercase">
-          <Sparkles size={16} /> Today’s Featured
-        </div>
-        <div className="flex gap-2 text-xs font-bold">
-          <span>{slides[idx].type}</span> <span>•</span> <span>{todayKey()}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1018,7 +840,7 @@ function CharacterGrid({ data, onOpen, onFacet, onUseInSim, highlightId }) {
       {slice.map((c) => (
         <CharacterCard
           key={c.id}
-          c={c}
+          char={c}
           onOpen={onOpen}
           onFacet={onFacet}
           onUseInSim={onUseInSim}
@@ -1647,353 +1469,6 @@ function Controls({ query, setQuery, setOpenFilters, sortMode, setSortMode, onCl
   );
 }
 
-function Simulator({ data, selectedIds, setSelectedIds, onOpen, pulse }) {
-  const [animating, setAnimating] = useState(false);
-  const [hp, setHp] = useState({ left: 100, right: 100 });
-  const [shake, setShake] = useState(false);
-  const [phase, setPhase] = useState(-1);
-  const [battle, setBattle] = useState(null);
-  const [winner, setWinner] = useState(null);
-  const [loser, setLoser] = useState(null);
-  const [explosion, setExplosion] = useState(false);
-  const [loserMark, setLoserMark] = useState(false);
-
-  const left = data.find((c) => c.id === selectedIds[0]);
-  const right = data.find((c) => c.id === selectedIds[1]);
-  const canFight = !!left && !!right && !animating;
-  const originLeft = left ? powerOriginProfile(left) : null;
-  const originRight = right ? powerOriginProfile(right) : null;
-
-  useEffect(() => {
-    if (selectedIds.length) {
-      setShake(true);
-      const t = setTimeout(() => setShake(false), 500);
-      return () => clearTimeout(t);
-    }
-  }, [selectedIds.join("|")]);
-
-  useEffect(() => {
-    if (!pulse) return undefined;
-    setShake(true);
-    const t = setTimeout(() => setShake(false), 600);
-    return () => clearTimeout(t);
-  }, [pulse]);
-
-function LegacyLoremakerApp() {
-  const { data, loading, error, refetch } = useCharacters();
-  const [filters, setFilters] = useState({});
-  const [combineAND, setCombineAND] = useState(true);
-  const [query, setQuery] = useState("");
-  const [openModal, setOpenModal] = useState(false);
-  const [current, setCurrent] = useState(null);
-  const [arenaSlots, setArenaSlots] = useState({ left: null, right: null });
-  const [highlightCard, setHighlightCard] = useState(null);
-  const [arenaPulseKey, setArenaPulseKey] = useState(0);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showArena, setShowArena] = useState(true);
-  const [sortOption, setSortOption] = useState("default");
-  const [showTop, setShowTop] = useState(false);
-  const [showBottom, setShowBottom] = useState(false);
-
-  const randomise = () => {
-    if (data.length < 2) return;
-    const r1 = Math.floor(Math.random() * data.length);
-    let r2 = Math.floor(Math.random() * data.length);
-    if (r2 === r1) r2 = (r2 + 1) % data.length;
-    setSelectedIds([data[r1].id, data[r2].id]);
-    setHp({ left: 100, right: 100 });
-    setWinner(null);
-    setLoser(null);
-    setBattle(null);
-  };
-
-  const runFight = () => {
-    if (!left || !right) return;
-    setAnimating(true);
-    setWinner(null);
-    setLoser(null);
-    setLoserMark(false);
-    setExplosion(false);
-    setPhase(-1);
-    setHp({ left: 100, right: 100 });
-    const outcome = duel(left, right);
-    setBattle(outcome);
-    outcome.logs.forEach((step, idx) => {
-      setTimeout(() => {
-        setPhase(idx);
-        setHp({ left: step.h1, right: step.h2 });
-      }, 600 * (idx + 1));
-    });
-    const blastAt = 600 * outcome.logs.length + 200;
-    setTimeout(() => setExplosion(true), blastAt);
-    setTimeout(() => setExplosion(false), blastAt + 480);
-    setTimeout(() => {
-      setWinner(outcome.winner);
-      setLoser(outcome.loser);
-      setLoserMark(true);
-      setAnimating(false);
-      setTimeout(() => setLoserMark(false), 1100);
-    }, blastAt + 520);
-  };
-
-  const StatBlock = ({ c }) => (
-    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-      <div className="flex flex-wrap gap-2">
-        {(c.alias || []).map((a) => (
-          <Badge key={a} className="bg-white/10 border border-white/20">
-            {a}
-          </Badge>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-[12px]">
-        {c.gender && (
-          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
-            <div className="font-bold">Gender</div>
-            <div className="font-extrabold">{c.gender}</div>
-          </div>
-        )}
-        {c.alignment && (
-          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
-            <div className="font-bold">Alignment</div>
-            <div className="font-extrabold">{c.alignment}</div>
-          </div>
-        )}
-        {c.status && (
-          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
-            <div className="font-bold">Status</div>
-            <div className="font-extrabold">{c.status}</div>
-          </div>
-        )}
-        {c.era && (
-          <div className="rounded-lg border border-white/20 bg-white/10 p-2">
-            <div className="font-bold">Era</div>
-            <div className="font-extrabold">{c.era}</div>
-          </div>
-        )}
-        {c.firstAppearance && (
-          <div className="col-span-2 rounded-lg border border-white/20 bg-white/10 p-2">
-            <div className="font-bold">First Appearance</div>
-            <div className="font-extrabold">{c.firstAppearance}</div>
-          </div>
-        )}
-      </div>
-      {!!(c.locations || []).length && (
-        <div>
-          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
-            <MapPin size={12} /> Locations
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {c.locations.map((v) => (
-              <Badge key={v} className="bg-white/10 border border-white/20">
-                {v}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-      {!!(c.faction || []).length && (
-        <div>
-          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
-            <Crown size={12} /> Factions
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {c.faction.map((v) => (
-              <Badge key={v} className="bg-white/10 border border-white/20">
-                {v}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-      {!!(c.tags || []).length && (
-        <div>
-          <div className="text-[11px] mb-1 font-bold flex items-center gap-1"><Layers size={12}/> Tags</div>
-          <div className="flex flex-wrap gap-2">{c.tags.map((v) => (<Badge key={v} className="bg-white/10 border border-white/20">{v}</Badge>))}</div>
-        </div>
-      )}
-      <div>
-        <div className="mb-1 flex items-center gap-1 text-[11px] font-bold">
-          <Atom size={12} /> Powers
-        </div>
-        <div className="space-y-1.5">
-          {(c.powers || []).map((p) => (
-            <div key={p.name}>
-              <div className="flex items-center justify-between text-[12px] font-bold">
-                <span className="truncate pr-2">{p.name}</span>
-                <span>{p.level}/10</span>
-              </div>
-              <PowerMeter level={p.level} />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const Slot = ({ label, character, health, origin }) => {
-    if (!character)
-      return (
-        <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/60">
-          {label} empty. Choose a character.
-        </div>
-      );
-    const isWinner = winner?.id === character.id;
-    const isLoser = loser?.id === character.id;
-    return (
-      <motion.div
-        animate={isWinner ? { scale: 1.05 } : { scale: 1 }}
-        transition={{ type: "spring", stiffness: 220, damping: 18 }}
-        className={cx(
-          "relative rounded-2xl border border-white/15 bg-white/5 p-3",
-          isWinner ? "shadow-[0_0_30px_rgba(251,191,36,0.35)]" : ""
-        )}
-      >
-        <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/70">
-          <span>{label}</span>
-          <span>{origin?.label || "Origin"}</span>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-white/15">
-          <ImageSafe
-            src={character.cover || character.gallery?.[0]}
-            alt={character.name}
-            fallbackLabel={character.name}
-            className="h-32 w-full object-cover"
-          />
-          <AnimatePresence>
-            {loserMark && isLoser && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.8 }}
-                className="absolute inset-0 flex items-center justify-center bg-red-600/40"
-              >
-                <span className="text-4xl font-black text-red-200">✕</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="text-sm font-extrabold">{character.name}</div>
-          <Badge className="bg-white/10 border border-white/20 text-[10px]">
-            {origin?.label || "Unknown"}
-          </Badge>
-        </div>
-        <div className="mt-2">
-          <HealthBar value={health} />
-        </div>
-        <div className="mt-2 text-[12px] text-white/80">
-          {character.shortDesc || character.longDesc}
-        </div>
-        <div className="mt-3 flex gap-2">
-          <Button variant="ghost" onClick={() => onOpen(character)}>
-            Read More
-          </Button>
-          <Button variant="outline" onClick={() => release(character.id)}>
-            Release
-          </Button>
-        </div>
-        <div className="mt-3">
-          <StatBlock c={character} />
-        </div>
-      </motion.div>
-    );
-  };
-
-  return (
-    <Card
-      className={cx(
-        "mt-6 bg-white/5 p-4 text-white backdrop-blur-xl md:p-6",
-        shake || pulse ? "ring-2 ring-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.25)]" : "",
-        animating ? "animate-[pulse_2s_ease-in-out_infinite]" : ""
-      )}
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Swords />
-          <div className="text-lg font-black tracking-tight">Battle Arena</div>
-          <Badge className="bg-amber-300 text-black">Live</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={randomise} className="font-bold">
-            <RefreshCcw size={16} className="mr-1" /> Randomise
-          </Button>
-          <Button onClick={runFight} disabled={!canFight} className="font-black">
-            {animating ? "Simulating…" : "Fight"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
-        <Slot label="Fighter A" character={left} health={hp.left} origin={originLeft} />
-        <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden">
-          <motion.div
-            animate={
-              animating
-                ? {
-                    rotate: [0, -18, 22, -14, 14, 0],
-                    scale: [1, 1.08, 1],
-                    boxShadow: [
-                      "0 0 0px rgba(255,255,255,0.2)",
-                      "0 0 25px rgba(251,191,36,0.6)",
-                      "0 0 0px rgba(255,255,255,0.2)",
-                    ],
-                  }
-                : { rotate: 0, scale: 1, boxShadow: "0 0 0 rgba(0,0,0,0)" }
-            }
-            transition={{ duration: 0.6, repeat: animating ? Infinity : 0, ease: "easeInOut" }}
-            className="relative rounded-full border border-white/20 bg-white/10 p-4"
-          >
-            <Swords size={36} />
-            <AnimatePresence>
-              {explosion && (
-                <motion.span
-                  initial={{ scale: 0, opacity: 0.6 }}
-                  animate={{ scale: [0, 1.4, 1.8], opacity: [0.6, 0.35, 0] }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-amber-400/60 via-fuchsia-400/40 to-indigo-400/30"
-                />
-              )}
-            </AnimatePresence>
-          </motion.div>
-          {battle && (
-            <div className="text-center text-[11px] font-semibold text-white/70">
-              Phase {phase + 1}/{battle.logs.length}
-            </div>
-          )}
-          {winner && (
-            <div className="rounded-full bg-slate-950 px-4 py-1 text-sm font-black text-slate-200 shadow-lg">
-              {winner.name}
-            </div>
-          )}
-        </div>
-        <Slot label="Fighter B" character={right} health={hp.right} origin={originRight} />
-      </div>
-
-      {battle && (
-        <div className="mt-4 grid gap-3 rounded-2xl border border-white/15 bg-white/5 p-4 text-xs md:grid-cols-2">
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Power Spread</div>
-            <div className="font-bold text-white">{left?.name}: {battle.breakdown.s1} • {battle.breakdown.origin1.label}</div>
-            <div className="font-bold text-white">{right?.name}: {battle.breakdown.s2} • {battle.breakdown.origin2.label}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Luck Timeline</div>
-            <ul className="space-y-1 font-semibold">
-              {battle.logs.map((step) => (
-                <li key={step.swing}>
-                  Round {step.swing}: {left?.name} luck {step.luck1 >= 0 ? "+" : ""}{step.luck1}, {right?.name} luck {step.luck2 >= 0 ? "+" : ""}{step.luck2}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 function ChatDock() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -2403,16 +1878,15 @@ export default function LoremakerApp() {
         </div>
       </main>
 
-      <CharacterModal
-        open={openModal}
-        onClose={closeCharacter}
-        char={currentCharacter}
-        onFacet={handleFacet}
-        onUseInSim={useInSim}
-      />
+        <CharacterModal
+          open={openModal}
+          onClose={closeCharacter}
+          char={currentCharacter}
+          onFacet={handleFacet}
+          onUseInSim={useInSim}
+        />
 
-      <BackToTop />
-      <ChatDock />
+        <ChatDock />
     </div>
   );
 }
