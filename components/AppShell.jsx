@@ -264,33 +264,25 @@ function Modal({ open, onClose, title, children }) {
 function RevealOnScroll({ as: Component = "section", className = "", children, delay = 0, persist = false, ...rest }) {
   const ref = useRef(null);
   const inView = useInView(ref, { margin: "0px 0px -35% 0px", amount: 0.2 });
-  const [shouldRender, setShouldRender] = useState(false);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   useEffect(() => {
-    let timeout;
     if (inView) {
-      setShouldRender(true);
-    } else if (!persist) {
-      timeout = setTimeout(() => setShouldRender(false), 480);
+      setHasAnimated(true);
     }
-    return () => clearTimeout(timeout);
-  }, [inView, persist]);
+  }, [inView]);
+
+  const targetVisible = inView || hasAnimated;
 
   return (
     <Component ref={ref} className={className} {...rest}>
-      <AnimatePresence mode="wait">
-        {(inView || shouldRender || persist) && (
-          <motion.div
-            key="reveal"
-            initial={{ opacity: 0, y: 80, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: persist ? 0 : -60, scale: persist ? 1 : 0.97 }}
-            transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 80, scale: 0.96 }}
+        animate={targetVisible ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 80, scale: 0.96 }}
+        transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {children}
+      </motion.div>
     </Component>
   );
 }
@@ -497,7 +489,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
     if (!slides.length || isPaused) return undefined;
     const timer = setInterval(() => {
       setIndex((value) => (value + 1) % slides.length);
-    }, 5000);
+    }, 8000);
     return () => clearInterval(timer);
   }, [slides.length, isPaused]);
 
@@ -555,27 +547,27 @@ function Hero({ onWatch, onOpenLinksModal }) {
           </div>
         </div>
         <Card
-          className="relative overflow-hidden"
+          className="relative overflow-hidden !bg-white/[0.03] !border-white/12 !shadow-[0_12px_36px_rgba(10,10,30,0.28)]"
           onMouseEnter={pause}
           onMouseLeave={resume}
           onFocus={pause}
           onBlur={resume}
         >
-          <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/60">
-            <span>Showcase</span>
+          <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/70">
+            <span>Showcase • Lite</span>
             <div className="flex items-center gap-2 text-xs text-white/60">
               <span>{loading ? "Loading…" : `${index + 1}/${slides.length || 1}`}</span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={goPrev}
-                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  className="rounded-full bg-white/10 border border-white/20 p-1.5 text-white/80 hover:bg-white/20 hover:text-white"
                   aria-label="Previous showcase"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
                   onClick={goNext}
-                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  className="rounded-full bg-white/10 border border-white/20 p-1.5 text-white/80 hover:bg-white/20 hover:text-white"
                   aria-label="Next showcase"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -587,10 +579,10 @@ function Hero({ onWatch, onOpenLinksModal }) {
             <AnimatePresence mode="wait">
               <motion.div
                 key={slide?.id || index}
-                initial={{ opacity: 0, scale: 1.02 }}
+                initial={{ opacity: 0, scale: 1.01 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.6 }}
+                exit={{ opacity: 0, scale: 1.01 }}
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
                 className="relative h-full w-full"
               >
                 {slide?.thumb ? (
@@ -611,7 +603,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
                   className="absolute inset-0 grid place-items-center text-white/80 hover:text-white"
                   aria-label="Play project"
                 >
-                  <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/45 px-4 py-2">
                     <Play className="h-4 w-4" /> Watch
                   </span>
                 </button>
@@ -1965,7 +1957,7 @@ export default function AppShell() {
             </div>
           </div>
           <div className="md:col-span-2 text-white/70 text-sm">
-            © {new Date().getFullYear()} Loremaker • Starterclass. All rights reserved.
+            © 2025 Menelek Makonnen. All rights reserved.
           </div>
         </div>
       </footer>
