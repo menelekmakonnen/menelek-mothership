@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo, useId } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Play,
   Phone,
@@ -52,8 +52,8 @@ const LINKS = {
   aiIG: "https://www.instagram.com/mr.mikaelgabriel/",
   personalLI: "https://www.linkedin.com/in/menelekmakonnen/",
   businessLI: "https://www.linkedin.com/in/mikaelgabriel/",
-  loremakerSite: "https://menelekmakonnen.com/loremaker",
-  icuniSite: "https://icuni.co.uk",
+  loremakerSite: "https://loremaker.cloud",
+  starterclassSite: "https://starterclass.icuni.org",
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
@@ -120,7 +120,7 @@ const MMM_REELS = {
   ],
 };
 
-const MAX_REELS_PER_BELT = 6;
+const MAX_REELS_PER_BELT = 4;
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
@@ -155,7 +155,19 @@ async function postJSONWithFallback(paths, payload) {
   throw new Error("All endpoints failed");
 }
 
-function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
+function Button({
+  as: Cmp = "button",
+  children,
+  icon: Icon,
+  href,
+  onClick,
+  className = "",
+  target,
+  rel,
+  variant = "default",
+  title,
+  ...rest
+}) {
   const palettes = {
     default: "bg-white/10 hover:bg-white/15",
     ghost: "bg-white/5 hover:bg-white/10",
@@ -167,26 +179,36 @@ function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, class
     palettes[variant],
     className
   );
+  const MotionCmp = useMemo(() => motion(Cmp), [Cmp]);
   const inner = (
     <span className="inline-flex items-center gap-2">
       {children}
       {Icon ? <Icon className="h-4 w-4" /> : null}
     </span>
   );
-  if (href)
-    return (
-      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title}>
-        {inner}
-      </a>
-    );
-  return (
-    <Cmp onClick={onClick} className={base} title={title}>
-      {inner}
-    </Cmp>
-  );
+  const motionProps = {};
+  if (Cmp === "button" && rest?.type === undefined) motionProps.type = "button";
+
+  const componentProps = {
+    onClick,
+    className: base,
+    title,
+    initial: { opacity: 0, y: 16 },
+    whileInView: { opacity: 1, y: 0 },
+    whileHover: { scale: 1.03, y: -2 },
+    whileTap: { scale: 0.97 },
+    viewport: { amount: 0.6, once: false },
+    ...motionProps,
+    ...rest,
+  };
+  if (href) componentProps.href = href;
+  if (target) componentProps.target = target;
+  if (rel) componentProps.rel = rel;
+
+  return <MotionCmp {...componentProps}>{inner}</MotionCmp>;
 }
 
-function Card({ className = "", children }) {
+function Card({ className = "", children, ...rest }) {
   return (
     <div
       className={cn(
@@ -194,6 +216,7 @@ function Card({ className = "", children }) {
         "shadow-[0_12px_50px_rgba(0,0,0,0.35)] p-5 transition-transform hover:-translate-y-[2px]",
         className
       )}
+      {...rest}
     >
       {children}
     </div>
@@ -238,6 +261,40 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
+function RevealOnScroll({ as: Component = "section", className = "", children, delay = 0, persist = false, ...rest }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { margin: "0px 0px -35% 0px", amount: 0.2 });
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    let timeout;
+    if (inView) {
+      setShouldRender(true);
+    } else if (!persist) {
+      timeout = setTimeout(() => setShouldRender(false), 480);
+    }
+    return () => clearTimeout(timeout);
+  }, [inView, persist]);
+
+  return (
+    <Component ref={ref} className={className} {...rest}>
+      <AnimatePresence mode="wait">
+        {(inView || shouldRender || persist) && (
+          <motion.div
+            key="reveal"
+            initial={{ opacity: 0, y: 80, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: persist ? 0 : -60, scale: persist ? 1 : 0.97 }}
+            transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Component>
+  );
+}
+
 // ========= BACKGROUND ========= //
 function DiamondsCanvas({ className }) {
   const canvasRef = useRef(null);
@@ -275,12 +332,12 @@ function DiamondsCanvas({ className }) {
 
     scale();
 
-    const cell = 10;
+    const cell = 14;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.08;
-    const auraR = 110;
-    const size = 3.5;
-    const baseGlow = 0.12;
+    const baseAlpha = 0.06;
+    const auraR = 90;
+    const size = 3;
+    const baseGlow = 0.1;
 
     const draw = () => {
       const w = canvas.offsetWidth;
@@ -434,14 +491,15 @@ function Hero({ onWatch, onOpenLinksModal }) {
 
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (!slides.length) return undefined;
+    if (!slides.length || isPaused) return undefined;
     const timer = setInterval(() => {
       setIndex((value) => (value + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [slides.length, isPaused]);
 
   useEffect(() => {
     setLoading(true);
@@ -456,8 +514,11 @@ function Hero({ onWatch, onOpenLinksModal }) {
     if (slide?.url) window.open(slide.url, "_blank", "noopener,noreferrer");
   };
 
+  const pause = useCallback(() => setIsPaused(true), []);
+  const resume = useCallback(() => setIsPaused(false), []);
+
   return (
-    <section className="relative pt-24 pb-14">
+    <RevealOnScroll as="section" className="relative pt-24 pb-14">
       <DiamondsCanvas className="opacity-90" />
       <div className="relative max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
         <div>
@@ -471,12 +532,12 @@ function Hero({ onWatch, onOpenLinksModal }) {
             </span>
             <span className="group inline-block mr-2">
               <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">
-                Filmmaker.
+                Storyteller.
               </motion.span>
             </span>
             <span className="group inline-block">
-              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">
-                Storyteller.
+              <motion.span whileHover={{ textShadow: "0 0 18px rgba(255,255,255,0.55)", scale: 1.03 }} className="transition-all">
+                AI Innovator.
               </motion.span>
             </span>
           </div>
@@ -484,7 +545,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
             <Button variant="accent" onClick={() => document.getElementById("featured-projects")?.scrollIntoView({ behavior: "smooth" })}>
               View My Work
             </Button>
-            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Get a Free Quote</Button>
+            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Work with me</Button>
             <Button onClick={onWatch} icon={Play} variant="ghost">
               Watch Reel
             </Button>
@@ -493,7 +554,13 @@ function Hero({ onWatch, onOpenLinksModal }) {
             </Button>
           </div>
         </div>
-        <Card className="relative overflow-hidden">
+        <Card
+          className="relative overflow-hidden"
+          onMouseEnter={pause}
+          onMouseLeave={resume}
+          onFocus={pause}
+          onBlur={resume}
+        >
           <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/60">
             <span>Showcase</span>
             <div className="flex items-center gap-2 text-xs text-white/60">
@@ -533,6 +600,8 @@ function Hero({ onWatch, onOpenLinksModal }) {
                     className="h-full w-full object-cover"
                     onLoad={() => setLoading(false)}
                     onError={() => setLoading(false)}
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="h-full w-full grid place-items-center bg-black/40 text-white/70 text-sm">Loading showcase…</div>
@@ -556,7 +625,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
           </div>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -570,7 +639,12 @@ function SectionNav() {
   ];
 
   return (
-    <nav className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2">
+    <RevealOnScroll
+      as="nav"
+      className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2"
+      delay={0.1}
+      persist
+    >
       {items.map((item) => (
         <button
           key={item.id}
@@ -580,7 +654,7 @@ function SectionNav() {
           {item.label}
         </button>
       ))}
-    </nav>
+    </RevealOnScroll>
   );
 }
 
@@ -588,7 +662,7 @@ function SectionNav() {
 function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) {
   const [randomKey, setRandomKey] = useState(0);
   return (
-    <section className="py-12" id="work">
+    <RevealOnScroll as="section" className="py-12" id="work" delay={0.2} persist>
       <div className="max-w-7xl mx-auto px-6">
         <Card>
           <div className="flex items-end justify-between mb-1">
@@ -639,7 +713,7 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
           </div>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -898,6 +972,11 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   const [ambition, setAmbition] = useState(7);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [showSchedule, setShowSchedule] = useState(false);
+  const vibrateOnce = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const { navigator } = window;
+    if (navigator?.vibrate) navigator.vibrate(18);
+  }, []);
 
   // total duration is the single source of truth
   const [total, setTotal] = useState(6); // weeks
@@ -993,7 +1072,8 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       if (total <= 2) return makeFSForTotal(total);
       const maxDays = total * 7;
       return prev.map((p) => {
-        const weeks = Math.max(0.5, Math.min(26, p.weeks));
+        const minWeeks = total <= 2 ? 1 / 7 : 0.5;
+        const weeks = Math.max(minWeeks, Math.min(26, p.weeks));
         let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
         return { ...p, weeks, startDays };
       });
@@ -1123,7 +1203,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
 
       <button
         type="button"
-        onClick={() => setShowSchedule((value) => !value)}
+        onClick={() =>
+          setShowSchedule((value) => {
+            const next = !value;
+            if (!value && next) vibrateOnce();
+            return next;
+          })
+        }
         className="mt-3 inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
       >
         {showSchedule ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -1179,7 +1265,12 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 
   const clampPhase = (p) => {
     const maxStart = Math.max(0, totalDays - Math.ceil(p.weeks * 7));
-    return { ...p, startDays: Math.min(Math.max(0, p.startDays), maxStart), weeks: Math.max(0.5, Math.min(26, p.weeks)) };
+    const minWeeks = total <= 2 ? 1 / 7 : 0.5;
+    return {
+      ...p,
+      startDays: Math.min(Math.max(0, p.startDays), maxStart),
+      weeks: Math.max(minWeeks, Math.min(26, p.weeks)),
+    };
   };
 
   const pct = (days) => `${(days / totalDays) * 100}%`;
@@ -1330,7 +1421,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 function Portfolio() {
   const [modal, setModal] = useState(null);
   return (
-    <section className="py-12" id="featured-projects">
+    <RevealOnScroll as="section" className="py-12" id="featured-projects" delay={0.15}>
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-1">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
@@ -1342,7 +1433,13 @@ function Portfolio() {
             <Card key={p.id}>
               <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
                 {youtubeThumb(p.url) ? (
-                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform" />
+                  <img
+                    src={youtubeThumb(p.url)}
+                    alt={p.title}
+                    className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
                 )}
@@ -1370,6 +1467,7 @@ function Portfolio() {
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                loading="lazy"
               />
             </div>
           ) : (
@@ -1385,7 +1483,7 @@ function Portfolio() {
           )}
         </Modal>
       ) : null}
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -1428,7 +1526,7 @@ const MMMGalleries = memo(function MMMGalleries() {
   };
 
   return (
-    <section id="galleries" className="py-16">
+    <RevealOnScroll as="section" id="galleries" className="py-16" delay={0.25}>
       <div className="max-w-7xl mx-auto px-6 space-y-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
@@ -1525,12 +1623,12 @@ const MMMGalleries = memo(function MMMGalleries() {
           </div>
         ) : null}
       </Modal>
-    </section>
+    </RevealOnScroll>
   );
 });
 
 function SocialProof() {
-  const logos = ["Netflix", "BBC", "Spotify"];
+  const logos = ["Creatives", "Professionals", "Filmmakers"];
   const quotes = [
     {
       quote: "Menelek understands the assignment faster than any director we've hired.",
@@ -1554,7 +1652,7 @@ function SocialProof() {
   }, [quotes.length]);
 
   return (
-    <section className="py-10">
+    <RevealOnScroll as="section" className="py-10" delay={0.1}>
       <div className="max-w-6xl mx-auto px-6 space-y-6">
         <div className="flex flex-wrap items-center gap-6 text-white/60 text-sm uppercase tracking-[0.3em]">
           <span className="text-white/70">Trusted by</span>
@@ -1569,7 +1667,7 @@ function SocialProof() {
           <div className="mt-2 text-sm text-white/60">{quotes[quoteIndex].author}</div>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -1581,7 +1679,7 @@ function Blog() {
     { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
   ];
   return (
-    <section className="py-12">
+    <RevealOnScroll as="section" className="py-12" delay={0.28}>
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Blog</h2>
         <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
@@ -1595,14 +1693,14 @@ function Blog() {
           ))}
         </div>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
 // ========= Biography ========= //
 function Biography() {
   return (
-    <section className="py-12">
+    <RevealOnScroll as="section" className="py-12" delay={0.18}>
       <div className="max-w-5xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Biography</h2>
         <Card className="mt-4 space-y-3">
@@ -1612,7 +1710,7 @@ function Biography() {
           <p className="text-white/80">Highlights include <em>Heroes & Gods</em> (feature‑length anthology), <em>Blinded by Magic</em>, <em>Abranteers</em>, and the boxing pilot doc <em>SPAR</em>. Beyond set life, I design pipelines for brands to publish consistently without losing voice.</p>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -1653,7 +1751,7 @@ function AllLinksModal({ open, onClose }) {
           </div></div>
           <div className="flex flex-col gap-2">
             <Button href={LINKS.loremakerSite} target="_blank" rel="noreferrer" icon={ExternalLink}>Loremaker Database</Button>
-            <Button href={LINKS.icuniSite} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">AI Consultancy (ICUNI)</Button>
+            <Button href={LINKS.starterclassSite} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">AI Starterclass</Button>
             <Button href={LINKS.oldBlog} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">Old Blog</Button>
           </div>
         </Card>
@@ -1664,26 +1762,42 @@ function AllLinksModal({ open, onClose }) {
 
 // ========= App Shell ========= //
 function LogoMark() {
+  const gradientId = useId();
+  const bgId = `${gradientId}-bg`;
+  const glowId = `${gradientId}-glow`;
   return (
-    <div className="relative h-8 w-8 grid place-items-center">
-      <svg viewBox="0 0 64 64" className="h-8 w-8">
+    <motion.div
+      className="relative h-9 w-9 grid place-items-center"
+      initial={{ opacity: 0, scale: 0.9, rotate: -6 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <svg viewBox="0 0 64 64" className="h-9 w-9 drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)]">
         <defs>
-          <linearGradient id="mmg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopOpacity="0.85" stopColor="#ffffff" />
-            <stop offset="100%" stopOpacity="0.15" stopColor="#ffffff" />
+          <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.35)" />
           </linearGradient>
+          <radialGradient id={glowId} cx="0.5" cy="0.3" r="0.8">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
         </defs>
-        <rect x="8" y="8" width="48" height="48" rx="8" transform="rotate(45 32 32)" fill="url(#mmg)" opacity="0.12" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
-        <text x="32" y="38" textAnchor="middle" fontSize="20" fill="#ffffff" opacity="0.9" style={{ fontWeight: 800, letterSpacing: 1 }}>MM</text>
+        <rect x="10" y="10" width="44" height="44" rx="12" fill="rgba(6,9,20,0.7)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+        <rect x="8" y="8" width="48" height="48" rx="16" transform="rotate(45 32 32)" fill={`url(#${bgId})`} opacity="0.22" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+        <circle cx="32" cy="28" r="18" fill={`url(#${glowId})`} opacity="0.6" />
+        <text x="32" y="39" textAnchor="middle" fontSize="21" fill="#ffffff" style={{ fontWeight: 800, letterSpacing: 1.5 }}>
+          MM
+        </text>
       </svg>
-    </div>
+    </motion.div>
   );
 }
 
 const MENU = [
   { key: "home", label: "Home" },
   { key: "bio", label: "Biography" },
-  { key: "ai", label: "AI" }, // external link
+  { key: "ai", label: "AI Starterclass" }, // external link
   { key: "loremaker", label: "Loremaker" }, // external link
   { key: "blog", label: "Blog" },
 ];
@@ -1792,9 +1906,13 @@ export default function AppShell() {
           <nav className="hidden md:flex items-center gap-5 text-white/80">
             {MENU.map((m) => (
               m.key === "ai" ? (
-                <a key={m.key} href={LINKS.icuniSite} className="hover:text-white" rel="noreferrer">{m.label}</a>
+                <a key={m.key} href={LINKS.starterclassSite} className="hover:text-white" target="_blank" rel="noreferrer">
+                  {m.label}
+                </a>
               ) : m.key === "loremaker" ? (
-                <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white">{m.label}</a>
+                <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white" target="_blank" rel="noreferrer">
+                  {m.label}
+                </a>
               ) : (
                 <a key={m.key} href="#" onClick={(e) => { e.preventDefault(); setRoute(m.key); }} className={cn("hover:text-white", route === m.key && "text-white")}>{m.label}</a>
               )
@@ -1822,11 +1940,11 @@ export default function AppShell() {
               onBook={(svc) => goContactInline(svc)}
               onCalendarChange={setCalendarState}
             />
-            <section id="contact" className="py-6">
+            <RevealOnScroll as="section" id="contact" className="py-6" delay={0.24} persist>
               <div className="max-w-7xl mx-auto px-6">
                 <ContactInline calendarState={calendarState} />
               </div>
-            </section>
+            </RevealOnScroll>
             <Blog />
           </>
         )}
@@ -1847,7 +1965,7 @@ export default function AppShell() {
             </div>
           </div>
           <div className="md:col-span-2 text-white/70 text-sm">
-            © {new Date().getFullYear()} Loremaker • ICUNI. All rights reserved.
+            © {new Date().getFullYear()} Loremaker • Starterclass. All rights reserved.
           </div>
         </div>
       </footer>
@@ -1881,6 +1999,7 @@ export default function AppShell() {
             frameBorder="0"
             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
             allowFullScreen
+            loading="lazy"
           />
         </div>
       </Modal>
