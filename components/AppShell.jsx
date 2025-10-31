@@ -1,5 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  memo,
+  useId,
+} from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Play,
   Phone,
@@ -22,6 +32,8 @@ import {
   Pause,
   Minimize2,
   Maximize2,
+  Menu,
+  Gem,
 } from "lucide-react";
 
 /**
@@ -52,8 +64,8 @@ const LINKS = {
   aiIG: "https://www.instagram.com/mr.mikaelgabriel/",
   personalLI: "https://www.linkedin.com/in/menelekmakonnen/",
   businessLI: "https://www.linkedin.com/in/mikaelgabriel/",
-  loremakerSite: "https://menelekmakonnen.com/loremaker",
-  icuniSite: "https://icuni.co.uk",
+  loremakerSite: "https://loremaker.cloud",
+  starterclassSite: "https://starterclass.icuni.org",
   oldBlog: "https://wordpress.com/mikaelgabriel",
 };
 
@@ -61,8 +73,6 @@ const N8N_BASE_URL = "https://mmmai.app.n8n.cloud";
 const N8N_ENDPOINTS = {
   contact: ["/webhook/contact", "/webhook-test/contact"],
 };
-
-const IG_REEL_ID = "C8rQp-kq5PG";
 
 const MMM_REELS = {
   "Epic Edits": [
@@ -120,7 +130,10 @@ const MMM_REELS = {
   ],
 };
 
-const MAX_REELS_PER_BELT = 6;
+const MAX_REELS_PER_BELT = 4;
+
+const ExperienceContext = createContext({ liteMode: true, toggleLiteMode: () => {} });
+const useExperience = () => useContext(ExperienceContext);
 
 // ========= UTIL ========= //
 const cn = (...a) => a.filter(Boolean).join(" ");
@@ -155,7 +168,20 @@ async function postJSONWithFallback(paths, payload) {
   throw new Error("All endpoints failed");
 }
 
-function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, className = "", target, rel, variant = "default", title }) {
+function Button({
+  as: Cmp = "button",
+  children,
+  icon: Icon,
+  href,
+  onClick,
+  className = "",
+  target,
+  rel,
+  variant = "default",
+  title,
+  ...rest
+}) {
+  const { liteMode } = useExperience();
   const palettes = {
     default: "bg-white/10 hover:bg-white/15",
     ghost: "bg-white/5 hover:bg-white/10",
@@ -167,26 +193,47 @@ function Button({ as: Cmp = "button", children, icon: Icon, href, onClick, class
     palettes[variant],
     className
   );
+  const computedComponent = href ? "a" : Cmp;
+  const MotionCmp = useMemo(() => motion(computedComponent), [computedComponent]);
   const inner = (
     <span className="inline-flex items-center gap-2">
       {children}
       {Icon ? <Icon className="h-4 w-4" /> : null}
     </span>
   );
-  if (href)
-    return (
-      <a href={href} onClick={onClick} className={base} target={target} rel={rel} title={title}>
-        {inner}
-      </a>
-    );
-  return (
-    <Cmp onClick={onClick} className={base} title={title}>
-      {inner}
-    </Cmp>
-  );
+  const motionProps = {};
+  if (computedComponent === "button" && rest?.type === undefined) motionProps.type = "button";
+
+  const componentProps = {
+    onClick,
+    className: base,
+    title,
+    ...motionProps,
+    ...rest,
+  };
+
+  if (liteMode) {
+    componentProps.initial = false;
+    componentProps.whileHover = { scale: 1.01 };
+    componentProps.whileTap = { scale: 0.99 };
+    componentProps.transition = { duration: 0.18 };
+  } else {
+    componentProps.initial = { opacity: 0, y: 16 };
+    componentProps.whileInView = { opacity: 1, y: 0 };
+    componentProps.whileHover = { scale: 1.03, y: -2 };
+    componentProps.whileTap = { scale: 0.97 };
+    componentProps.viewport = { amount: 0.6, once: false };
+    componentProps.transition = { duration: 0.35, ease: [0.16, 1, 0.3, 1] };
+  }
+
+  if (href) componentProps.href = href;
+  if (target) componentProps.target = target;
+  if (rel) componentProps.rel = rel;
+
+  return <MotionCmp {...componentProps}>{inner}</MotionCmp>;
 }
 
-function Card({ className = "", children }) {
+function Card({ className = "", children, ...rest }) {
   return (
     <div
       className={cn(
@@ -194,6 +241,7 @@ function Card({ className = "", children }) {
         "shadow-[0_12px_50px_rgba(0,0,0,0.35)] p-5 transition-transform hover:-translate-y-[2px]",
         className
       )}
+      {...rest}
     >
       {children}
     </div>
@@ -238,14 +286,44 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
+function RevealOnScroll({ as: Component = "section", className = "", children, delay = 0, persist = false, ...rest }) {
+  const { liteMode } = useExperience();
+  const ref = useRef(null);
+  const inView = useInView(ref, { margin: "0px 0px -20% 0px", amount: 0.2 });
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    if (inView) {
+      setHasAnimated(true);
+    }
+  }, [inView]);
+
+  const shouldAnimate = !liteMode;
+  const targetVisible = shouldAnimate ? (persist ? inView || hasAnimated : inView || hasAnimated) : true;
+
+  return (
+    <Component ref={ref} className={className} {...rest}>
+      <motion.div
+        initial={shouldAnimate ? { opacity: 0, y: 80, scale: 0.96 } : false}
+        animate={targetVisible ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 80, scale: 0.96 }}
+        transition={shouldAnimate ? { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] } : { duration: 0.25, delay: 0 }}
+      >
+        {children}
+      </motion.div>
+    </Component>
+  );
+}
+
 // ========= BACKGROUND ========= //
 function DiamondsCanvas({ className }) {
+  const { liteMode } = useExperience();
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
   const rafRef = useRef(0);
   const ripplesRef = useRef([]);
 
   useEffect(() => {
+    if (liteMode) return undefined;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -275,12 +353,12 @@ function DiamondsCanvas({ className }) {
 
     scale();
 
-    const cell = 10;
+    const cell = 14;
     const rot = Math.PI / 4;
-    const baseAlpha = 0.08;
-    const auraR = 110;
-    const size = 3.5;
-    const baseGlow = 0.12;
+    const baseAlpha = 0.06;
+    const auraR = 90;
+    const size = 3;
+    const baseGlow = 0.1;
 
     const draw = () => {
       const w = canvas.offsetWidth;
@@ -353,7 +431,20 @@ function DiamondsCanvas({ className }) {
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("pointerdown", onClick);
     };
-  }, []);
+  }, [liteMode]);
+
+  if (liteMode) {
+    return (
+      <div
+        className={cn(
+          "absolute inset-0 -z-10 h-full w-full",
+          "bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_55%)]",
+          className
+        )}
+        aria-hidden="true"
+      />
+    );
+  }
 
   return <canvas ref={canvasRef} className={cn("absolute inset-0 -z-10 h-full w-full", className)} style={{ pointerEvents: "auto" }} />;
 }
@@ -418,7 +509,8 @@ function ShimmerTitle({ children }) {
   );
 }
 
-function Hero({ onWatch, onOpenLinksModal }) {
+function Hero({ onOpenLinksModal }) {
+  const { liteMode, toggleLiteMode } = useExperience();
   const slides = useMemo(
     () =>
       PROJECTS.slice(0, 4).map((project) => ({
@@ -434,18 +526,23 @@ function Hero({ onWatch, onOpenLinksModal }) {
 
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (!slides.length) return undefined;
+    if (!slides.length || isPaused || liteMode) return undefined;
     const timer = setInterval(() => {
       setIndex((value) => (value + 1) % slides.length);
-    }, 5000);
+    }, 12000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [slides.length, isPaused, liteMode]);
 
   useEffect(() => {
     setLoading(true);
   }, [index]);
+
+  useEffect(() => {
+    setIsPaused(liteMode);
+  }, [liteMode]);
 
   const goPrev = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
   const goNext = () => setIndex((value) => (value + 1) % slides.length);
@@ -456,8 +553,13 @@ function Hero({ onWatch, onOpenLinksModal }) {
     if (slide?.url) window.open(slide.url, "_blank", "noopener,noreferrer");
   };
 
+  const pause = useCallback(() => setIsPaused(true), []);
+  const resume = useCallback(() => setIsPaused(false), []);
+
+  const showcaseLabel = liteMode ? "Showcase • Lite" : "Showcase • Cinematic";
+
   return (
-    <section className="relative pt-24 pb-14">
+    <RevealOnScroll as="section" className="relative pt-24 pb-14">
       <DiamondsCanvas className="opacity-90" />
       <div className="relative max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
         <div>
@@ -471,44 +573,55 @@ function Hero({ onWatch, onOpenLinksModal }) {
             </span>
             <span className="group inline-block mr-2">
               <motion.span whileHover={{ rotate: -1.2, scale: 1.02 }} className="inline-flex items-center gap-1 transition-all">
-                Filmmaker.
+                Storyteller.
               </motion.span>
             </span>
             <span className="group inline-block">
-              <motion.span whileHover={{ textShadow: "0 0 12px rgba(255,255,255,0.45)" }} className="transition-all">
-                Storyteller.
+              <motion.span whileHover={{ textShadow: "0 0 18px rgba(255,255,255,0.55)", scale: 1.03 }} className="transition-all">
+                AI Innovator.
               </motion.span>
             </span>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              variant={liteMode ? "accent" : "ghost"}
+              onClick={toggleLiteMode}
+              icon={liteMode ? Maximize2 : Minimize2}
+              title={liteMode ? "Enable every animation, canvas, and motion detail" : "Return to the lighter experience"}
+            >
+              {liteMode ? "Welcome: Enable Full Experience" : "Back to Lite Mode"}
+            </Button>
             <Button variant="accent" onClick={() => document.getElementById("featured-projects")?.scrollIntoView({ behavior: "smooth" })}>
               View My Work
             </Button>
-            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Get a Free Quote</Button>
-            <Button onClick={onWatch} icon={Play} variant="ghost">
-              Watch Reel
-            </Button>
+            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Work with me</Button>
             <Button onClick={onOpenLinksModal} variant="ghost">
               All Links
             </Button>
           </div>
         </div>
-        <Card className="relative overflow-hidden">
-          <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/60">
-            <span>Showcase</span>
+        <Card
+          className="relative overflow-hidden !bg-white/[0.03] !border-white/12 !shadow-[0_12px_36px_rgba(10,10,30,0.28)]"
+          onMouseEnter={!liteMode ? pause : undefined}
+          onMouseLeave={!liteMode ? resume : undefined}
+          onFocus={!liteMode ? pause : undefined}
+          onBlur={!liteMode ? resume : undefined}
+        >
+          <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/70">
+            <span>{showcaseLabel}</span>
             <div className="flex items-center gap-2 text-xs text-white/60">
               <span>{loading ? "Loading…" : `${index + 1}/${slides.length || 1}`}</span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={goPrev}
-                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  className="rounded-full bg-white/10 border border-white/20 p-1.5 text-white/80 hover:bg-white/20 hover:text-white"
                   aria-label="Previous showcase"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
                   onClick={goNext}
-                  className="rounded-full bg-black/40 border border-white/25 p-1.5 hover:bg-black/60"
+                  className="rounded-full bg-white/10 border border-white/20 p-1.5 text-white/80 hover:bg-white/20 hover:text-white"
                   aria-label="Next showcase"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -520,10 +633,10 @@ function Hero({ onWatch, onOpenLinksModal }) {
             <AnimatePresence mode="wait">
               <motion.div
                 key={slide?.id || index}
-                initial={{ opacity: 0, scale: 1.02 }}
+                initial={{ opacity: 0, scale: 1.01 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.6 }}
+                exit={{ opacity: 0, scale: 1.01 }}
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
                 className="relative h-full w-full"
               >
                 {slide?.thumb ? (
@@ -533,6 +646,8 @@ function Hero({ onWatch, onOpenLinksModal }) {
                     className="h-full w-full object-cover"
                     onLoad={() => setLoading(false)}
                     onError={() => setLoading(false)}
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="h-full w-full grid place-items-center bg-black/40 text-white/70 text-sm">Loading showcase…</div>
@@ -542,7 +657,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
                   className="absolute inset-0 grid place-items-center text-white/80 hover:text-white"
                   aria-label="Play project"
                 >
-                  <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/45 px-4 py-2">
                     <Play className="h-4 w-4" /> Watch
                   </span>
                 </button>
@@ -556,7 +671,7 @@ function Hero({ onWatch, onOpenLinksModal }) {
           </div>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -570,7 +685,12 @@ function SectionNav() {
   ];
 
   return (
-    <nav className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2">
+    <RevealOnScroll
+      as="nav"
+      className="sticky top-20 z-30 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full max-w-3xl mx-auto px-4 py-2 flex flex-wrap justify-center gap-2"
+      delay={0.1}
+      persist
+    >
       {items.map((item) => (
         <button
           key={item.id}
@@ -580,7 +700,7 @@ function SectionNav() {
           {item.label}
         </button>
       ))}
-    </nav>
+    </RevealOnScroll>
   );
 }
 
@@ -588,7 +708,7 @@ function SectionNav() {
 function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) {
   const [randomKey, setRandomKey] = useState(0);
   return (
-    <section className="py-12" id="work">
+    <RevealOnScroll as="section" className="py-12" id="work" delay={0.2} persist>
       <div className="max-w-7xl mx-auto px-6">
         <Card>
           <div className="flex items-end justify-between mb-1">
@@ -639,7 +759,7 @@ function WorkWithMe({ currentService, onSetService, onBook, onCalendarChange }) 
           </div>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -898,6 +1018,11 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
   const [ambition, setAmbition] = useState(7);
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [showSchedule, setShowSchedule] = useState(false);
+  const vibrateOnce = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const { navigator } = window;
+    if (navigator?.vibrate) navigator.vibrate(18);
+  }, []);
 
   // total duration is the single source of truth
   const [total, setTotal] = useState(6); // weeks
@@ -993,7 +1118,8 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
       if (total <= 2) return makeFSForTotal(total);
       const maxDays = total * 7;
       return prev.map((p) => {
-        const weeks = Math.max(0.5, Math.min(26, p.weeks));
+        const minWeeks = total <= 2 ? 1 / 7 : 0.5;
+        const weeks = Math.max(minWeeks, Math.min(26, p.weeks));
         let startDays = Math.min(Math.max(0, p.startDays), Math.max(0, maxDays - Math.ceil(weeks * 7)));
         return { ...p, weeks, startDays };
       });
@@ -1123,7 +1249,13 @@ function ValueCalculator({ service: serviceProp, onBook, onCalendarChange, rando
 
       <button
         type="button"
-        onClick={() => setShowSchedule((value) => !value)}
+        onClick={() =>
+          setShowSchedule((value) => {
+            const next = !value;
+            if (!value && next) vibrateOnce();
+            return next;
+          })
+        }
         className="mt-3 inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
       >
         {showSchedule ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -1179,7 +1311,12 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 
   const clampPhase = (p) => {
     const maxStart = Math.max(0, totalDays - Math.ceil(p.weeks * 7));
-    return { ...p, startDays: Math.min(Math.max(0, p.startDays), maxStart), weeks: Math.max(0.5, Math.min(26, p.weeks)) };
+    const minWeeks = total <= 2 ? 1 / 7 : 0.5;
+    return {
+      ...p,
+      startDays: Math.min(Math.max(0, p.startDays), maxStart),
+      weeks: Math.max(minWeeks, Math.min(26, p.weeks)),
+    };
   };
 
   const pct = (days) => `${(days / totalDays) * 100}%`;
@@ -1330,7 +1467,7 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
 function Portfolio() {
   const [modal, setModal] = useState(null);
   return (
-    <section className="py-12" id="featured-projects">
+    <RevealOnScroll as="section" className="py-12" id="featured-projects" delay={0.15}>
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-1">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
@@ -1342,7 +1479,13 @@ function Portfolio() {
             <Card key={p.id}>
               <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
                 {youtubeThumb(p.url) ? (
-                  <img src={youtubeThumb(p.url)} alt={p.title} className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform" />
+                  <img
+                    src={youtubeThumb(p.url)}
+                    alt={p.title}
+                    className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
                 )}
@@ -1370,6 +1513,7 @@ function Portfolio() {
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                loading="lazy"
               />
             </div>
           ) : (
@@ -1385,7 +1529,7 @@ function Portfolio() {
           )}
         </Modal>
       ) : null}
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -1408,6 +1552,7 @@ const MMMGalleries = memo(function MMMGalleries() {
   const [modal, setModal] = useState(null);
   const [manualPause, setManualPause] = useState(false);
   const [hovered, setHovered] = useState(null);
+  const { liteMode } = useExperience();
 
   const reels = useMemo(() => Object.entries(MMM_REELS).flatMap(([label, urls]) => urls.map((url) => ({ label, url }))), []);
 
@@ -1420,6 +1565,8 @@ const MMMGalleries = memo(function MMMGalleries() {
   const beltItems = useMemo(() => (picks.length ? [...picks, ...picks] : []), [picks]);
   const animationDuration = Math.max(60, beltItems.length * 8);
   const paused = manualPause || Boolean(hovered);
+  const marqueePaused = paused || liteMode;
+  const isEffectivelyPaused = marqueePaused;
 
   const handleShuffle = () => {
     setManualPause(false);
@@ -1428,7 +1575,7 @@ const MMMGalleries = memo(function MMMGalleries() {
   };
 
   return (
-    <section id="galleries" className="py-16">
+    <RevealOnScroll as="section" id="galleries" className="py-16" delay={0.25}>
       <div className="max-w-7xl mx-auto px-6 space-y-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
@@ -1449,9 +1596,14 @@ const MMMGalleries = memo(function MMMGalleries() {
             <button
               type="button"
               onClick={() => setManualPause((value) => !value)}
-              className="px-3 py-1.5 text-xs border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+              className={cn(
+                "px-3 py-1.5 text-xs border border-white/20 rounded-full text-white/70",
+                "hover:text-white hover:bg-white/10",
+                liteMode && "opacity-60 cursor-not-allowed hover:bg-transparent hover:text-white/70",
+              )}
+              disabled={liteMode}
             >
-              {paused ? (
+              {isEffectivelyPaused ? (
                 <span className="inline-flex items-center gap-1"><Play className="h-3.5 w-3.5" /> Resume</span>
               ) : (
                 <span className="inline-flex items-center gap-1"><Pause className="h-3.5 w-3.5" /> Pause</span>
@@ -1475,7 +1627,7 @@ const MMMGalleries = memo(function MMMGalleries() {
               className="flex gap-6 w-max items-center"
               style={{
                 animation: `mmm-marquee ${animationDuration}s linear infinite`,
-                animationPlayState: paused ? "paused" : "running",
+                animationPlayState: marqueePaused ? "paused" : "running",
               }}
               onMouseLeave={() => setHovered(null)}
             >
@@ -1499,6 +1651,11 @@ const MMMGalleries = memo(function MMMGalleries() {
                   />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_55%)]" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+                  <div className="absolute top-3 right-3">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[11px] text-white/80 border border-white/15">
+                      <Gem className="h-3.5 w-3.5" /> Tap to view
+                    </span>
+                  </div>
                   <div className="absolute bottom-3 left-3 right-3 text-left text-xs text-white/85">
                     <div className="font-semibold">{item.label}</div>
                     <div className="text-white/70">Instagram reel preview</div>
@@ -1525,12 +1682,12 @@ const MMMGalleries = memo(function MMMGalleries() {
           </div>
         ) : null}
       </Modal>
-    </section>
+    </RevealOnScroll>
   );
 });
 
 function SocialProof() {
-  const logos = ["Netflix", "BBC", "Spotify"];
+  const logos = ["Creatives", "Professionals", "Filmmakers"];
   const quotes = [
     {
       quote: "Menelek understands the assignment faster than any director we've hired.",
@@ -1547,14 +1704,19 @@ function SocialProof() {
   ];
 
   const [quoteIndex, setQuoteIndex] = useState(0);
+  const { liteMode } = useExperience();
 
   useEffect(() => {
+    if (liteMode) {
+      setQuoteIndex(0);
+      return undefined;
+    }
     const timer = setInterval(() => setQuoteIndex((value) => (value + 1) % quotes.length), 6000);
     return () => clearInterval(timer);
-  }, [quotes.length]);
+  }, [quotes.length, liteMode]);
 
   return (
-    <section className="py-10">
+    <RevealOnScroll as="section" className="py-10" delay={0.1}>
       <div className="max-w-6xl mx-auto px-6 space-y-6">
         <div className="flex flex-wrap items-center gap-6 text-white/60 text-sm uppercase tracking-[0.3em]">
           <span className="text-white/70">Trusted by</span>
@@ -1569,7 +1731,7 @@ function SocialProof() {
           <div className="mt-2 text-sm text-white/60">{quotes[quoteIndex].author}</div>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -1581,7 +1743,7 @@ function Blog() {
     { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
   ];
   return (
-    <section className="py-12">
+    <RevealOnScroll as="section" className="py-12" delay={0.28}>
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Blog</h2>
         <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
@@ -1595,14 +1757,14 @@ function Blog() {
           ))}
         </div>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
 // ========= Biography ========= //
 function Biography() {
   return (
-    <section className="py-12">
+    <RevealOnScroll as="section" className="py-12" delay={0.18}>
       <div className="max-w-5xl mx-auto px-6">
         <h2 className="text-3xl font-bold">Biography</h2>
         <Card className="mt-4 space-y-3">
@@ -1612,7 +1774,7 @@ function Biography() {
           <p className="text-white/80">Highlights include <em>Heroes & Gods</em> (feature‑length anthology), <em>Blinded by Magic</em>, <em>Abranteers</em>, and the boxing pilot doc <em>SPAR</em>. Beyond set life, I design pipelines for brands to publish consistently without losing voice.</p>
         </Card>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -1653,7 +1815,7 @@ function AllLinksModal({ open, onClose }) {
           </div></div>
           <div className="flex flex-col gap-2">
             <Button href={LINKS.loremakerSite} target="_blank" rel="noreferrer" icon={ExternalLink}>Loremaker Database</Button>
-            <Button href={LINKS.icuniSite} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">AI Consultancy (ICUNI)</Button>
+            <Button href={LINKS.starterclassSite} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">AI Starterclass</Button>
             <Button href={LINKS.oldBlog} target="_blank" rel="noreferrer" icon={ExternalLink} variant="ghost">Old Blog</Button>
           </div>
         </Card>
@@ -1664,26 +1826,42 @@ function AllLinksModal({ open, onClose }) {
 
 // ========= App Shell ========= //
 function LogoMark() {
+  const gradientId = useId();
+  const bgId = `${gradientId}-bg`;
+  const glowId = `${gradientId}-glow`;
   return (
-    <div className="relative h-8 w-8 grid place-items-center">
-      <svg viewBox="0 0 64 64" className="h-8 w-8">
+    <motion.div
+      className="relative h-9 w-9 grid place-items-center"
+      initial={{ opacity: 0, scale: 0.9, rotate: -6 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <svg viewBox="0 0 64 64" className="h-9 w-9 drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)]">
         <defs>
-          <linearGradient id="mmg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopOpacity="0.85" stopColor="#ffffff" />
-            <stop offset="100%" stopOpacity="0.15" stopColor="#ffffff" />
+          <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.35)" />
           </linearGradient>
+          <radialGradient id={glowId} cx="0.5" cy="0.3" r="0.8">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
         </defs>
-        <rect x="8" y="8" width="48" height="48" rx="8" transform="rotate(45 32 32)" fill="url(#mmg)" opacity="0.12" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
-        <text x="32" y="38" textAnchor="middle" fontSize="20" fill="#ffffff" opacity="0.9" style={{ fontWeight: 800, letterSpacing: 1 }}>MM</text>
+        <rect x="10" y="10" width="44" height="44" rx="12" fill="rgba(6,9,20,0.7)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+        <rect x="8" y="8" width="48" height="48" rx="16" transform="rotate(45 32 32)" fill={`url(#${bgId})`} opacity="0.22" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+        <circle cx="32" cy="28" r="18" fill={`url(#${glowId})`} opacity="0.6" />
+        <text x="32" y="39" textAnchor="middle" fontSize="21" fill="#ffffff" style={{ fontWeight: 800, letterSpacing: 1.5 }}>
+          MM
+        </text>
       </svg>
-    </div>
+    </motion.div>
   );
 }
 
 const MENU = [
   { key: "home", label: "Home" },
   { key: "bio", label: "Biography" },
-  { key: "ai", label: "AI" }, // external link
+  { key: "ai", label: "AI Starterclass" }, // external link
   { key: "loremaker", label: "Loremaker" }, // external link
   { key: "blog", label: "Blog" },
 ];
@@ -1756,30 +1934,60 @@ function runSelfTests() {
 
 export default function AppShell() {
   const [route, setRoute] = useState("home");
-  const [reelOpen, setReelOpen] = useState(false);
+  const [liteMode, setLiteMode] = useState(true);
   const [linksOpen, setLinksOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleLiteMode = useCallback(() => setLiteMode((value) => !value), []);
 
   const prefillSubtype = (name) => window.dispatchEvent(new CustomEvent("prefill-subtype", { detail: { subtype: name } }));
 
   const goContactInline = (serviceName) => {
     if (serviceName) prefillSubtype(serviceName);
     setRoute("home");
+    setMobileMenuOpen(false);
     setTimeout(() => { document.getElementById("contact-inline")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 0);
   };
+
+  const goRoute = useCallback(
+    (key) => {
+      setRoute(key);
+      setMobileMenuOpen(false);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [],
+  );
+
+  const openLinksModal = useCallback(() => {
+    setLinksOpen(true);
+    setMobileMenuOpen(false);
+  }, []);
 
   useEffect(() => {
     runSelfTests();
   }, []);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const onResize = () => {
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [mobileMenuOpen]);
+
   return (
-    <div className="min-h-screen text-white relative overflow-x-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.015)_0,rgba(255,255,255,0.015)_1px,transparent_1px,transparent_8px)]" />
-        <DiamondsCanvas />
+    <ExperienceContext.Provider value={{ liteMode, toggleLiteMode }}>
+      <div className="min-h-screen text-white relative overflow-x-hidden">
+        {/* Background */}
+        <div className="fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.015)_0,rgba(255,255,255,0.015)_1px,transparent_1px,transparent_8px)]" />
+          <DiamondsCanvas />
       </div>
 
       {/* Header */}
@@ -1792,26 +2000,112 @@ export default function AppShell() {
           <nav className="hidden md:flex items-center gap-5 text-white/80">
             {MENU.map((m) => (
               m.key === "ai" ? (
-                <a key={m.key} href={LINKS.icuniSite} className="hover:text-white" rel="noreferrer">{m.label}</a>
+                <a key={m.key} href={LINKS.starterclassSite} className="hover:text-white" target="_blank" rel="noreferrer">
+                  {m.label}
+                </a>
               ) : m.key === "loremaker" ? (
-                <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white">{m.label}</a>
+                <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white" target="_blank" rel="noreferrer">
+                  {m.label}
+                </a>
               ) : (
-                <a key={m.key} href="#" onClick={(e) => { e.preventDefault(); setRoute(m.key); }} className={cn("hover:text-white", route === m.key && "text-white")}>{m.label}</a>
+                <a
+                  key={m.key}
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goRoute(m.key);
+                  }}
+                  className={cn("hover:text-white", route === m.key && "text-white")}
+                >
+                  {m.label}
+                </a>
               )
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setLinksOpen(true)} className="hidden sm:inline-flex">All my Links</Button>
+            <Button onClick={openLinksModal} className="hidden sm:inline-flex">
+              All my Links
+            </Button>
             <a href={SOCIALS.email} className="text-white/80 hover:text-white hidden sm:inline-flex items-center gap-2"><Mail className="h-4 w-4" />Email</a>
+            <button
+              type="button"
+              className="inline-flex md:hidden items-center justify-center rounded-full border border-white/20 p-2 text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => setMobileMenuOpen((value) => !value)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
       </header>
+
+      <AnimatePresence>
+        {mobileMenuOpen ? (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="md:hidden border-b border-white/10 bg-black/85 backdrop-blur px-4 py-6"
+          >
+            <div className="max-w-7xl mx-auto flex flex-col gap-4 text-white/80">
+              {MENU.map((m) => (
+                m.key === "ai" ? (
+                  <a
+                    key={m.key}
+                    className="flex items-center justify-between text-base"
+                    href={LINKS.starterclassSite}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {m.label}
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                ) : m.key === "loremaker" ? (
+                  <a
+                    key={m.key}
+                    className="flex items-center justify-between text-base"
+                    href={LINKS.loremakerSite}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {m.label}
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                ) : (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => goRoute(m.key)}
+                    className={cn(
+                      "flex justify-between items-center text-base rounded-xl border border-white/15 px-3 py-2",
+                      route === m.key ? "bg-white/10 text-white" : "bg-white/5 hover:bg-white/10",
+                    )}
+                  >
+                    {m.label}
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )
+              ))}
+              <Button onClick={openLinksModal} variant="ghost" className="justify-between !px-3">
+                All my Links
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+              <a className="inline-flex items-center gap-2 text-sm text-white/70 underline" href={SOCIALS.email} onClick={() => setMobileMenuOpen(false)}>
+                <Mail className="h-4 w-4" /> Email me
+              </a>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* Pages */}
       <main>
         {route === "home" && (
           <>
-            <Hero onWatch={() => setReelOpen(true)} onOpenLinksModal={() => setLinksOpen(true)} />
+            <Hero onOpenLinksModal={openLinksModal} />
             <SectionNav />
             <SocialProof />
             <Portfolio />
@@ -1822,11 +2116,11 @@ export default function AppShell() {
               onBook={(svc) => goContactInline(svc)}
               onCalendarChange={setCalendarState}
             />
-            <section id="contact" className="py-6">
+            <RevealOnScroll as="section" id="contact" className="py-6" delay={0.24} persist>
               <div className="max-w-7xl mx-auto px-6">
                 <ContactInline calendarState={calendarState} />
               </div>
-            </section>
+            </RevealOnScroll>
             <Blog />
           </>
         )}
@@ -1847,7 +2141,7 @@ export default function AppShell() {
             </div>
           </div>
           <div className="md:col-span-2 text-white/70 text-sm">
-            © {new Date().getFullYear()} Loremaker • ICUNI. All rights reserved.
+            © 2025 Menelek Makonnen. All rights reserved.
           </div>
         </div>
       </footer>
@@ -1872,18 +2166,7 @@ export default function AppShell() {
         </div>
       </Modal>
 
-      <Modal open={reelOpen} onClose={() => setReelOpen(false)} title="Instagram Reel">
-        <div className="aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.instagram.com/reel/${IG_REEL_ID}/embed`}
-            title="Instagram reel"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </div>
-      </Modal>
-    </div>
+      </div>
+    </ExperienceContext.Provider>
   );
 }
