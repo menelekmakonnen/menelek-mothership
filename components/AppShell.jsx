@@ -583,18 +583,10 @@ function Hero({ onOpenLinksModal }) {
             </span>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              variant={liteMode ? "accent" : "ghost"}
-              onClick={toggleLiteMode}
-              icon={liteMode ? Maximize2 : Minimize2}
-              title={liteMode ? "Enable every animation, canvas, and motion detail" : "Return to the lighter experience"}
-            >
-              {liteMode ? "Welcome: Enable Full Experience" : "Back to Lite Mode"}
-            </Button>
             <Button variant="accent" onClick={() => document.getElementById("featured-projects")?.scrollIntoView({ behavior: "smooth" })}>
               View My Work
             </Button>
-            <Button onClick={() => document.getElementById("work")?.scrollIntoView({ behavior: "smooth" })}>Work with me</Button>
+            <Button href="/calculator">Work with me</Button>
             <Button onClick={onOpenLinksModal} variant="ghost">
               All Links
             </Button>
@@ -1860,6 +1852,7 @@ function LogoMark() {
 
 const MENU = [
   { key: "home", label: "Home" },
+  { key: "calculator", label: "Calculator" },
   { key: "bio", label: "Biography" },
   { key: "ai", label: "AI Starterclass" }, // external link
   { key: "loremaker", label: "Loremaker" }, // external link
@@ -2007,6 +2000,10 @@ export default function AppShell() {
                 <a key={m.key} href={LINKS.loremakerSite} className="hover:text-white" target="_blank" rel="noreferrer">
                   {m.label}
                 </a>
+              ) : m.key === "calculator" ? (
+                <a key={m.key} href="/calculator" className="hover:text-white">
+                  {m.label}
+                </a>
               ) : (
                 <a
                   key={m.key}
@@ -2074,6 +2071,16 @@ export default function AppShell() {
                     {m.label}
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                ) : m.key === "calculator" ? (
+                  <a
+                    key={m.key}
+                    className="flex items-center justify-between text-base rounded-xl border border-white/15 px-3 py-2 bg-white/5 hover:bg-white/10"
+                    href="/calculator"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {m.label}
+                    <ChevronRight className="h-4 w-4" />
+                  </a>
                 ) : (
                   <button
                     key={m.key}
@@ -2110,17 +2117,6 @@ export default function AppShell() {
             <SocialProof />
             <Portfolio />
             <MMMGalleries />
-            <WorkWithMe
-              currentService={currentService}
-              onSetService={(n) => setCurrentService(n)}
-              onBook={(svc) => goContactInline(svc)}
-              onCalendarChange={setCalendarState}
-            />
-            <RevealOnScroll as="section" id="contact" className="py-6" delay={0.24} persist>
-              <div className="max-w-7xl mx-auto px-6">
-                <ContactInline calendarState={calendarState} />
-              </div>
-            </RevealOnScroll>
             <Blog />
           </>
         )}
