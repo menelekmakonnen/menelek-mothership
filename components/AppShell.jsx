@@ -462,7 +462,6 @@ const SERVICES = [
 const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s.name]));
 
 const PROJECTS = [
-  { id: "ochiyamie", title: "The Last Ochiyamie (Novel, 2023)", role: "Author", runtime: "Novel", summary: "A fantasy epic about the last warrior of a fallen kingdom.", url: "https://www.amazon.com/Ochiyamie-Legacy-Mikael-MM-Gabriel-ebook/dp/B0CD331HNX", thumb: "https://m.media-amazon.com/images/I/71xJ8z0ZXML._SY522_.jpg" },
   { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D" },
   { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj" },
   { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D" },
@@ -470,6 +469,17 @@ const PROJECTS = [
   { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv" },
   { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
 ];
+
+const NOVEL = {
+  id: "ochiyamie",
+  title: "The Last Ochiyamie",
+  subtitle: "A Legacy Novel",
+  role: "Author",
+  runtime: "Novel",
+  summary: "In a world where magic and destiny collide, follow the epic journey of the last warrior of a fallen kingdom. The Last Ochiyamie weaves together action, mythology, and deep character exploration in an Afro-fantasy epic that explores themes of legacy, power, and redemption.",
+  url: "https://www.amazon.com/Ochiyamie-Legacy-Mikael-MM-Gabriel-ebook/dp/B0CD331HNX",
+  thumb: "https://m.media-amazon.com/images/I/71xJ8z0ZXML._SY522_.jpg"
+};
 
 function getYouTubeId(url) {
   try {
@@ -513,15 +523,26 @@ function ShimmerTitle({ children }) {
 function Hero({ onOpenLinksModal }) {
   const { liteMode, toggleLiteMode } = useExperience();
   const slides = useMemo(
-    () =>
-      PROJECTS.slice(0, 4).map((project) => ({
+    () => [
+      {
+        id: NOVEL.id,
+        title: NOVEL.title,
+        caption: NOVEL.summary,
+        credit: `${NOVEL.role} • ${NOVEL.runtime}`,
+        url: NOVEL.url,
+        thumb: NOVEL.thumb,
+        isNovel: true,
+      },
+      ...PROJECTS.slice(0, 3).map((project) => ({
         id: project.id,
         title: project.title,
         caption: project.summary,
         credit: `${project.role} • ${project.runtime}`,
         url: project.url,
         thumb: project.thumb || youtubeThumb(project.url),
+        isNovel: false,
       })),
+    ],
     [],
   );
 
@@ -647,10 +668,18 @@ function Hero({ onOpenLinksModal }) {
                 <button
                   onClick={openSlide}
                   className="absolute inset-0 grid place-items-center text-white/80 hover:text-white"
-                  aria-label="Play project"
+                  aria-label={slide?.isNovel ? "Read novel" : "Play project"}
                 >
                   <span className="inline-flex items-center gap-2 rounded-full bg-black/45 px-4 py-2">
-                    <Play className="h-4 w-4" /> Watch
+                    {slide?.isNovel ? (
+                      <>
+                        <ExternalLink className="h-4 w-4" /> Read
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4" /> Watch
+                      </>
+                    )}
                   </span>
                 </button>
               </motion.div>
@@ -669,7 +698,7 @@ function Hero({ onOpenLinksModal }) {
 
 function SectionNav() {
   const items = [
-    { id: "featured-projects", label: "Featured" },
+    { id: "featured-projects", label: "Films" },
     { id: "galleries", label: "Galleries" },
     { id: "ai-showcase", label: "AI Showcase" },
   ];
@@ -1460,7 +1489,7 @@ function Portfolio() {
     <RevealOnScroll as="section" className="py-12" id="featured-projects" delay={0.15}>
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-1">
-          <h2 className="text-2xl sm:text-3xl font-bold">Featured</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold">Films</h2>
           <span className="text-white/70 text-sm">Proof of craft, proof of results</span>
         </div>
         <p className="text-white/75 max-w-2xl mb-4">Every frame serves story and strategy. Click a tile to watch or skim the case notes.</p>
@@ -1552,9 +1581,10 @@ const MMMGalleries = memo(function MMMGalleries() {
   const [modal, setModal] = useState(null);
   const [manualPause, setManualPause] = useState(false);
   const [hovered, setHovered] = useState(null);
-  const [dragOffset, setDragOffset] = useState(0);
+  const [scrollX, setScrollX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const { liteMode } = useExperience();
+  const containerRef = useRef(null);
 
   const reels = useMemo(() => Object.entries(MMM_REELS).flatMap(([label, urls]) => urls.map((url) => ({ label, url }))), []);
 
@@ -1573,7 +1603,7 @@ const MMMGalleries = memo(function MMMGalleries() {
   const handleShuffle = () => {
     setManualPause(false);
     setHovered(null);
-    setDragOffset(0);
+    setScrollX(0);
     setSeed((value) => value + 1);
   };
 
@@ -1618,8 +1648,22 @@ const MMMGalleries = memo(function MMMGalleries() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 p-4 cursor-grab active:cursor-grabbing">
+        <div
+          ref={containerRef}
+          className="relative overflow-x-scroll overflow-y-hidden rounded-3xl border border-white/15 bg-white/5 p-4 scrollbar-hide"
+          style={{
+            scrollBehavior: 'smooth',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           <style>{`
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
             @keyframes mmm-marquee {
               0% { transform: translateX(0%); }
               100% { transform: translateX(-50%); }
@@ -1629,19 +1673,16 @@ const MMMGalleries = memo(function MMMGalleries() {
             <motion.div
               className="flex gap-6 w-max items-center"
               style={{
-                animation: `mmm-marquee ${animationDuration}s linear infinite`,
+                animation: isDragging ? 'none' : `mmm-marquee ${animationDuration}s linear infinite`,
                 animationPlayState: marqueePaused ? "paused" : "running",
-                x: dragOffset,
               }}
               drag="x"
-              dragConstraints={{ left: -1000, right: 1000 }}
-              dragElastic={0.1}
+              dragConstraints={containerRef}
+              dragElastic={0.05}
               dragMomentum={true}
               onDragStart={() => setIsDragging(true)}
-              onDragEnd={(event, info) => {
+              onDragEnd={() => {
                 setIsDragging(false);
-                // Accumulate the drag offset
-                setDragOffset(prev => prev + info.offset.x);
               }}
               onMouseLeave={() => setHovered(null)}
             >
@@ -1912,7 +1953,6 @@ const MENU = [
   { key: "bio", label: "Biography" },
   { key: "ai", label: "AI Starterclass" }, // external link
   { key: "loremaker", label: "Loremaker" }, // external link
-  { key: "blog", label: "Blog" },
 ];
 
 function FloatingButtons({ onOpenContact }) {
@@ -2044,7 +2084,7 @@ export default function AppShell() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <LogoMark />
-            <span className="font-semibold tracking-tight">Menelek Makonnen</span>
+            <span className="font-semibold tracking-tight text-xl">MM</span>
           </div>
           <nav className="hidden md:flex items-center gap-5 text-white/80">
             {MENU.map((m) => (
