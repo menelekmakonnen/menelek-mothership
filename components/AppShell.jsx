@@ -462,12 +462,12 @@ const SERVICES = [
 const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s.name]));
 
 const PROJECTS = [
-  { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D" },
-  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj" },
-  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D" },
-  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Director, Cinematographer, Editor", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: "https://www.youtube.com/watch?v=4q6X6prhVOE" },
-  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Director, Editor", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv" },
-  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Writer–Director", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
+  { id: "im-alright", title: "I'm Alright (2024)", role: "Directed by Menelek", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE" },
+  { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Directed by Menelek", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ" },
+  { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Directed by Menelek", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0" },
+  { id: "spar-bts", title: "SPAR (Doc, 2024)", role: "Directed by Menelek", runtime: "14 min", summary: "BTS doc for a boxing pilot in London — Left Hook Gym.", url: "https://www.youtube.com/watch?v=4q6X6prhVOE" },
+  { id: "soldier-mv", title: "Soldier (Music Video)", role: "Directed by Menelek", runtime: "3 min", summary: "Concept-to-delivery music video including cover art.", url: "https://www.youtube.com/watch?v=BHPaJieCAXY" },
+  { id: "abranteers", title: "Abranteers (Proof, 2023)", role: "Directed by Menelek", runtime: "9 min", summary: "Anti-magic veteran + rookie vs a dangerous magic user.", url: "https://www.youtube.com/shorts/CPPkq5zsXgE" },
 ];
 
 const NOVEL = {
@@ -476,9 +476,9 @@ const NOVEL = {
   subtitle: "A Legacy Novel",
   role: "Author",
   runtime: "Novel",
-  summary: "In a world where magic and destiny collide, follow the epic journey of the last warrior of a fallen kingdom. The Last Ochiyamie weaves together action, mythology, and deep character exploration in an Afro-fantasy epic that explores themes of legacy, power, and redemption.",
+  summary: "An Afro-fantasy epic following the last warrior of a fallen kingdom.",
   url: "https://www.amazon.com/Ochiyamie-Legacy-Mikael-MM-Gabriel-ebook/dp/B0CD331HNX",
-  thumb: "https://m.media-amazon.com/images/I/71xJ8z0ZXML._SY522_.jpg"
+  thumb: "https://m.media-amazon.com/images/I/71xJ8z0ZXML._SL1000_.jpg"
 };
 
 function getYouTubeId(url) {
@@ -1568,6 +1568,15 @@ function instagramEmbedSrc(url) {
   return `${url.endsWith("/") ? url : `${url}/`}embed/`;
 }
 
+function instagramThumbnail(url) {
+  if (!url) return null;
+  // Extract the post code from Instagram URL
+  const match = url.match(/instagram\.com\/(p|reel)\/([^/?]+)/);
+  if (!match) return null;
+  const code = match[2];
+  // Instagram media URLs follow this pattern
+  return `https://www.instagram.com/p/${code}/media/?size=l`;
+}
 
 const LABEL_GRADIENTS = {
   "Epic Edits": "from-fuchsia-500/60 via-indigo-500/50 to-sky-500/60",
@@ -1686,40 +1695,55 @@ const MMMGalleries = memo(function MMMGalleries() {
               }}
               onMouseLeave={() => setHovered(null)}
             >
-              {beltItems.map((item, index) => (
-                <button
-                  key={`${item.url}-${index}`}
-                  type="button"
-                  onClick={(e) => {
-                    if (!isDragging) setModal({ label: item.label, url: item.url });
-                  }}
-                  className={cn(
-                    "relative aspect-[9/16] w-48 rounded-3xl border border-white/10 overflow-hidden transition-transform duration-500 select-none",
-                    hovered && hovered !== item.url ? "scale-90 opacity-60" : "scale-100",
-                    hovered === item.url ? "scale-110 z-10 shadow-[0_20px_45px_rgba(0,0,0,0.5)]" : "",
-                  )}
-                  onMouseEnter={() => !isDragging && setHovered(item.url)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  <div
+              {beltItems.map((item, index) => {
+                const thumbUrl = instagramThumbnail(item.url);
+                return (
+                  <button
+                    key={`${item.url}-${index}`}
+                    type="button"
+                    onClick={(e) => {
+                      if (!isDragging) setModal({ label: item.label, url: item.url });
+                    }}
                     className={cn(
-                      "absolute inset-0 bg-gradient-to-br",
-                      LABEL_GRADIENTS[item.label] || "from-slate-600/60 via-slate-900/70 to-black/80",
+                      "relative aspect-[9/16] w-48 rounded-3xl border border-white/10 overflow-hidden transition-transform duration-500 select-none",
+                      hovered && hovered !== item.url ? "scale-90 opacity-60" : "scale-100",
+                      hovered === item.url ? "scale-110 z-10 shadow-[0_20px_45px_rgba(0,0,0,0.5)]" : "",
                     )}
-                  />
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_55%)]" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
-                  <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[11px] text-white/80 border border-white/15">
-                      <Gem className="h-3.5 w-3.5" /> Tap to view
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 left-3 right-3 text-left text-xs text-white/85">
-                    <div className="font-semibold">{item.label}</div>
-                    <div className="text-white/70">Instagram reel preview</div>
-                  </div>
-                </button>
-              ))}
+                    onMouseEnter={() => !isDragging && setHovered(item.url)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    {thumbUrl ? (
+                      <img
+                        src={thumbUrl}
+                        alt={item.label}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Fallback to gradient if image fails to load
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={cn(
+                        "absolute inset-0 bg-gradient-to-br",
+                        LABEL_GRADIENTS[item.label] || "from-slate-600/60 via-slate-900/70 to-black/80",
+                      )}
+                      style={{ zIndex: thumbUrl ? -1 : 0 }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                    <div className="absolute top-3 right-3">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[11px] text-white/80 border border-white/15 backdrop-blur-sm">
+                        <Gem className="h-3.5 w-3.5" /> Tap to view
+                      </span>
+                    </div>
+                    <div className="absolute bottom-3 left-3 right-3 text-left text-xs text-white/85">
+                      <div className="font-semibold">{item.label}</div>
+                      <div className="text-white/70">Instagram reel</div>
+                    </div>
+                  </button>
+                );
+              })}
             </motion.div>
           ) : (
             <div className="text-sm text-white/60">Unable to load Instagram previews right now.</div>
@@ -1797,6 +1821,13 @@ function SocialProof() {
 function AIShowcase() {
   const AI_PROJECTS = [
     {
+      id: "ai-films",
+      title: "AI Films",
+      description: "Using AI to assist my production process from ideation through image generation, image-to-video, and post-production—all with AI or heavily assisted by it.",
+      gradient: "from-violet-500/60 via-fuchsia-500/50 to-pink-500/55",
+      icon: "🎬",
+    },
+    {
       id: "starterclass",
       title: "AI Starterclass",
       description: "Interactive course teaching AI fundamentals with hands-on projects and real-world applications.",
@@ -1825,7 +1856,7 @@ function AIShowcase() {
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-3xl font-bold">AI Showcase</h2>
         <p className="text-white/75 mt-2">AI expertise meets creative vision—interactive tools, intelligent workflows, and beautiful code.</p>
-        <div className="mt-6 grid md:grid-cols-3 gap-6">
+        <div className="mt-6 grid sm:grid-cols-2 md:grid-cols-4 gap-6">
           {AI_PROJECTS.map((project) => (
             <motion.div
               key={project.id}
