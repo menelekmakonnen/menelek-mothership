@@ -1552,6 +1552,8 @@ const MMMGalleries = memo(function MMMGalleries() {
   const [modal, setModal] = useState(null);
   const [manualPause, setManualPause] = useState(false);
   const [hovered, setHovered] = useState(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const { liteMode } = useExperience();
 
   const reels = useMemo(() => Object.entries(MMM_REELS).flatMap(([label, urls]) => urls.map((url) => ({ label, url }))), []);
@@ -1564,13 +1566,14 @@ const MMMGalleries = memo(function MMMGalleries() {
 
   const beltItems = useMemo(() => (picks.length ? [...picks, ...picks] : []), [picks]);
   const animationDuration = Math.max(60, beltItems.length * 8);
-  const paused = manualPause || Boolean(hovered);
+  const paused = manualPause || Boolean(hovered) || isDragging;
   const marqueePaused = paused || liteMode;
   const isEffectivelyPaused = marqueePaused;
 
   const handleShuffle = () => {
     setManualPause(false);
     setHovered(null);
+    setDragOffset(0);
     setSeed((value) => value + 1);
   };
 
@@ -1615,7 +1618,7 @@ const MMMGalleries = memo(function MMMGalleries() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 p-4">
+        <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 p-4 cursor-grab active:cursor-grabbing">
           <style>{`
             @keyframes mmm-marquee {
               0% { transform: translateX(0%); }
@@ -1623,11 +1626,22 @@ const MMMGalleries = memo(function MMMGalleries() {
             }
           `}</style>
           {beltItems.length ? (
-            <div
+            <motion.div
               className="flex gap-6 w-max items-center"
               style={{
                 animation: `mmm-marquee ${animationDuration}s linear infinite`,
                 animationPlayState: marqueePaused ? "paused" : "running",
+                x: dragOffset,
+              }}
+              drag="x"
+              dragConstraints={{ left: -1000, right: 1000 }}
+              dragElastic={0.1}
+              dragMomentum={true}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={(event, info) => {
+                setIsDragging(false);
+                // Accumulate the drag offset
+                setDragOffset(prev => prev + info.offset.x);
               }}
               onMouseLeave={() => setHovered(null)}
             >
@@ -1635,13 +1649,16 @@ const MMMGalleries = memo(function MMMGalleries() {
                 <button
                   key={`${item.url}-${index}`}
                   type="button"
-                  onClick={() => setModal({ label: item.label, url: item.url })}
+                  onClick={(e) => {
+                    if (!isDragging) setModal({ label: item.label, url: item.url });
+                  }}
                   className={cn(
-                    "relative aspect-[9/16] w-48 rounded-3xl border border-white/10 overflow-hidden transition-transform duration-500",
+                    "relative aspect-[9/16] w-48 rounded-3xl border border-white/10 overflow-hidden transition-transform duration-500 select-none",
                     hovered && hovered !== item.url ? "scale-90 opacity-60" : "scale-100",
                     hovered === item.url ? "scale-110 z-10 shadow-[0_20px_45px_rgba(0,0,0,0.5)]" : "",
                   )}
-                  onMouseEnter={() => setHovered(item.url)}
+                  onMouseEnter={() => !isDragging && setHovered(item.url)}
+                  onPointerDown={(e) => e.stopPropagation()}
                 >
                   <div
                     className={cn(
@@ -1662,7 +1679,7 @@ const MMMGalleries = memo(function MMMGalleries() {
                   </div>
                 </button>
               ))}
-            </div>
+            </motion.div>
           ) : (
             <div className="text-sm text-white/60">Unable to load Instagram previews right now.</div>
           )}
