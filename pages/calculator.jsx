@@ -1139,10 +1139,13 @@ export default function CalculatorPage() {
         {/* Header */}
         <header className="sticky top-0 z-40 backdrop-blur bg-black/45 border-b border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <a
+              href="/"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <LogoMark />
               <span className="font-semibold tracking-tight text-xl">MM</span>
-            </div>
+            </a>
             <nav className="hidden md:flex items-center gap-5 text-white/80">
               {MENU.map((m) => (
                 m.external ? (

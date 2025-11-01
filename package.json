@@ -8,7 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@n8n/chat": "^0.63.0",
     "framer-motion": "^10.12.16",
     "lucide-react": "^0.275.0",
     "next": "^14.2.0",

@@ -35,7 +35,6 @@ import {
   Menu,
   Gem,
 } from "lucide-react";
-import "@n8n/chat/style.css";
 
 /**
  * Menelek Makonnen — Mothership (v11.2 — Canvas build)
@@ -74,8 +73,6 @@ const N8N_BASE_URL = "https://mmmai.app.n8n.cloud";
 const N8N_ENDPOINTS = {
   contact: ["/webhook/contact", "/webhook-test/contact"],
 };
-
-const VERONICA_WEBHOOK_URL = "https://ainerd.app.n8n.cloud/webhook/a7d037fb-6494-4881-8642-e7f1521445ca/chat";
 
 const MMM_REELS = {
   "Epic Edits": [
@@ -2100,32 +2097,6 @@ export default function AppShell() {
     runSelfTests();
   }, []);
 
-  // Initialize n8n Veronica chat widget
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    import("@n8n/chat").then(({ createChat }) => {
-      createChat({
-        webhookUrl: VERONICA_WEBHOOK_URL,
-        mode: "window",
-        showWelcomeScreen: false,
-        initialMessages: [
-          "Hello! 👋",
-          "I'm Veronica, Menelek's AI assistant. How can I help you today?"
-        ],
-        i18n: {
-          en: {
-            title: "Chat with Veronica 💎",
-            subtitle: "AI Assistant for Menelek Makonnen",
-            footer: "",
-            getStarted: "Start Chat",
-            inputPlaceholder: "Ask me anything...",
-          },
-        },
-      });
-    });
-  }, []);
-
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
     const onResize = () => {
@@ -2147,10 +2118,17 @@ export default function AppShell() {
       {/* Header */}
       <header className="sticky top-0 z-40 backdrop-blur bg-black/45 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <a
+            href="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "/";
+            }}
+          >
             <LogoMark />
             <span className="font-semibold tracking-tight text-xl">MM</span>
-          </div>
+          </a>
           <nav className="hidden md:flex items-center gap-5 text-white/80">
             {MENU.map((m) => (
               m.key === "ai" ? (
