@@ -462,6 +462,7 @@ const SERVICES = [
 const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s.name]));
 
 const PROJECTS = [
+  { id: "ochiyamie", title: "The Last Ochiyamie (Novel, 2023)", role: "Author", runtime: "Novel", summary: "A fantasy epic about the last warrior of a fallen kingdom.", url: "https://www.amazon.com/Ochiyamie-Legacy-Mikael-MM-Gabriel-ebook/dp/B0CD331HNX", thumb: "https://m.media-amazon.com/images/I/71xJ8z0ZXML._SY522_.jpg" },
   { id: "im-alright", title: "I'm Alright (2024)", role: "Writer–Director", runtime: "8 min", summary: "Addiction & depression inside a lockdown flat.", url: "https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D" },
   { id: "blinded-by-magic", title: "Blinded by Magic (2022)", role: "Writer–Director", runtime: "12 min", summary: "A possessed camera blinds its user while granting powers.", url: "https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj" },
   { id: "heroes-gods", title: "Heroes & Gods (2024)", role: "Writer–Director, Editor", runtime: "120 min", summary: "Anthology stitched into a feature — heroes vs vengeful goddess & twin.", url: "https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D" },
@@ -519,7 +520,7 @@ function Hero({ onOpenLinksModal }) {
         caption: project.summary,
         credit: `${project.role} • ${project.runtime}`,
         url: project.url,
-        thumb: youtubeThumb(project.url),
+        thumb: project.thumb || youtubeThumb(project.url),
       })),
     [],
   );
@@ -669,10 +670,8 @@ function Hero({ onOpenLinksModal }) {
 function SectionNav() {
   const items = [
     { id: "featured-projects", label: "Featured" },
-    { id: "work", label: "Value Calculator" },
     { id: "galleries", label: "Galleries" },
-    { id: "contact", label: "Contact" },
-    { id: "blog", label: "Blog" },
+    { id: "ai-showcase", label: "AI Showcase" },
   ];
 
   return (
@@ -1465,31 +1464,41 @@ function Portfolio() {
           <span className="text-white/70 text-sm">Proof of craft, proof of results</span>
         </div>
         <p className="text-white/75 max-w-2xl mb-4">Every frame serves story and strategy. Click a tile to watch or skim the case notes.</p>
-        <div className="grid md:grid-cols-3 gap-6">
-          {PROJECTS.map((p) => (
-            <Card key={p.id}>
-              <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: "watch", p })} title="Watch now">
-                {youtubeThumb(p.url) ? (
-                  <img
-                    src={youtubeThumb(p.url)}
-                    alt={p.title}
-                    className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
-                )}
-              </div>
-              <div className="mt-3 font-semibold">{p.title}</div>
-              <div className="text-white/70 text-sm">{p.role} • {p.runtime}</div>
-              <p className="mt-2 text-white/80">{p.summary}</p>
-              <div className="mt-4 flex gap-2">
-                <Button onClick={() => setModal({ type: "watch", p })} icon={Play}>Watch</Button>
-                <Button onClick={() => setModal({ type: "case", p })} className="bg-white/10" icon={ExternalLink}>Case Study</Button>
-              </div>
-            </Card>
-          ))}
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {PROJECTS.map((p) => {
+            const thumbUrl = p.thumb || youtubeThumb(p.url);
+            const isNovel = p.id === "ochiyamie";
+            return (
+              <Card key={p.id}>
+                <div className="aspect-[16/10] rounded-xl overflow-hidden bg-black/45 border border-white/10 group cursor-pointer" onClick={() => setModal({ type: isNovel ? "case" : "watch", p })} title={isNovel ? "Learn more" : "Watch now"}>
+                  {thumbUrl ? (
+                    <img
+                      src={thumbUrl}
+                      alt={p.title}
+                      className="w-full h-full object-cover transform scale-[1.08] group-hover:scale-[1.2] transition-transform"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-white/60">Poster / Stills</div>
+                  )}
+                </div>
+                <div className="mt-3 font-semibold">{p.title}</div>
+                <div className="text-white/70 text-sm">{p.role} • {p.runtime}</div>
+                <p className="mt-2 text-white/80">{p.summary}</p>
+                <div className="mt-4 flex gap-2">
+                  {isNovel ? (
+                    <Button href={p.url} icon={ExternalLink} target="_blank" rel="noreferrer">View on Amazon</Button>
+                  ) : (
+                    <>
+                      <Button onClick={() => setModal({ type: "watch", p })} icon={Play}>Watch</Button>
+                      <Button onClick={() => setModal({ type: "case", p })} className="bg-white/10" icon={ExternalLink}>Case Study</Button>
+                    </>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
@@ -1727,24 +1736,55 @@ function SocialProof() {
 }
 
 // ========= Blog ========= //
-function Blog() {
-  const POSTS = [
-    { id: "s1", title: "Production Isn’t Magic—It’s Math", date: "2024-10-01", body: "How I scope shoots that hit the budget, land the story, and don’t burn the crew." },
-    { id: "s2", title: "Directing with Restraint", date: "2024-10-08", body: "When less camera movement is more emotion—blocking that respects performance." },
-    { id: "s3", title: "AI in the Edit Suite", date: "2024-10-15", body: "Using AI for assist, not autopilot: selects, transcripts, and alt‑cuts without losing taste." },
+function AIShowcase() {
+  const AI_PROJECTS = [
+    {
+      id: "starterclass",
+      title: "AI Starterclass",
+      description: "Interactive course teaching AI fundamentals with hands-on projects and real-world applications.",
+      url: "https://starterclass.icuni.org/",
+      gradient: "from-purple-500/60 via-blue-500/45 to-cyan-500/55",
+      icon: "🎓",
+    },
+    {
+      id: "vibe-coding",
+      title: "Vibe Coding Sites",
+      description: "Built this website, the Starterclass site, and Loremaker with AI-assisted workflows—combining aesthetic vision with intelligent automation.",
+      gradient: "from-fuchsia-500/60 via-rose-500/50 to-amber-500/60",
+      icon: "💻",
+    },
+    {
+      id: "n8n-workflows",
+      title: "N8N Workflows",
+      description: "My AI chatbots have memorable personalities and bounce off each other while solving my problems like real people. Built with N8N automation.",
+      gradient: "from-emerald-500/55 via-teal-500/45 to-blue-500/55",
+      icon: "🤖",
+    },
   ];
+
   return (
-    <RevealOnScroll as="section" className="py-12" delay={0.28}>
+    <RevealOnScroll as="section" className="py-12" id="ai-showcase" delay={0.28}>
       <div className="max-w-6xl mx-auto px-6">
-        <h2 className="text-3xl font-bold">Blog</h2>
-        <p className="text-white/75 mt-2">Notes from set, suite, and spreadsheets—the unsexy decisions that make the final cut sing.</p>
-        <div className="mt-6 grid md:grid-cols-2 gap-4">
-          {POSTS.map((p) => (
-            <Card key={p.id}>
-              <div className="text-sm text-white/60">{p.date}</div>
-              <div className="font-semibold mt-1">{p.title}</div>
-              <p className="mt-2 text-white/80">{p.body}</p>
-            </Card>
+        <h2 className="text-3xl font-bold">AI Showcase</h2>
+        <p className="text-white/75 mt-2">AI expertise meets creative vision—interactive tools, intelligent workflows, and beautiful code.</p>
+        <div className="mt-6 grid md:grid-cols-3 gap-6">
+          {AI_PROJECTS.map((project) => (
+            <motion.div
+              key={project.id}
+              whileHover={{ y: -4, scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className={`h-full bg-gradient-to-br ${project.gradient} !bg-opacity-10 border-2 hover:border-white/30 transition-all cursor-pointer`}>
+                <div className="text-5xl mb-4">{project.icon}</div>
+                <div className="font-bold text-xl mb-2">{project.title}</div>
+                <p className="text-white/80 mb-4">{project.description}</p>
+                {project.url && (
+                  <Button href={project.url} target="_blank" rel="noreferrer" icon={ExternalLink} variant="accent" className="w-full justify-center">
+                    Explore
+                  </Button>
+                )}
+              </Card>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -2115,11 +2155,11 @@ export default function AppShell() {
             <SectionNav />
             <Portfolio />
             <MMMGalleries />
-            <Blog />
+            <AIShowcase />
           </>
         )}
         {route === "bio" && <Biography />}
-        {route === "blog" && <Blog />}
+        {route === "blog" && <AIShowcase />}
       </main>
 
       {/* Footer */}
