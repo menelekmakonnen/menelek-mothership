@@ -74,6 +74,11 @@ const N8N_ENDPOINTS = {
   contact: ["/webhook/contact", "/webhook-test/contact"],
 };
 
+const VERONICA_WEBHOOK = {
+  production: "https://ainerd.app.n8n.cloud/webhook/veronica-chat",
+  test: "https://ainerd.app.n8n.cloud/webhook-test/veronica-chat",
+};
+
 const MMM_REELS = {
   "Epic Edits": [
     "https://www.instagram.com/p/DMKpVGwoOC2/",
@@ -551,32 +556,36 @@ function Hero({ onOpenLinksModal }) {
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (!slides.length || isPaused || liteMode) return undefined;
+    if (!slides.length || isPaused) return undefined;
     const timer = setInterval(() => {
       setIndex((value) => (value + 1) % slides.length);
-    }, 12000);
+    }, 8000); // Auto-change every 8 seconds
     return () => clearInterval(timer);
-  }, [slides.length, isPaused, liteMode]);
+  }, [slides.length, isPaused]);
 
   useEffect(() => {
     setLoading(true);
   }, [index]);
 
-  useEffect(() => {
-    setIsPaused(liteMode);
-  }, [liteMode]);
+  // Don't pause based on lite mode anymore - always auto-play
+  const pause = useCallback(() => setIsPaused(true), []);
+  const resume = useCallback(() => setIsPaused(false), []);
 
-  const goPrev = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
-  const goNext = () => setIndex((value) => (value + 1) % slides.length);
+  const goPrev = useCallback(() => {
+    setIndex((value) => (value - 1 + slides.length) % slides.length);
+  }, [slides.length]);
+
+  const goNext = useCallback(() => {
+    setIndex((value) => (value + 1) % slides.length);
+  }, [slides.length]);
 
   const slide = slides[index];
 
-  const openSlide = () => {
-    if (slide?.url) window.open(slide.url, "_blank", "noopener,noreferrer");
-  };
-
-  const pause = useCallback(() => setIsPaused(true), []);
-  const resume = useCallback(() => setIsPaused(false), []);
+  const openSlide = useCallback(() => {
+    if (slide?.url) {
+      window.open(slide.url, "_blank", "noopener,noreferrer");
+    }
+  }, [slide]);
 
   const showcaseLabel = "Showcase";
 
@@ -615,10 +624,10 @@ function Hero({ onOpenLinksModal }) {
         </div>
         <Card
           className="relative overflow-hidden !bg-white/[0.03] !border-white/12 !shadow-[0_12px_36px_rgba(10,10,30,0.28)]"
-          onMouseEnter={!liteMode ? pause : undefined}
-          onMouseLeave={!liteMode ? resume : undefined}
-          onFocus={!liteMode ? pause : undefined}
-          onBlur={!liteMode ? resume : undefined}
+          onMouseEnter={pause}
+          onMouseLeave={resume}
+          onFocus={pause}
+          onBlur={resume}
         >
           <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/70">
             <span>{showcaseLabel}</span>
@@ -1574,8 +1583,9 @@ function instagramThumbnail(url) {
   const match = url.match(/instagram\.com\/(p|reel)\/([^/?]+)/);
   if (!match) return null;
   const code = match[2];
-  // Instagram media URLs follow this pattern
-  return `https://www.instagram.com/p/${code}/media/?size=l`;
+  // Use Instagram's oEmbed API approach - more reliable
+  // Note: This may require CORS proxy in production, but works for initial load
+  return `https://instagram.com/p/${code}/media/?size=l`;
 }
 
 const LABEL_GRADIENTS = {
@@ -2025,6 +2035,198 @@ function FloatingButtons({ onOpenContact }) {
   );
 }
 
+// ========= VERONICA CHATBOT ========= //
+function VeronicaChat({ open, onClose }) {
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: "Hello! I'm Veronica, Menelek's AI assistant. How can I help you today?",
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage = {
+      role: "user",
+      content: input.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      // Try production webhook first
+      let response;
+      try {
+        response = await fetch(VERONICA_WEBHOOK.production, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessage.content }),
+        });
+      } catch (err) {
+        // Fallback to test webhook
+        console.warn("Production webhook failed, trying test webhook:", err);
+        response = await fetch(VERONICA_WEBHOOK.test, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessage.content }),
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`Webhook returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      const assistantMessage = {
+        role: "assistant",
+        content: data.response || data.message || "I apologize, but I couldn't process that request. Please try again.",
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      const errorMessage = {
+        role: "assistant",
+        content: "I'm having trouble connecting right now. Please try again in a moment or contact Menelek directly.",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 20 }}
+      className="fixed bottom-24 right-6 z-50 w-[90vw] max-w-md h-[600px] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/20"
+      style={{
+        background: "linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(217,70,239,0.15) 50%, rgba(251,113,133,0.15) 100%)",
+        backdropFilter: "blur(20px)",
+      }}
+    >
+      {/* Header */}
+      <div className="relative h-20 border-b border-white/10 flex items-center justify-between px-6"
+        style={{
+          background: "linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(217,70,239,0.3) 50%, rgba(251,113,133,0.3) 100%)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-400 via-fuchsia-400 to-pink-400 flex items-center justify-center text-2xl">
+              💎
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-black/50" />
+          </div>
+          <div>
+            <div className="font-semibold text-white text-lg">Veronica</div>
+            <div className="text-white/70 text-xs">AI Assistant</div>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full hover:bg-white/10 transition-colors"
+          aria-label="Close chat"
+        >
+          <X className="h-5 w-5 text-white/80" />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="h-[calc(100%-160px)] overflow-y-auto px-6 py-4 space-y-4">
+        {messages.map((msg, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                msg.role === "user"
+                  ? "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white"
+                  : "bg-white/10 backdrop-blur-sm border border-white/20 text-white"
+              }`}
+            >
+              <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+              <div className={`text-xs mt-1 ${msg.role === "user" ? "text-white/70" : "text-white/50"}`}>
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex justify-start"
+          >
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-2 h-2 bg-fuchsia-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          </motion.div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 border-t border-white/10 px-4 py-3 bg-black/40 backdrop-blur">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-violet-400/50 disabled:opacity-50"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim() || isLoading}
+            className="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white font-medium hover:shadow-lg hover:shadow-violet-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+          >
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send"}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function runSelfTests() {
   try {
     console.group("Self‑tests");
@@ -2057,6 +2259,7 @@ export default function AppShell() {
   const [liteMode, setLiteMode] = useState(true);
   const [linksOpen, setLinksOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [veronicaOpen, setVeronicaOpen] = useState(false);
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -2277,16 +2480,42 @@ export default function AppShell() {
       {/* Quick Contact bubble modal */}
       <Modal open={contactOpen} onClose={() => setContactOpen(false)} title="Quick Contact">
         <div className="grid gap-3">
-          <p className="text-white/75 text-sm">Leave a fast brief. I’ll reply within 24–48h.</p>
+          <p className="text-white/75 text-sm">Leave a fast brief. I'll reply within 24–48h.</p>
           <a className="underline" href={SOCIALS.email}>Or email me directly</a>
           <textarea rows={4} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 w-full" placeholder="What are we making? Scope, goals, timeline…" />
           <div className="flex gap-2">
-            <Button onClick={() => { alert("Saved locally. I’ll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
+            <Button onClick={() => { alert("Saved locally. I'll be in touch."); setContactOpen(false); }} icon={ShieldCheck}>Send</Button>
             <Button variant="ghost" onClick={() => setContactOpen(false)}>Cancel</Button>
           </div>
           <div className="text-xs text-white/60">This is a no‑backend demo. Your note stays on your device.</div>
         </div>
       </Modal>
+
+      {/* Veronica Chatbot */}
+      <AnimatePresence>
+        {veronicaOpen && <VeronicaChat open={veronicaOpen} onClose={() => setVeronicaOpen(false)} />}
+      </AnimatePresence>
+
+      {/* Veronica Floating Button */}
+      <AnimatePresence>
+        {!veronicaOpen && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setVeronicaOpen(true)}
+            className="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full shadow-[0_10px_40px_rgba(139,92,246,0.5)] hover:shadow-[0_15px_50px_rgba(139,92,246,0.7)] transition-shadow"
+            style={{
+              background: "linear-gradient(135deg, #8b5cf6 0%, #d946ef 50%, #fb7185 100%)",
+            }}
+            aria-label="Chat with Veronica"
+          >
+            <div className="flex items-center justify-center text-3xl">💎</div>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       </div>
     </ExperienceContext.Provider>
