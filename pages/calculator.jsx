@@ -3,10 +3,11 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
 } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
   Phone,
   Mail,
@@ -18,6 +19,14 @@ import {
   Minimize2,
   Maximize2,
   Shuffle,
+  Instagram,
+  Youtube,
+  Linkedin,
+  ExternalLink,
+  Menu,
+  X,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 const CalendarIcon = CalendarIconImport;
@@ -28,8 +37,25 @@ const useExperience = () => useContext(ExperienceContext);
 
 // ========= CONSTANTS ========= //
 const SOCIALS = {
+  instagram: "https://instagram.com/menelek.makonnen",
+  youtube: "https://youtube.com/@director_menelek",
+  linkedin: "https://linkedin.com/in/menelekmakonnen",
   email: "mailto:admin@menelekmakonnen.com",
 };
+
+const LINKS = {
+  starterclassSite: "https://starterclass.icuni.org",
+  loremakerSite: "https://loremaker.cloud",
+};
+
+const MENU = [
+  { key: "home", label: "Home", href: "/" },
+  { key: "ai-tools", label: "AI Tools", href: "/calculator" },
+  { key: "bio", label: "Biography", href: "/#bio" },
+  { key: "ai", label: "AI Starterclass", href: "https://starterclass.icuni.org", external: true },
+  { key: "loremaker", label: "Loremaker", href: "https://loremaker.cloud", external: true },
+  { key: "blog", label: "Blog", href: "/#blog" },
+];
 
 const N8N_BASE_URL = "https://mmmai.app.n8n.cloud";
 const N8N_ENDPOINTS = {
@@ -938,15 +964,172 @@ function TimelineGrid({ phases, onChange, total, onTotalChange, startDate }) {
   );
 }
 
+// ========= LOGO ========= //
+function LogoMark() {
+  const gradientId = useId();
+  const bgId = `${gradientId}-bg`;
+  const glowId = `${gradientId}-glow`;
+  return (
+    <motion.div
+      className="relative h-9 w-9 grid place-items-center"
+      initial={{ opacity: 0, scale: 0.9, rotate: -6 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <svg viewBox="0 0 64 64" className="h-9 w-9 drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)]">
+        <defs>
+          <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.35)" />
+          </linearGradient>
+          <radialGradient id={glowId}>
+            <stop offset="40%" stopColor="rgba(255,255,255,0.15)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+        </defs>
+        <circle cx="32" cy="32" r="28" fill={`url(#${glowId})`} />
+        <path
+          d="M32 12 L42 28 L52 28 L38 38 L44 52 L32 42 L20 52 L26 38 L12 28 L22 28 Z"
+          fill={`url(#${bgId})`}
+          stroke="rgba(255,255,255,0.4)"
+          strokeWidth="0.5"
+        />
+      </svg>
+    </motion.div>
+  );
+}
+
+// ========= MODAL ========= //
+function Modal({ open, onClose, title, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    if (open) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+          <motion.div
+            initial={{ y: 20, scale: 0.98, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 10, scale: 0.98, opacity: 0 }}
+            className={cn(
+              "relative z-10 mx-auto mt-[8vh] w-[92vw] max-w-5xl",
+              "rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 text-white"
+            )}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                {title}
+              </h3>
+              <button onClick={onClose} aria-label="Close" className="rounded-full p-2 hover:bg-white/10">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {children}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+// ========= FLOATING BUTTONS ========= //
+function FloatingButtons({ onOpenContact }) {
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <>
+      <AnimatePresence>
+        {showTop && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="fixed bottom-6 right-6 z-30 rounded-full bg-white/10 border border-white/20 p-3 text-white shadow-lg hover:bg-white/20 backdrop-blur"
+            aria-label="Scroll to top"
+          >
+            ↑
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ========= ALL LINKS MODAL ========= //
+function AllLinksModal({ open, onClose }) {
+  return (
+    <Modal open={open} onClose={onClose} title="All my Links">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <a href={SOCIALS.instagram} target="_blank" rel="noreferrer" className="p-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center gap-3">
+          <Instagram className="h-5 w-5" />
+          <div>
+            <div className="font-semibold">Instagram</div>
+            <div className="text-sm text-white/70">@menelek.makonnen</div>
+          </div>
+        </a>
+        <a href={SOCIALS.youtube} target="_blank" rel="noreferrer" className="p-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center gap-3">
+          <Youtube className="h-5 w-5" />
+          <div>
+            <div className="font-semibold">YouTube</div>
+            <div className="text-sm text-white/70">@director_menelek</div>
+          </div>
+        </a>
+        <a href={SOCIALS.linkedin} target="_blank" rel="noreferrer" className="p-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center gap-3">
+          <Linkedin className="h-5 w-5" />
+          <div>
+            <div className="font-semibold">LinkedIn</div>
+            <div className="text-sm text-white/70">Menelek Makonnen</div>
+          </div>
+        </a>
+        <a href={SOCIALS.email} className="p-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center gap-3">
+          <Mail className="h-5 w-5" />
+          <div>
+            <div className="font-semibold">Email</div>
+            <div className="text-sm text-white/70">Get in touch</div>
+          </div>
+        </a>
+      </div>
+    </Modal>
+  );
+}
+
 // ========= MAIN PAGE ========= //
 export default function CalculatorPage() {
   const [calendarState, setCalendarState] = useState(null);
   const [currentService, setCurrentService] = useState(SERVICES[0].name);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
 
   const goContactInline = (svc) => {
     if (svc) setCurrentService(svc);
     document.getElementById("contact-inline")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const openLinksModal = useCallback(() => {
+    setLinksOpen(true);
+    setMobileMenuOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const onResize = () => {
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [mobileMenuOpen]);
 
   return (
     <ExperienceContext.Provider value={{ liteMode: true }}>
@@ -954,7 +1137,100 @@ export default function CalculatorPage() {
         {/* Background */}
         <div className="fixed inset-0 -z-10 bg-gradient-to-br from-black via-gray-900 to-black" />
 
-        <div className="pt-24">
+        {/* Header */}
+        <header className="sticky top-0 z-40 backdrop-blur bg-black/45 border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <LogoMark />
+              <span className="font-semibold tracking-tight">Menelek Makonnen</span>
+            </div>
+            <nav className="hidden md:flex items-center gap-5 text-white/80">
+              {MENU.map((m) => (
+                m.external ? (
+                  <a key={m.key} href={m.href} className="hover:text-white" target="_blank" rel="noreferrer">
+                    {m.label}
+                  </a>
+                ) : (
+                  <a
+                    key={m.key}
+                    href={m.href}
+                    className={cn("hover:text-white", m.key === "ai-tools" && "text-white")}
+                  >
+                    {m.label}
+                  </a>
+                )
+              ))}
+            </nav>
+            <div className="flex items-center gap-2">
+              <Button onClick={openLinksModal} className="hidden sm:inline-flex">
+                All my Links
+              </Button>
+              <a href={SOCIALS.email} className="text-white/80 hover:text-white hidden sm:inline-flex items-center gap-2"><Mail className="h-4 w-4" />Email</a>
+              <button
+                type="button"
+                className="inline-flex md:hidden items-center justify-center rounded-full border border-white/20 p-2 text-white/80 hover:text-white hover:bg-white/10"
+                onClick={() => setMobileMenuOpen((value) => !value)}
+                aria-label="Toggle menu"
+                aria-expanded={mobileMenuOpen}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {mobileMenuOpen ? (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="md:hidden border-b border-white/10 bg-black/85 backdrop-blur px-4 py-6"
+            >
+              <div className="max-w-7xl mx-auto flex flex-col gap-4 text-white/80">
+                {MENU.map((m) => (
+                  m.external ? (
+                    <a
+                      key={m.key}
+                      className="flex items-center justify-between text-base"
+                      href={m.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {m.label}
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <a
+                      key={m.key}
+                      className={cn(
+                        "flex items-center justify-between text-base rounded-xl border border-white/15 px-3 py-2",
+                        m.key === "ai-tools" ? "bg-white/10 text-white" : "bg-white/5 hover:bg-white/10"
+                      )}
+                      href={m.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {m.label}
+                      <ChevronRight className="h-4 w-4" />
+                    </a>
+                  )
+                ))}
+                <Button onClick={openLinksModal} variant="ghost" className="justify-between !px-3">
+                  All my Links
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+                <a className="inline-flex items-center gap-2 text-sm text-white/70 underline" href={SOCIALS.email} onClick={() => setMobileMenuOpen(false)}>
+                  <Mail className="h-4 w-4" /> Email me
+                </a>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {/* Main Content */}
+        <main className="pt-12">
           <WorkWithMe
             currentService={currentService}
             onSetService={(n) => setCurrentService(n)}
@@ -966,7 +1242,31 @@ export default function CalculatorPage() {
               <ContactInline calendarState={calendarState} />
             </div>
           </RevealOnScroll>
-        </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="mt-12 border-t border-white/10 bg-black/35 backdrop-blur">
+          <div className="max-w-7xl mx-auto px-6 py-8 grid md:grid-cols-3 gap-6">
+            <div>
+              <div className="font-semibold">Menelek Makonnen</div>
+              <div className="text-white/70 text-sm mt-1">Filmmaker • Worldbuilder</div>
+              <div className="mt-3 flex items-center gap-4 text-white/80">
+                <a href={SOCIALS.instagram} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Instagram className="h-4 w-4" />Instagram</a>
+                <a href={SOCIALS.youtube} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Youtube className="h-4 w-4" />YouTube</a>
+                <a href={SOCIALS.linkedin} target="_blank" rel="noreferrer" className="hover:text-white inline-flex items-center gap-2"><Linkedin className="h-4 w-4" />LinkedIn</a>
+              </div>
+            </div>
+            <div className="md:col-span-2 text-white/70 text-sm">
+              © 2025 Menelek Makonnen. All rights reserved.
+            </div>
+          </div>
+        </footer>
+
+        {/* Floating Buttons */}
+        <FloatingButtons />
+
+        {/* Modals */}
+        <AllLinksModal open={linksOpen} onClose={() => setLinksOpen(false)} />
       </div>
     </ExperienceContext.Provider>
   );
