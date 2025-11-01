@@ -54,7 +54,6 @@ const MENU = [
   { key: "bio", label: "Biography", href: "/#bio" },
   { key: "ai", label: "AI Starterclass", href: "https://starterclass.icuni.org", external: true },
   { key: "loremaker", label: "Loremaker", href: "https://loremaker.cloud", external: true },
-  { key: "blog", label: "Blog", href: "/#blog" },
 ];
 
 const N8N_BASE_URL = "https://mmmai.app.n8n.cloud";
@@ -1142,7 +1141,7 @@ export default function CalculatorPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <LogoMark />
-              <span className="font-semibold tracking-tight">Menelek Makonnen</span>
+              <span className="font-semibold tracking-tight text-xl">MM</span>
             </div>
             <nav className="hidden md:flex items-center gap-5 text-white/80">
               {MENU.map((m) => (
