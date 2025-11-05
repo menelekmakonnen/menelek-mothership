@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -161,7 +161,7 @@ function ScholarshipCard({ item, media, onClick }) {
       type="button"
       onClick={() => onClick(item.id)}
       layout
-      className="group relative flex flex-col overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-xl shadow-[0_18px_60px_rgba(5,7,19,0.55)]"
+      className="group relative flex flex-col overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-white/10 via-fuchsia-500/5 to-indigo-500/10 backdrop-blur-xl shadow-[0_18px_60px_rgba(5,7,19,0.55)]"
       whileHover={{ y: -6 }}
       transition={{ type: 'spring', stiffness: 240, damping: 22 }}
     >
@@ -301,14 +301,14 @@ function FilterPanel({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 80 }}
             transition={{ type: 'spring', stiffness: 210, damping: 24 }}
-            className="relative ml-auto flex h-full w-full flex-col overflow-hidden bg-[#050713]/95 backdrop-blur-xl sm:w-2/3 lg:w-[min(720px,66vw)]"
+            className="relative ml-auto flex h-full w-[66vw] max-w-[420px] flex-col overflow-hidden bg-[#050713]/95 backdrop-blur-xl sm:w-2/3 sm:max-w-none lg:w-[min(720px,66vw)]"
           >
             <div className="flex items-start justify-between border-b border-white/10 px-6 py-6">
               <div>
                 <div className="text-xs uppercase tracking-[0.3em] text-white/60">Tailor your view</div>
                 <h2 className="mt-3 text-2xl font-semibold text-white">Filter opportunities</h2>
                 <p className="mt-2 text-sm text-white/60">
-                  Refine by destination, level, or timing. Close the panel to see your curated feed.
+                  Refine by destination, level, or timing. Close the panel to see your curated showcase.
                 </p>
               </div>
               <button
@@ -461,6 +461,7 @@ export default function ScholarshipsPage() {
   const [featuredId, setFeaturedId] = useState(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const overlayHistoryRef = useRef(false);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 1000);
@@ -545,7 +546,25 @@ export default function ScholarshipsPage() {
     setSlideIndex(0);
   }, [activeId]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handlePopState = (event) => {
+      if (overlayHistoryRef.current || event.state?.scholarshipOverlay) {
+        overlayHistoryRef.current = false;
+        setActiveId(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useBodyScrollLock(Boolean(activeId) || filtersOpen);
+
+  useEffect(() => {
+    if (!activeId) {
+      overlayHistoryRef.current = false;
+    }
+  }, [activeId]);
 
   const allLevels = useMemo(
     () => uniqueSorted(scholarships.flatMap((item) => normaliseLevels(item.levels))),
@@ -636,7 +655,26 @@ export default function ScholarshipsPage() {
     setIncludeClosed(false);
   };
 
-  const closeOverlay = () => setActiveId(null);
+  const openScholarship = useCallback(
+    (id) => {
+      if (!id) return;
+      if (typeof window !== 'undefined') {
+        const currentState = window.history.state || {};
+        window.history.pushState({ ...currentState, scholarshipOverlay: id }, '', window.location.href);
+        overlayHistoryRef.current = true;
+      }
+      setActiveId(id);
+    },
+    [],
+  );
+
+  const closeOverlay = useCallback(() => {
+    if (typeof window !== 'undefined' && overlayHistoryRef.current) {
+      window.history.back();
+    } else {
+      setActiveId(null);
+    }
+  }, []);
 
   const nextSlide = () => {
     if (slides.length <= 1) return;
@@ -654,13 +692,14 @@ export default function ScholarshipsPage() {
         <title>Scholarship Atelier · Menelek Makonnen</title>
         <meta
           name="description"
-          content="Browse a luxurious Instagram-inspired feed of global scholarships with live imagery, elegant filters, and immersive programme profiles."
+          content="Browse a luxurious Instagram-inspired gallery of global scholarships with live imagery, elegant filters, and immersive programme profiles."
         />
       </Head>
-      <div className="min-h-screen bg-[#03030b] pb-24 text-white">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(48,16,107,0.55),_rgba(3,3,11,0.95))] pb-24 text-white">
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(79,41,158,0.45),_rgba(3,3,11,0.95))]" />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(4,7,25,0.4),rgba(4,7,25,0.9))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(130deg,rgba(6,8,30,0.95),rgba(10,8,40,0.8))]" />
+          <div className="pointer-events-none absolute -left-24 top-24 h-96 w-96 rounded-full bg-[radial-gradient(circle,_rgba(244,114,182,0.28),_transparent_65%)] blur-3xl" />
+          <div className="pointer-events-none absolute right-[-10%] top-10 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(94,234,212,0.2),_transparent_60%)] blur-3xl" />
           <div className="relative mx-auto max-w-7xl px-4 pt-24 pb-20 sm:px-6">
             <div className="grid gap-12 lg:grid-cols-[1.2fr_1fr] lg:items-center">
               <div>
@@ -668,11 +707,11 @@ export default function ScholarshipsPage() {
                   <Sparkles className="h-4 w-4" /> Scholarship Atelier
                 </div>
                 <h1 className="mt-6 text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-                  A luminous feed of world-class scholarships
+                  A vibrant gallery of world-class scholarships
                 </h1>
                 <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
-                  Explore prestigious fellowships, research grants, and graduate opportunities hand-curated from the global stage.
-                  Indulge in cinematic imagery sourced directly from official portals, with precision filters designed for decisive applicants.
+                  Explore prestigious fellowships, research grants, and graduate opportunities presented in rich colour and motion.
+                  Each profile is sourced from official portals with artful imagery, intuitive filters, and timely insights for decisive applicants.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-6 text-sm text-white/70 sm:text-base">
                   <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4">
@@ -688,27 +727,27 @@ export default function ScholarshipsPage() {
                     <div className="mt-2 text-3xl font-semibold text-white">{closedCount}</div>
                   </div>
                 </div>
-                <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/70">
+                <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-white/15 bg-gradient-to-r from-fuchsia-500/20 via-purple-500/10 to-sky-500/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/70">
                   {metadataLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Enriching imagery
+                      Fetching live imagery
                     </>
                   ) : (
                     <>
                       <Check className="h-4 w-4 text-emerald-300" />
-                      Immersive visuals ready
+                      Gallery imagery synced
                     </>
                   )}
                 </div>
               </div>
-              <FeaturedOpportunity scholarship={featuredScholarship} media={featuredMedia} onExplore={setActiveId} />
+              <FeaturedOpportunity scholarship={featuredScholarship} media={featuredMedia} onExplore={openScholarship} />
             </div>
           </div>
         </section>
 
         <section className="relative mx-auto -mt-12 max-w-7xl px-4 sm:px-6">
-          <div className="rounded-[36px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl sm:p-8">
+          <div className="rounded-[36px] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur-xl sm:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative w-full sm:max-w-xl">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
@@ -761,7 +800,7 @@ export default function ScholarshipsPage() {
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
               {filtered.map((item) => (
-                <ScholarshipCard key={item.id} item={item} media={mediaMap[item.id]} onClick={setActiveId} />
+                <ScholarshipCard key={item.id} item={item} media={mediaMap[item.id]} onClick={openScholarship} />
               ))}
             </div>
           )}
@@ -787,29 +826,25 @@ export default function ScholarshipsPage() {
 
       <AnimatePresence>
         {activeScholarship && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className="absolute inset-0 bg-black/70" onClick={closeOverlay} />
-            <motion.div
-              initial={{ opacity: 0, y: 40, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 40, scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-              className="relative z-10 grid max-h-[90vh] w-full max-w-6xl grid-cols-1 gap-8 overflow-hidden rounded-[36px] border border-white/15 bg-[#050713]/95 p-6 text-white shadow-[0_40px_120px_rgba(4,6,18,0.65)] backdrop-blur-xl lg:grid-cols-[1.1fr_0.9fr] lg:p-10"
-            >
-              <button
-                type="button"
-                onClick={closeOverlay}
-                className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:text-white"
+          <motion.div className="fixed inset-0 z-50 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="fixed inset-0 bg-black/70" onClick={closeOverlay} />
+            <div className="relative flex min-h-full items-center justify-center px-4 py-10 sm:px-6">
+              <motion.div
+                initial={{ opacity: 0, y: 40, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 40, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                className="relative z-10 grid w-full max-w-6xl grid-cols-1 gap-8 overflow-hidden rounded-[36px] border border-white/15 bg-[#050713]/95 p-6 text-white shadow-[0_40px_120px_rgba(4,6,18,0.65)] backdrop-blur-xl lg:grid-cols-[1.1fr_0.9fr] lg:p-10 lg:max-h-[92vh]"
               >
-                <X className="h-5 w-5" />
-              </button>
-              <div className="flex flex-col gap-6 overflow-y-auto">
-                <div className="relative overflow-hidden rounded-3xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={closeOverlay}
+                  className="absolute right-4 top-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition hover:scale-105 hover:border-white/50 focus:outline-none focus:ring-2 focus:ring-white/60"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+                <div className="flex flex-col gap-6 overflow-y-auto pr-1 lg:pr-0">
+                  <div className="relative overflow-hidden rounded-3xl border border-white/10">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     {slides.length > 0 ? (
                       <>
@@ -860,24 +895,33 @@ export default function ScholarshipsPage() {
                     {activeMedia?.shortDescription || 'Visit the provider site for a succinct overview of this opportunity.'}
                   </div>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm leading-relaxed text-white/70">
+                <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm leading-relaxed text-white/70">
                   <div className="text-xs uppercase tracking-[0.3em] text-white/60">Programme Insight</div>
                   <p className="mt-3 whitespace-pre-line">
                     {activeMedia?.longDescription || activeMedia?.shortDescription || 'Explore the official scholarship page to capture detailed eligibility, coverage, and application notes.'}
                   </p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-6 overflow-y-auto">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-white/60">
-                    Curated Opportunity
                   </div>
-                  <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
-                    {activeScholarship.name}
-                  </h2>
-                  <div className="mt-4 flex flex-wrap gap-3 text-sm text-white/70">
-                    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
-                      statusAccent[activeScholarship.deadlineStatus] || statusAccent.open
+                </div>
+                <div className="flex flex-col gap-6 overflow-y-auto pr-1 lg:pr-0">
+                  <div className="flex flex-col gap-6">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-white/60">
+                      Curated Opportunity
+                    </div>
+                    <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
+                      {activeScholarship.name}
+                    </h2>
+                    <a
+                      href={activeScholarship.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-r from-fuchsia-400 via-rose-300 to-amber-200 px-6 py-3 text-sm font-semibold text-slate-900 shadow-[0_20px_45px_rgba(249,168,212,0.35)] transition hover:from-fuchsia-300 hover:via-rose-200 hover:to-amber-100 sm:w-auto"
+                    >
+                      Visit Scholarship Site
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <div className="mt-4 flex flex-wrap gap-3 text-sm text-white/70">
+                      <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+                        statusAccent[activeScholarship.deadlineStatus] || statusAccent.open
                     }`}>
                       <Calendar className="h-3.5 w-3.5" />
                       {formatDeadline(activeScholarship)}
@@ -889,10 +933,10 @@ export default function ScholarshipsPage() {
                         : activeScholarship.rawCountry || 'Open to multiple locations'}
                     </span>
                   </div>
-                  <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/60">Countdown to deadline</div>
-                    {countdown.mode === 'countdown' && countdown.parts ? (
-                      <div className="mt-4 grid grid-cols-4 gap-3 text-center text-white">
+                    <div className="mt-5 rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-5 text-sm text-white/80">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/60">Countdown to deadline</div>
+                      {countdown.mode === 'countdown' && countdown.parts ? (
+                        <div className="mt-4 grid grid-cols-4 gap-3 text-center text-white">
                         {Object.entries(countdown.parts).map(([unit, value]) => (
                           <div key={unit} className="rounded-2xl border border-white/15 bg-black/30 px-3 py-3">
                             <div className="text-2xl font-semibold">{String(value).padStart(2, '0')}</div>
@@ -909,13 +953,13 @@ export default function ScholarshipsPage() {
                         Rolling or unspecified deadline — confirm exact timings via the provider link.
                       </div>
                     )}
+                    </div>
                   </div>
-                </div>
-                <div className="grid gap-3 text-sm text-white/70">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/60">Academic Levels</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {(() => {
+                  <div className="grid gap-3 text-sm text-white/70">
+                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-500/15 via-transparent to-sky-500/20 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/60">Academic Levels</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(() => {
                         const levels = normaliseLevels(activeScholarship.levels);
                         if (!levels.length) {
                           return <span className="text-white/60">Refer to the programme site for detailed eligibility.</span>;
@@ -927,10 +971,10 @@ export default function ScholarshipsPage() {
                         ));
                       })()}
                     </div>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/60">Coverage &amp; Benefits</div>
-                    <ul className="mt-3 space-y-2">
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/10 via-transparent to-cyan-500/20 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/60">Coverage &amp; Benefits</div>
+                      <ul className="mt-3 space-y-2">
                       {(() => {
                         const coverageItems = ensureCoverage(activeScholarship.coverage, activeScholarship.coverageText);
                         if (!coverageItems.length) {
@@ -944,34 +988,26 @@ export default function ScholarshipsPage() {
                         ));
                       })()}
                     </ul>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/15 bg-white/10 p-6 text-white">
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/60">Action</div>
+                    <div className="mt-3 text-sm text-white/80">
+                      Review the official site to confirm eligibility criteria, deadlines, and submission requirements.
+                    </div>
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={closeOverlay}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm text-white/70 transition hover:border-white/40 hover:text-white sm:w-auto"
+                      >
+                        Close
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-white/10 p-6 text-white">
-                  <div className="text-xs uppercase tracking-[0.3em] text-white/60">Action</div>
-                  <div className="mt-3 text-sm text-white/80">
-                    Review the official site to confirm eligibility criteria, deadlines, and submission requirements.
-                  </div>
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                    <a
-                      href={activeScholarship.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white bg-white/10 px-6 py-3 text-sm font-medium text-white transition hover:bg-white/20 sm:w-auto"
-                    >
-                      Visit Scholarship Site
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={closeOverlay}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm text-white/70 hover:text-white sm:w-auto"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
