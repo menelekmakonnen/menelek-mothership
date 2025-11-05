@@ -1,7 +1,7 @@
 import { useContext } from 'react';
-import { Camera, Zap, Upload, X, Eye, Aperture, Gauge } from 'lucide-react';
+import { Camera, Zap, Upload, X, Eye, Aperture, Gauge, Sun } from 'lucide-react';
 import CameraContext from './CameraContext';
-import { LENS_DATABASE } from './CameraDatabase';
+import { CAMERA_DATABASE, LENS_DATABASE } from './CameraDatabase';
 
 export default function DistributedCameraControls() {
   const context = useContext(CameraContext);
@@ -12,10 +12,16 @@ export default function DistributedCameraControls() {
     cycleHudMode,
     handleImageUpload,
     clearUserImage,
-    currentLens
+    currentLens,
+    currentCamera
   } = context || {};
 
   const isZoomLens = currentLens?.type === 'zoom';
+  const isDslr = currentCamera?.type === 'dslr';
+
+  const toggleExposurePreview = () => {
+    updateSetting('exposurePreview', !cameraSettings.exposurePreview);
+  };
 
   const getCurrentFocalLength = () => {
     if (!isZoomLens) return null;
@@ -51,6 +57,18 @@ export default function DistributedCameraControls() {
         <Eye size={20} />
         <span className="btn-label">HUD</span>
       </button>
+
+      {/* Top Left 2 - Exposure Preview Toggle (DSLR only) */}
+      {isDslr && (
+        <button
+          onClick={toggleExposurePreview}
+          className={`camera-btn top-left-2 ${cameraSettings.exposurePreview ? 'active' : ''}`}
+          title="Exposure Preview (Live View)"
+        >
+          <Sun size={20} />
+          <span className="btn-label">{cameraSettings.exposurePreview ? 'EVF' : 'OVF'}</span>
+        </button>
+      )}
 
       {/* Left Side - ISO */}
       <div className="camera-control left-side">
@@ -233,6 +251,11 @@ export default function DistributedCameraControls() {
         .top-left {
           top: 20px;
           left: 20px;
+        }
+
+        .top-left-2 {
+          top: 20px;
+          left: 110px;
         }
 
         .camera-control {

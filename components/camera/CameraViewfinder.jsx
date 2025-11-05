@@ -1,16 +1,44 @@
 import { forwardRef, useEffect, useState } from 'react';
+import { CAMERA_DATABASE } from './CameraDatabase';
 
 const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, ref) => {
   const [filters, setFilters] = useState({});
 
   useEffect(() => {
     calculateFilters();
-  }, [settings.iso, settings.aperture, settings.whiteBalance, settings.exposureCompensation, settings.filmSimulation, settings.brand]);
+  }, [settings.iso, settings.aperture, settings.shutterSpeed, settings.whiteBalance, settings.exposureCompensation, settings.filmSimulation, settings.brand, settings.model, settings.exposurePreview]);
 
   const calculateFilters = () => {
-    // ISO - brightness and grain
-    const brightnessMultiplier = settings.iso / 100;
-    const brightness = brightnessMultiplier * Math.pow(2, settings.exposureCompensation);
+    // Get camera type from database
+    const currentCamera = CAMERA_DATABASE[settings.brand]?.[settings.model];
+    const cameraType = currentCamera?.type || 'mirrorless';
+
+    // Calculate exposure brightness
+    let brightness;
+
+    if (cameraType === 'dslr' && !settings.exposurePreview) {
+      // DSLR with OVF: Always bright regardless of settings (optical view)
+      brightness = 1.0; // Constant brightness
+    } else {
+      // Mirrorless EVF or DSLR with exposure preview enabled
+      // Full exposure simulation based on exposure triangle
+      const isoMultiplier = settings.iso / 100;
+      const apertureMultiplier = 1 / (settings.aperture * settings.aperture); // Aperture affects light quadratically
+
+      // Parse shutter speed (handle both number and fraction formats)
+      let shutterMultiplier = settings.shutterSpeed;
+      if (typeof settings.shutterSpeed === 'string' && settings.shutterSpeed.includes('/')) {
+        const [num, denom] = settings.shutterSpeed.split('/').map(Number);
+        shutterMultiplier = num / denom;
+      }
+
+      // Combine all factors (normalized to look good at ISO 100, f/5.6, 1/125)
+      const baseExposure = isoMultiplier * apertureMultiplier * shutterMultiplier * 3000;
+      brightness = baseExposure * Math.pow(2, settings.exposureCompensation);
+
+      // Clamp to reasonable values
+      brightness = Math.max(0.1, Math.min(3, brightness));
+    }
 
     // Grain effect at high ISO
     const grainOpacity = Math.max(0, Math.min(1, (settings.iso - 800) / 25600));
