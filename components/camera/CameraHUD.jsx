@@ -467,19 +467,21 @@ export default function CameraHUD({ settings }) {
       <div className="panasonic-hud" style={{ '--primary-color': colors.primary, '--secondary-color': colors.secondary }}>
         {/* Bottom Bar */}
         <div className="hud-bottom">
-          <span className="mode">P</span>
+          <span className="mode">{settings.videoMode ? 'M' : 'P'}</span>
           <span className="shutter">{formatShutterSpeed(settings.shutterSpeed)}</span>
           <span className="aperture">F{settings.aperture.toFixed(1)}</span>
           <span className="iso">ISO {settings.iso}</span>
           <span className="wb">{formatWhiteBalance()}</span>
-          <span className="profile">STD.</span>
-          <span className="af">AFS</span>
+          <span className="profile">{settings.videoMode ? 'V-LOG' : 'STD.'}</span>
+          <span className="af">{settings.videoMode ? 'AFC' : 'AFS'}</span>
         </div>
 
-        {/* Top */}
-        <div className="hud-top">
-          <span className="video-info">4K 60p | 200Mbps</span>
-        </div>
+        {/* Top - Video Info (only in video mode) */}
+        {settings.videoMode && (
+          <div className="hud-top">
+            <span className="video-info recording">● REC 6K 30p | ProRes 422 HQ | 00:12:34</span>
+          </div>
+        )}
 
         {/* Right */}
         <div className="hud-right">
@@ -529,6 +531,16 @@ export default function CameraHUD({ settings }) {
             font-weight: 700;
             text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
             z-index: 9999;
+          }
+
+          .video-info.recording {
+            color: #ef4444;
+            animation: rec-blink 1.5s infinite;
+          }
+
+          @keyframes rec-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
           }
 
           .hud-right {

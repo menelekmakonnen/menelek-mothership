@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { Camera, Zap, Upload, X, Eye, Aperture, Gauge, Sun } from 'lucide-react';
+import { Camera, Zap, Upload, X, Eye, Aperture, Gauge, Sun, Video } from 'lucide-react';
 import CameraContext from './CameraContext';
 import { CAMERA_DATABASE, LENS_DATABASE } from './CameraDatabase';
 
@@ -18,9 +18,14 @@ export default function DistributedCameraControls() {
 
   const isZoomLens = currentLens?.type === 'zoom';
   const isDslr = currentCamera?.type === 'dslr';
+  const isPanasonic = cameraSettings.brand === 'panasonic';
 
   const toggleExposurePreview = () => {
     updateSetting('exposurePreview', !cameraSettings.exposurePreview);
+  };
+
+  const toggleVideoMode = () => {
+    updateSetting('videoMode', !cameraSettings.videoMode);
   };
 
   const getCurrentFocalLength = () => {
@@ -47,6 +52,18 @@ export default function DistributedCameraControls() {
         <Zap size={20} />
         {cameraSettings.flashEnabled && <span className="flash-ready">READY</span>}
       </button>
+
+      {/* Top Right 2 - Video Mode Toggle (Panasonic only) */}
+      {isPanasonic && (
+        <button
+          onClick={toggleVideoMode}
+          className={`camera-btn top-right-2 ${cameraSettings.videoMode ? 'active video' : ''}`}
+          title="Video Mode"
+        >
+          <Video size={20} />
+          <span className="btn-label">{cameraSettings.videoMode ? 'REC' : 'PHOTO'}</span>
+        </button>
+      )}
 
       {/* Top Left - HUD Toggle */}
       <button
@@ -246,6 +263,17 @@ export default function DistributedCameraControls() {
         .top-right {
           top: 20px;
           right: 20px;
+        }
+
+        .top-right-2 {
+          top: 20px;
+          right: 120px;
+        }
+
+        .camera-btn.video.active {
+          border-color: #ef4444;
+          background: rgba(239, 68, 68, 0.2);
+          box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
         }
 
         .top-left {
