@@ -6,23 +6,40 @@ import CameraControls from '../components/camera/CameraControls';
 import CameraContext from '../components/camera/CameraContext';
 import FlashOverlay from '../components/camera/FlashOverlay';
 import AFCursor from '../components/camera/AFCursor';
+import { CAMERA_DATABASE, LENS_DATABASE } from '../components/camera/CameraDatabase';
 
 export default function MyCameraPage() {
   const [cameraSettings, setCameraSettings] = useState({
-    type: 'mirrorless', // 'dslr' or 'mirrorless'
-    brand: 'nikon', // 'nikon', 'sony', 'canon', 'fujifilm', 'panasonic'
-    lens: '50mm', // '24-70mm', '50mm', '85mm', '35mm', '70-200mm'
+    brand: 'nikon',
+    model: 'z9', // Specific camera model
+    lens: '50mm-f18',
     iso: 400,
     aperture: 5.6,
     shutterSpeed: 1/250,
-    whiteBalance: 5500, // Kelvin
+    whiteBalance: 5500,
     whiteBalanceMode: 'auto',
     flashEnabled: false,
-    hudMode: 2, // 0: none, 1: minimal, 2: standard, 3: full
-    focusDepth: 3, // Current focus depth (1-10 scale)
+    hudMode: 2, // 0: none, 1: minimal, 2: standard, 3: full, 4: cinematic
+    hudStyle: 'literal', // 'literal' or 'cinematic'
+    focusDepth: 3,
     focusLocked: false,
-    exposureCompensation: 0
+    exposureCompensation: 0,
+    exposurePreview: true, // EVF shows exposure changes, OVF doesn't
+    battery: 100, // Battery percentage
+    videoMode: false, // For Panasonic
+    filmSimulation: 'PROVIA', // For Fujifilm
+    shotCount: 0
   });
+
+  // Get current camera data
+  const getCurrentCamera = () => {
+    return CAMERA_DATABASE[cameraSettings.brand]?.[cameraSettings.model];
+  };
+
+  // Get current lens data
+  const getCurrentLens = () => {
+    return LENS_DATABASE[cameraSettings.lens];
+  };
 
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [isHalfPressed, setIsHalfPressed] = useState(false);
@@ -42,6 +59,22 @@ export default function MyCameraPage() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // Battery idle drain for mirrorless (EVF drains constantly)
+  useEffect(() => {
+    const camera = getCurrentCamera();
+    if (!camera || camera.type === 'dslr') return; // DSLRs only drain on shot
+
+    const drainInterval = setInterval(() => {
+      setCameraSettings(prev => {
+        if (prev.battery <= 0) return prev;
+        // Mirrorless EVF drains ~0.05% every 10 seconds (slower than per-shot drain)
+        return { ...prev, battery: Math.max(0, prev.battery - 0.05) };
+      });
+    }, 10000); // Every 10 seconds
+
+    return () => clearInterval(drainInterval);
+  }, [cameraSettings.brand, cameraSettings.model]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -121,6 +154,15 @@ export default function MyCameraPage() {
   };
 
   const handleFullPress = () => {
+    const camera = getCurrentCamera();
+    if (!camera) return;
+
+    // Check battery
+    if (cameraSettings.battery <= 0) {
+      alert('Battery empty! Replace battery to continue.');
+      return;
+    }
+
     // Fire shutter
     setShutterFiring(true);
 
@@ -130,12 +172,21 @@ export default function MyCameraPage() {
       setTimeout(() => setFlashFiring(false), 120);
     }
 
-    // Shutter animation duration
-    const duration = cameraSettings.type === 'dslr' ? 100 : 80;
+    // Shutter animation duration based on camera type
+    const duration = camera.type === 'dslr' ? 100 : 80;
+
+    // Battery drain (mirrorless drains faster)
+    const batteryDrain = camera.type === 'dslr' ? 0.03 : 0.12;
+
     setTimeout(() => {
       setShutterFiring(false);
-      // Unlock focus after shot
-      setCameraSettings(prev => ({ ...prev, focusLocked: false }));
+      // Unlock focus after shot, increment shot counter, drain battery
+      setCameraSettings(prev => ({
+        ...prev,
+        focusLocked: false,
+        shotCount: prev.shotCount + 1,
+        battery: Math.max(0, prev.battery - batteryDrain)
+      }));
     }, duration);
   };
 
@@ -158,10 +209,43 @@ export default function MyCameraPage() {
   };
 
   const cycleHudMode = () => {
+    setCameraSettings(prev => {
+      const nextMode = (prev.hudMode + 1) % 5; // 0-4 (including cinematic)
+      // If entering mode 4, switch to cinematic style
+      const newStyle = nextMode === 4 ? 'cinematic' : 'literal';
+      return {
+        ...prev,
+        hudMode: nextMode,
+        hudStyle: newStyle
+      };
+    });
+  };
+
+  const toggleHudStyle = () => {
     setCameraSettings(prev => ({
       ...prev,
-      hudMode: (prev.hudMode + 1) % 4
+      hudStyle: prev.hudStyle === 'literal' ? 'cinematic' : 'literal'
     }));
+  };
+
+  const changeCamera = (brand, model) => {
+    const camera = CAMERA_DATABASE[brand]?.[model];
+    if (!camera) return;
+
+    // Reset battery when switching cameras
+    setCameraSettings(prev => ({
+      ...prev,
+      brand,
+      model,
+      battery: 100,
+      shotCount: 0,
+      // Auto-adjust settings to camera limits
+      iso: Math.min(prev.iso, camera.iso.native.max)
+    }));
+  };
+
+  const rechargeBattery = () => {
+    setCameraSettings(prev => ({ ...prev, battery: 100 }));
   };
 
   const adjustAperture = (change) => {
@@ -198,7 +282,16 @@ export default function MyCameraPage() {
         <meta name="description" content="Experience photography through an interactive camera viewfinder" />
       </Head>
 
-      <CameraContext.Provider value={{ cameraSettings, updateSetting, changeLens }}>
+      <CameraContext.Provider value={{
+        cameraSettings,
+        updateSetting,
+        changeLens,
+        changeCamera,
+        toggleHudStyle,
+        rechargeBattery,
+        currentCamera: getCurrentCamera(),
+        currentLens: getCurrentLens()
+      }}>
         <div
           className="camera-app"
           onMouseDown={handleMouseDown}

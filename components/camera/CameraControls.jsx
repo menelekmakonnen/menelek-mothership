@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Camera, Zap, Eye, Aperture, Sun, Droplets } from 'lucide-react';
+import { useState, useContext } from 'react';
+import { Camera, Zap, Eye, Aperture, Sun, Droplets, Battery, BatteryCharging } from 'lucide-react';
+import CameraContext from './CameraContext';
+import { CAMERA_DATABASE, LENS_DATABASE } from './CameraDatabase';
 
 export default function CameraControls({
   settings,
@@ -9,6 +11,9 @@ export default function CameraControls({
   changeLens,
   onShoot
 }) {
+  const context = useContext(CameraContext);
+  const { changeCamera, rechargeBattery, currentCamera, currentLens } = context || {};
+
   const [isMinimized, setIsMinimized] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
 
@@ -42,15 +47,7 @@ export default function CameraControls({
     { value: 'flash', label: 'Flash', kelvin: 5500 },
   ];
 
-  const lenses = [
-    { value: '35mm', label: '35mm f/1.8' },
-    { value: '50mm', label: '50mm f/1.4' },
-    { value: '85mm', label: '85mm f/1.4' },
-    { value: '24-70mm', label: '24-70mm f/2.8' },
-    { value: '70-200mm', label: '70-200mm f/2.8' },
-  ];
-
-  const hudModeLabels = ['None', 'Minimal', 'Standard', 'Full'];
+  const hudModeLabels = ['None', 'Minimal', 'Standard', 'Full', 'Cinematic'];
 
   const handleWhiteBalanceChange = (preset) => {
     updateSetting('whiteBalanceMode', preset.value);
@@ -154,7 +151,13 @@ export default function CameraControls({
             <label>Brand</label>
             <select
               value={settings.brand}
-              onChange={(e) => updateSetting('brand', e.target.value)}
+              onChange={(e) => {
+                const newBrand = e.target.value;
+                const firstModel = Object.keys(CAMERA_DATABASE[newBrand] || {})[0];
+                if (firstModel && changeCamera) {
+                  changeCamera(newBrand, firstModel);
+                }
+              }}
               className="select"
             >
               <option value="nikon">Nikon</option>
@@ -165,18 +168,63 @@ export default function CameraControls({
             </select>
           </div>
 
+          {/* Camera Model Selection */}
+          <div className="control-group">
+            <label>Model: <span className="value">{currentCamera?.name || 'Unknown'}</span></label>
+            <select
+              value={settings.model}
+              onChange={(e) => changeCamera && changeCamera(settings.brand, e.target.value)}
+              className="select"
+            >
+              {CAMERA_DATABASE[settings.brand] && Object.entries(CAMERA_DATABASE[settings.brand]).map(([key, cam]) => (
+                <option key={key} value={key}>{cam.name}</option>
+              ))}
+            </select>
+            <div className="camera-info">
+              <small>
+                {currentCamera?.megapixels}MP • {currentCamera?.type === 'dslr' ? 'DSLR' : 'Mirrorless'} • {currentCamera?.releaseYear}
+              </small>
+            </div>
+          </div>
+
+          {/* Battery Status */}
+          <div className="control-group">
+            <label>
+              Battery: <span className={`value ${settings.battery < 20 ? 'text-red' : ''}`}>{settings.battery.toFixed(1)}%</span>
+            </label>
+            <div className="battery-bar">
+              <div className="battery-fill" style={{ width: `${settings.battery}%` }} />
+            </div>
+            {settings.battery < 20 && (
+              <button onClick={rechargeBattery} className="btn-action" style={{ marginTop: '8px', padding: '6px' }}>
+                <BatteryCharging size={16} />
+                Recharge Battery
+              </button>
+            )}
+            <small style={{ opacity: 0.6, marginTop: '4px', display: 'block' }}>
+              Shots taken: {settings.shotCount}
+            </small>
+          </div>
+
+          <div className="divider" />
+
           {/* Lens Selection */}
           <div className="control-group">
-            <label>Lens</label>
+            <label>Lens: <span className="value">{currentLens?.name || 'Unknown'}</span></label>
             <select
               value={settings.lens}
               onChange={(e) => changeLens(e.target.value)}
               className="select"
             >
-              {lenses.map(lens => (
-                <option key={lens.value} value={lens.value}>{lens.label}</option>
+              {Object.entries(LENS_DATABASE).map(([key, lens]) => (
+                <option key={key} value={key}>{lens.name} {lens.nickname ? `"${lens.nickname}"` : ''}</option>
               ))}
             </select>
+            <div className="lens-info">
+              <small>
+                {currentLens?.type === 'prime' ? 'Prime' : 'Zoom'} • f/{currentLens?.aperture?.max} • {currentLens?.category}
+              </small>
+            </div>
           </div>
 
           <div className="divider" />
@@ -613,6 +661,52 @@ export default function CameraControls({
           border-radius: 3px;
           font-family: monospace;
           font-size: 10px;
+        }
+
+        .battery-bar {
+          width: 100%;
+          height: 12px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          overflow: hidden;
+          margin-top: 8px;
+        }
+
+        .battery-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #4ade80, #22c55e);
+          transition: width 0.3s ease;
+          border-radius: 6px;
+        }
+
+        .battery-fill[style*="width: 0%"],
+        .battery-fill[style*="width: 1"] {
+          background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .camera-info,
+        .lens-info {
+          margin-top: 6px;
+          padding: 6px 8px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .camera-info small,
+        .lens-info small {
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 11px;
+        }
+
+        .text-red {
+          color: #ef4444 !important;
+          animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+          0%, 50%, 100% { opacity: 1; }
+          25%, 75% { opacity: 0.5; }
         }
       `}</style>
     </div>
