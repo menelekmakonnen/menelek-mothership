@@ -3,6 +3,7 @@ import Head from 'next/head';
 import CameraViewfinder from '../components/camera/CameraViewfinder';
 import CameraHUD from '../components/camera/CameraHUD';
 import CameraControls from '../components/camera/CameraControls';
+import DistributedCameraControls from '../components/camera/DistributedCameraControls';
 import CameraContext from '../components/camera/CameraContext';
 import FlashOverlay from '../components/camera/FlashOverlay';
 import AFCursor from '../components/camera/AFCursor';
@@ -28,7 +29,9 @@ export default function MyCameraPage() {
     battery: 100, // Battery percentage
     videoMode: false, // For Panasonic
     filmSimulation: 'PROVIA', // For Fujifilm
-    shotCount: 0
+    shotCount: 0,
+    userImage: null, // User-uploaded image
+    zoomLevel: 50 // For zoom lenses (0-100 scale, 50 = middle)
   });
 
   // Get current camera data
@@ -50,15 +53,66 @@ export default function MyCameraPage() {
 
   const viewfinderRef = useRef(null);
 
-  // Track cursor position
+  // Track cursor position (optimized with requestAnimationFrame)
   useEffect(() => {
+    let rafId = null;
+    let lastPosition = { x: 0, y: 0 };
+
     const handleMouseMove = (e) => {
-      setCursorPosition({ x: e.clientX, y: e.clientY });
+      lastPosition = { x: e.clientX, y: e.clientY };
+
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          setCursorPosition(lastPosition);
+          rafId = null;
+        });
+      }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
+
+  // Scroll wheel controls focus depth
+  useEffect(() => {
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.5 : -0.5; // Scroll down = farther, up = closer
+
+      setCameraSettings(prev => ({
+        ...prev,
+        focusDepth: Math.max(1, Math.min(10, prev.focusDepth + delta)),
+        focusLocked: false // Unlock when manually adjusting
+      }));
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Zoom control for zoom lenses (Shift + Scroll)
+  useEffect(() => {
+    const lens = getCurrentLens();
+    if (!lens || lens.type !== 'zoom') return;
+
+    const handleZoomWheel = (e) => {
+      if (e.shiftKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -5 : 5; // Shift+Scroll down = zoom out, up = zoom in
+
+        setCameraSettings(prev => ({
+          ...prev,
+          zoomLevel: Math.max(0, Math.min(100, prev.zoomLevel + delta))
+        }));
+      }
+    };
+
+    window.addEventListener('wheel', handleZoomWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleZoomWheel);
+  }, [cameraSettings.lens]);
 
   // Battery idle drain for mirrorless (EVF drains constantly)
   useEffect(() => {
@@ -248,6 +302,24 @@ export default function MyCameraPage() {
     setCameraSettings(prev => ({ ...prev, battery: 100 }));
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCameraSettings(prev => ({
+        ...prev,
+        userImage: event.target.result
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearUserImage = () => {
+    setCameraSettings(prev => ({ ...prev, userImage: null }));
+  };
+
   const adjustAperture = (change) => {
     setCameraSettings(prev => ({
       ...prev,
@@ -289,6 +361,8 @@ export default function MyCameraPage() {
         changeCamera,
         toggleHudStyle,
         rechargeBattery,
+        handleImageUpload,
+        clearUserImage,
         currentCamera: getCurrentCamera(),
         currentLens: getCurrentLens()
       }}>
@@ -321,7 +395,10 @@ export default function MyCameraPage() {
             <FlashOverlay cursorPosition={cursorPosition} />
           )}
 
-          {/* Camera Controls Panel */}
+          {/* Distributed Camera Controls (positioned around screen like real camera) */}
+          <DistributedCameraControls />
+
+          {/* Camera Controls Panel (settings menu - can be hidden) */}
           <CameraControls
             settings={cameraSettings}
             updateSetting={updateSetting}

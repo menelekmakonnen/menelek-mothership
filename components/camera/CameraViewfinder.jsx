@@ -5,7 +5,7 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
 
   useEffect(() => {
     calculateFilters();
-  }, [settings.iso, settings.aperture, settings.whiteBalance, settings.exposureCompensation]);
+  }, [settings.iso, settings.aperture, settings.whiteBalance, settings.exposureCompensation, settings.filmSimulation, settings.brand]);
 
   const calculateFilters = () => {
     // ISO - brightness and grain
@@ -18,10 +18,14 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
     // White balance color cast
     const wbFilter = calculateWhiteBalanceFilter(settings.whiteBalance);
 
+    // Film simulation (Fujifilm only)
+    const filmFilter = getFilmSimulationFilter();
+
     setFilters({
       brightness,
       grainOpacity,
-      whiteBalance: wbFilter
+      whiteBalance: wbFilter,
+      filmSimulation: filmFilter
     });
   };
 
@@ -38,6 +42,29 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
     }
   };
 
+  const getFilmSimulationFilter = () => {
+    // Only Fujifilm cameras have film simulation
+    if (settings.brand !== 'fujifilm') return 'none';
+
+    const sim = settings.filmSimulation || 'PROVIA';
+
+    const filmSims = {
+      'PROVIA': 'none', // Standard, neutral
+      'Velvia': 'saturate(1.4) contrast(1.1)', // Vivid, punchy colors
+      'ASTIA': 'saturate(0.9) brightness(1.05)', // Soft, muted
+      'Classic Chrome': 'sepia(0.15) saturate(0.85) contrast(1.05)', // Muted, cinematic
+      'Acros': 'grayscale(1) contrast(1.1)', // B&W, high contrast
+      'Acros+Ye': 'grayscale(1) contrast(1.1) sepia(0.05)', // B&W with yellow filter
+      'Acros+R': 'grayscale(1) contrast(1.15)', // B&W with red filter
+      'Eterna': 'saturate(0.7) contrast(0.95) brightness(1.03)', // Flat, cinematic
+      'Classic Neg': 'sepia(0.1) saturate(1.2) hue-rotate(-5deg)', // Classic negative film
+      'PRO Neg Std': 'saturate(0.9) hue-rotate(5deg)', // Professional negative standard
+      'PRO Neg Hi': 'saturate(1.1) hue-rotate(8deg)' // Professional negative high
+    };
+
+    return filmSims[sim] || 'none';
+  };
+
   const calculateBlur = (layerDepth) => {
     const depthDiff = Math.abs(layerDepth - settings.focusDepth);
     const maxBlur = 50;
@@ -48,15 +75,51 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
   };
 
   const getFocalLengthScale = () => {
+    const lens = settings.lens;
+
+    // Check if it's a zoom lens and use zoomLevel
+    if (lens === '24-70mm-f28') {
+      // Map zoom level (0-100) to focal length (24-70mm)
+      const focalLength = 24 + (settings.zoomLevel / 100) * (70 - 24);
+      // Map focal length to scale (24mm = 0.5, 70mm = 1.4)
+      return 0.5 + (focalLength - 24) / (70 - 24) * (1.4 - 0.5);
+    }
+
+    if (lens === '70-200mm-f28') {
+      // Map zoom level (0-100) to focal length (70-200mm)
+      const focalLength = 70 + (settings.zoomLevel / 100) * (200 - 70);
+      // Map focal length to scale (70mm = 1.4, 200mm = 4.0)
+      return 1.4 + (focalLength - 70) / (200 - 70) * (4.0 - 1.4);
+    }
+
+    if (lens === '16-35mm-f28') {
+      const focalLength = 16 + (settings.zoomLevel / 100) * (35 - 16);
+      // Map 16mm = 0.35, 35mm = 0.7
+      return 0.35 + (focalLength - 16) / (35 - 16) * (0.7 - 0.35);
+    }
+
+    if (lens === '100-400mm-f4556') {
+      const focalLength = 100 + (settings.zoomLevel / 100) * (400 - 100);
+      // Map 100mm = 2.0, 400mm = 8.0
+      return 2.0 + (focalLength - 100) / (400 - 100) * (8.0 - 2.0);
+    }
+
+    if (lens === '24-105mm-f4') {
+      const focalLength = 24 + (settings.zoomLevel / 100) * (105 - 24);
+      // Map 24mm = 0.5, 105mm = 2.1
+      return 0.5 + (focalLength - 24) / (105 - 24) * (2.1 - 0.5);
+    }
+
+    // Fixed focal length lenses
     const scales = {
-      '35mm': 0.7,
-      '50mm': 1.0,
-      '24-70mm': 0.85,
-      '85mm': 1.7,
-      '70-200mm': 3.0
+      '35mm-f14': 0.7,
+      '50mm-f18': 1.0,
+      '85mm-f14': 1.7,
+      '100mm-f28-macro': 2.0,
+      '135mm-f2': 2.7
     };
 
-    return scales[settings.lens] || 1.0;
+    return scales[lens] || 1.0;
   };
 
   const scale = getFocalLengthScale();
@@ -72,11 +135,11 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
       <div
         className={`scene ${changingLens ? 'changing-lens' : ''} ${shutterFiring ? 'shutter-firing' : ''}`}
         style={{
-          filter: `brightness(${filters.brightness}) ${filters.whiteBalance}`,
+          filter: `brightness(${filters.brightness}) ${filters.whiteBalance} ${filters.filmSimulation}`,
           transform: `scale(${scale})`
         }}
       >
-        {/* Far Background Layer (depth: 10) */}
+        {/* User Image or Far Background Layer (depth: 10) */}
         <div
           className="layer layer-background"
           data-depth="10"
@@ -85,9 +148,20 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
             opacity: 1 - (calculateBlur(10) / 50) * 0.3
           }}
         >
-          <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 h-screen flex items-center justify-center">
-            <div className="text-6xl font-bold text-white/20">BACKGROUND</div>
-          </div>
+          {settings.userImage ? (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${settings.userImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            />
+          ) : (
+            <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 h-screen flex items-center justify-center">
+              <div className="text-6xl font-bold text-white/20">BACKGROUND</div>
+            </div>
+          )}
         </div>
 
         {/* Mid-Background Layer (depth: 7) */}
