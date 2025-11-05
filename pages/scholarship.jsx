@@ -14,51 +14,34 @@ import {
   ArrowUpDown,
   Globe,
 } from "lucide-react";
+import scholarshipsData from "../data/scholarships.json";
 
 /**
  * Menelek Makonnen — Scholarship Gallery
  * A luxurious, fluid interface for exploring global scholarship opportunities
  */
 
-// Placeholder data - will be replaced with real spreadsheet data
-const PLACEHOLDER_SCHOLARSHIPS = [
-  {
-    id: "1",
-    name: "Rhodes Scholarship",
-    country: "United Kingdom",
-    level: "Masters, PhD",
-    coverage: "Full tuition, living expenses, travel costs",
-    deadline: "2024-10-01",
-    link: "https://www.rhodeshouse.ox.ac.uk/scholarships/the-rhodes-scholarship/",
-    images: [
-      "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800",
-    ],
-  },
-  {
-    id: "2",
-    name: "Fulbright Scholarship",
-    country: "United States",
-    level: "Masters, PhD, Research",
-    coverage: "Full tuition, monthly stipend, health insurance",
-    deadline: "2024-09-15",
-    link: "https://foreign.fulbrightonline.org/",
-    images: [
-      "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800",
-    ],
-  },
-  {
-    id: "3",
-    name: "DAAD Scholarship",
-    country: "Germany",
-    level: "Masters, PhD, Postdoc",
-    coverage: "€934/month, travel allowance, health insurance",
-    deadline: "2024-11-30",
-    link: "https://www.daad.de/en/",
-    images: [
-      "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=800",
-    ],
-  },
-];
+// Generate placeholder images based on country/level
+function generatePlaceholderImage(scholarship, index) {
+  const educationImages = [
+    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80", // University campus
+    "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&q=80", // Library
+    "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=800&q=80", // Graduation
+    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80", // Books
+    "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80", // Study space
+    "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=800&q=80", // Campus building
+    "https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?w=800&q=80", // Modern library
+    "https://images.unsplash.com/photo-1562774053-701939374585?w=800&q=80", // Lecture hall
+    "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?w=800&q=80", // University building
+  ];
+  return [educationImages[index % educationImages.length]];
+}
+
+// Add images to scholarship data
+const SCHOLARSHIPS_WITH_IMAGES = scholarshipsData.map((s, idx) => ({
+  ...s,
+  images: generatePlaceholderImage(s, idx),
+}));
 
 // Parse level string to array (handles /, comma separation)
 function parseLevels(levelStr) {
@@ -361,7 +344,7 @@ function ScholarshipModal({ scholarship, onClose }) {
 
 // Main Scholarship Page Component
 export default function ScholarshipPage() {
-  const [scholarships] = useState(PLACEHOLDER_SCHOLARSHIPS);
+  const [scholarships] = useState(SCHOLARSHIPS_WITH_IMAGES);
   const [selectedScholarship, setSelectedScholarship] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("deadline");
@@ -408,7 +391,23 @@ export default function ScholarshipPage() {
     // Sort
     filtered.sort((a, b) => {
       if (sortBy === "deadline") {
-        return new Date(a.deadline) - new Date(b.deadline);
+        // Handle "Varies" and invalid dates - put them at the end
+        const aIsVaries = a.deadline === "Varies" || !a.deadline;
+        const bIsVaries = b.deadline === "Varies" || !b.deadline;
+
+        if (aIsVaries && bIsVaries) return 0;
+        if (aIsVaries) return 1;
+        if (bIsVaries) return -1;
+
+        const aDate = new Date(a.deadline);
+        const bDate = new Date(b.deadline);
+
+        // Handle invalid dates
+        if (isNaN(aDate) && isNaN(bDate)) return 0;
+        if (isNaN(aDate)) return 1;
+        if (isNaN(bDate)) return -1;
+
+        return aDate - bDate;
       } else if (sortBy === "name") {
         return a.name.localeCompare(b.name);
       } else if (sortBy === "country") {

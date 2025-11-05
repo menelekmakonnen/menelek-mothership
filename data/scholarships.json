@@ -1,0 +1,83 @@
+[
+  {
+    "id": "1",
+    "name": "Schlumberger Foundation Fellowship",
+    "country": "International (Any university or research institute)",
+    "level": "PhD, Postdoc",
+    "coverage": "Tuition fee, living expenses, research costs",
+    "deadline": "2025-11-07",
+    "link": "https://schlumbergerfoundation.com/applications-for-2026/"
+  },
+  {
+    "id": "2",
+    "name": "University of South Australia Scholarships",
+    "country": "Australia",
+    "level": "Masters, PhD",
+    "coverage": "Tuition fee, living allowance, health cover",
+    "deadline": "Varies",
+    "link": "https://unisa.edu.au/research/degrees/scholarships/"
+  },
+  {
+    "id": "3",
+    "name": "Australian Government Research Training Program (RTP) Stipend Scholarship",
+    "country": "Australia",
+    "level": "Masters, PhD",
+    "coverage": "$39,069 per annum stipend",
+    "deadline": "2026-04-15",
+    "link": "https://study.anu.edu.au/scholarships/find-scholarship/australian-government-research-training-program-rtp-stipend"
+  },
+  {
+    "id": "4",
+    "name": "CUAS TECH Scholarship",
+    "country": "Austria",
+    "level": "Masters",
+    "coverage": "Fully funded, €700 monthly stipend, accommodation support",
+    "deadline": "2026-05-15",
+    "link": "https://www.fh-kaernten.at/en/international/scholarships"
+  },
+  {
+    "id": "5",
+    "name": "ISTA International Scholarship",
+    "country": "Austria",
+    "level": "PhD",
+    "coverage": "Tuition fee, salary, security coverage",
+    "deadline": "2026-01-08",
+    "link": "https://phd.pages.ist.ac.at/phd-application-admission/"
+  },
+  {
+    "id": "6",
+    "name": "VLIR-UOS Scholarships",
+    "country": "Belgium",
+    "level": "Bachelors, Masters",
+    "coverage": "Full tuition, travel, insurance, living expenses",
+    "deadline": "Varies",
+    "link": "https://www.vliruos.be/get-funded/study-scholarships"
+  },
+  {
+    "id": "7",
+    "name": "Special Research Fund - Doctoral Scholarships",
+    "country": "Belgium",
+    "level": "PhD",
+    "coverage": "Bench fee, travel budget of €8,000",
+    "deadline": "2026-02-17",
+    "link": "https://www.ugent.be/en/research/funding/bof/dos"
+  },
+  {
+    "id": "8",
+    "name": "The ICP Connect Scholarship",
+    "country": "Belgium",
+    "level": "Bachelors, Masters",
+    "coverage": "Tuition fee, travel, insurance, living expenses",
+    "deadline": "Varies",
+    "link": "https://www.vliruos.be/get-funded/study-scholarships"
+  },
+  {
+    "id": "9",
+    "name": "The Canadian International Development Scholarships 2030",
+    "country": "Canada",
+    "level": "Bachelors, Masters, PhD",
+    "coverage": "Tuition, living allowance, accommodation, health insurance",
+    "deadline": "Varies",
+    "link": "https://www.educanada.ca/scholarships-bourses/non_can/bcdi2030.aspx?lang=eng"
+  }
+]
