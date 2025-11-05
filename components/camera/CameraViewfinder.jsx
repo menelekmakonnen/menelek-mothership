@@ -94,10 +94,23 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
   };
 
   const calculateBlur = (layerDepth) => {
+    // Get camera crop factor from database
+    const currentCamera = CAMERA_DATABASE[settings.brand]?.[settings.model];
+    const cropFactor = currentCamera?.sensorSize?.crop || 1.0;
+
+    // Calculate depth difference from focus point
     const depthDiff = Math.abs(layerDepth - settings.focusDepth);
     const maxBlur = 50;
+
+    // Aperture effect on blur (wider aperture = more blur)
     const apertureEffect = 1.2 / settings.aperture;
-    const blur = Math.min(maxBlur * apertureEffect * (depthDiff / 5), maxBlur);
+
+    // Crop factor effect: larger crop = deeper DOF = less blur
+    // Full-frame (1.0): full blur
+    // APS-C (1.5): 2/3 of the blur
+    // M4/3 (2.0): 1/2 of the blur
+    const cropAdjustedBlur = (maxBlur * apertureEffect * (depthDiff / 5)) / cropFactor;
+    const blur = Math.min(cropAdjustedBlur, maxBlur / cropFactor);
 
     return blur;
   };
