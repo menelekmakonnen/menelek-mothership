@@ -1,12 +1,17 @@
 import { forwardRef, useEffect, useState } from 'react';
-import { CAMERA_DATABASE } from './CameraDatabase';
+import { CAMERA_DATABASE, LENS_DATABASE } from './CameraDatabase';
 
 const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, ref) => {
   const [filters, setFilters] = useState({});
+  const [lensEffects, setLensEffects] = useState({ vignetting: 0, distortion: 0 });
 
   useEffect(() => {
     calculateFilters();
   }, [settings.iso, settings.aperture, settings.shutterSpeed, settings.whiteBalance, settings.exposureCompensation, settings.filmSimulation, settings.brand, settings.model, settings.exposurePreview]);
+
+  useEffect(() => {
+    calculateLensEffects();
+  }, [settings.lens, settings.aperture, settings.zoomLevel]);
 
   const calculateFilters = () => {
     // Get camera type from database
@@ -55,6 +60,59 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
       whiteBalance: wbFilter,
       filmSimulation: filmFilter
     });
+  };
+
+  const calculateLensEffects = () => {
+    const currentLens = LENS_DATABASE[settings.lens];
+    if (!currentLens?.characteristics) {
+      setLensEffects({ vignetting: 0, distortion: 0 });
+      return;
+    }
+
+    const chars = currentLens.characteristics;
+
+    // Calculate vignetting based on aperture
+    let vignetting = 0;
+    if (chars.vignetting) {
+      // Interpolate vignetting between wide open and stopped down
+      const aperture = settings.aperture;
+      const maxAperture = currentLens.aperture.max;
+
+      // Get vignetting values from lens data (e.g., { f18: 0.8, f4: 0.05 })
+      const wideOpenKey = Object.keys(chars.vignetting)[0];
+      const stoppedDownKey = Object.keys(chars.vignetting)[1] || wideOpenKey;
+      const wideOpenVignetting = chars.vignetting[wideOpenKey] || 0;
+      const stoppedDownVignetting = chars.vignetting[stoppedDownKey] || 0;
+
+      // Linear interpolation between wide open and f/4
+      if (aperture <= maxAperture) {
+        vignetting = wideOpenVignetting;
+      } else if (aperture >= 4) {
+        vignetting = stoppedDownVignetting;
+      } else {
+        const t = (aperture - maxAperture) / (4 - maxAperture);
+        vignetting = wideOpenVignetting + t * (stoppedDownVignetting - wideOpenVignetting);
+      }
+    }
+
+    // Calculate distortion
+    let distortion = 0;
+    if (typeof chars.distortion === 'number') {
+      distortion = chars.distortion;
+    } else if (typeof chars.distortion === 'object') {
+      // For zoom lenses, interpolate based on zoom level
+      const keys = Object.keys(chars.distortion);
+      if (keys.length === 2) {
+        const min = parseInt(keys[0]);
+        const max = parseInt(keys[1]);
+        const minDist = chars.distortion[min];
+        const maxDist = chars.distortion[max];
+        const t = settings.zoomLevel / 100;
+        distortion = minDist + t * (maxDist - minDist);
+      }
+    }
+
+    setLensEffects({ vignetting, distortion });
   };
 
   const calculateWhiteBalanceFilter = (kelvin) => {
@@ -310,6 +368,17 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
         <div className="grain-overlay" style={{ opacity: filters.grainOpacity }} />
       )}
 
+      {/* Vignetting Overlay (Lens Optical Effect) */}
+      {lensEffects.vignetting > 0 && (
+        <div
+          className="vignetting-overlay"
+          style={{
+            opacity: Math.min(lensEffects.vignetting, 1),
+            background: `radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(0,0,0,${lensEffects.vignetting * 0.3}) 70%, rgba(0,0,0,${lensEffects.vignetting * 0.6}) 100%)`
+          }}
+        />
+      )}
+
       {/* Shutter Blackout (DSLR) */}
       {shutterFiring && settings.type === 'dslr' && (
         <div className="shutter-blackout" />
@@ -385,6 +454,14 @@ const CameraViewfinder = forwardRef(({ settings, changingLens, shutterFiring }, 
           pointer-events: none;
           z-index: 9999;
           mix-blend-mode: overlay;
+        }
+
+        .vignetting-overlay {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 9998;
+          transition: opacity 0.3s ease-out;
         }
 
         .shutter-blackout {
