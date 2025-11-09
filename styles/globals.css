@@ -1,0 +1,158 @@
+:root {
+  color-scheme: light dark;
+  --page-background: #05070f;
+  --page-foreground: #f5f7ff;
+  --accent: #5c7cfa;
+  --accent-muted: #bcc6ff;
+  --panel: rgba(12, 16, 28, 0.7);
+  --panel-border: rgba(92, 124, 250, 0.35);
+  --panel-highlight: rgba(92, 124, 250, 0.12);
+  --album-bg: rgba(6, 10, 22, 0.85);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, rgba(92, 124, 250, 0.2), transparent 55%),
+    var(--page-background);
+  color: var(--page-foreground);
+  min-height: 100vh;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+}
+
+.camera-app {
+  width: min(960px, 100%);
+  backdrop-filter: blur(16px);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  display: grid;
+  gap: 2rem;
+}
+
+.camera-app__header,
+.camera-app__footer {
+  text-align: center;
+}
+
+.camera-app__tagline {
+  margin-top: 0.5rem;
+  color: var(--accent-muted);
+}
+
+.camera-app__controls {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--panel-highlight);
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+}
+
+.control__legend {
+  margin-bottom: 0.5rem;
+}
+
+.control input[type='range'] {
+  width: 100%;
+}
+
+.control input[type='radio'] {
+  margin-right: 0.4rem;
+}
+
+.control button,
+.control select,
+.control input,
+.camera-app__album button {
+  font: inherit;
+}
+
+.control button,
+.camera-app__album button {
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #8b9bff);
+  color: var(--page-foreground);
+}
+
+.camera-app__album {
+  background: var(--album-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.camera-app__album ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.camera-app__album li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.hud {
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(3, 6, 15, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(92, 124, 250, 0.15);
+}
+
+.hud__telemetry {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+
+.hud-pro {
+  box-shadow: 0 0 24px rgba(92, 124, 250, 0.45);
+}
+
+.hud-minimal .hud__description {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .camera-app {
+    padding: 1.5rem;
+    gap: 1.5rem;
+  }
+
+  .camera-app__controls {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+}
+
+[data-theme='light'] {
+  --page-background: #f5f7ff;
+  --page-foreground: #12131f;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel-highlight: rgba(92, 124, 250, 0.08);
+  --panel-border: rgba(92, 124, 250, 0.25);
+  --album-bg: rgba(236, 240, 255, 0.9);
+}
