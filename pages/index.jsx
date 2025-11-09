@@ -1,5 +1,3 @@
-import AppShell from "../components/AppShell";
-
-export default function HomePage() {
-  return <AppShell />;
+export default function Home() {
+  return null;
 }
