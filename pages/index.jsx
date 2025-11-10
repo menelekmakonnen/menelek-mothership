@@ -856,12 +856,15 @@ export default function Home() {
           width: 100vw;
           overflow: hidden;
           display: flex;
+          flex-direction: column;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
+          gap: clamp(1.4rem, 3.2vh, 2.4rem);
+          padding: clamp(1.4rem, 3vh, 2rem) clamp(1.4rem, 4vw, 2.8rem) clamp(1.6rem, 4vh, 2.6rem);
           isolation: isolate;
           background: ${resolvedTheme === 'dark'
-            ? 'linear-gradient(160deg, #060a14 0%, #0b1424 55%, #060a14 100%)'
-            : 'linear-gradient(160deg, #f7f9ff 0%, #ffffff 55%, #edf1ff 100%)'};
+            ? 'radial-gradient(circle at 20% 20%, #101a32 0%, #070c19 32%, #03060d 100%)'
+            : 'radial-gradient(circle at 22% 18%, #fdfcff 0%, #eef2ff 34%, #dee5ff 100%)'};
           filter: brightness(${resolvedBrightness}) contrast(${exposureLook.contrast});
         }
         .stage::after {
@@ -869,13 +872,13 @@ export default function Home() {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: radial-gradient(circle at 50% 50%, rgba(8, 12, 22, 0), rgba(8, 12, 22, 0.6));
-          opacity: var(--lens-vignette, 0.35);
+          background: radial-gradient(circle at 50% 50%, rgba(5, 10, 22, 0), rgba(5, 10, 22, 0.55));
+          opacity: var(--lens-vignette, 0.3);
           mix-blend-mode: multiply;
         }
         .viewport {
           font-family: 'Montserrat', 'Inter', sans-serif;
-          color: ${resolvedTheme === 'dark' ? '#f4f7ff' : '#0b1633'};
+          color: ${resolvedTheme === 'dark' ? '#f4f8ff' : '#101b32'};
         }
         .viewport :global(*) {
           user-select: none;
@@ -884,15 +887,12 @@ export default function Home() {
           cursor: pointer;
         }
         .top-interface {
-          position: absolute;
-          top: clamp(1.4rem, 4.6vh, 3rem);
-          left: 50%;
-          transform: translateX(-50%);
-          width: min(92vw, 1180px);
-          display: flex;
-          flex-direction: column;
-          gap: clamp(0.5rem, 1.2vw, 0.9rem);
+          position: relative;
+          width: min(94vw, 1180px);
+          display: grid;
+          gap: clamp(0.6rem, 1.3vw, 1rem);
           z-index: 6;
+          align-items: stretch;
         }
         .viewport.theme-light {
           background-color: #f5f7ff;
@@ -902,10 +902,11 @@ export default function Home() {
         }
         @media (max-width: 960px) {
           .stage {
-            padding: 0 1.2rem;
+            padding: clamp(1rem, 2.4vh, 1.4rem) clamp(1rem, 6vw, 1.6rem) clamp(1.2rem, 4vh, 1.8rem);
+            gap: 1.2rem;
           }
           .top-interface {
-            top: 1rem;
+            width: 100%;
             gap: 0.6rem;
           }
         }
@@ -976,17 +977,17 @@ function PanelDeck({
       <style jsx>{`
         .panel-deck {
           position: relative;
-          width: 100%;
-          height: min(72vh, 700px);
+          width: min(94vw, 1180px);
+          height: clamp(420px, 62vh, 660px);
+          margin: 0 auto;
           display: grid;
           place-items: center;
-          padding-top: clamp(10rem, 24vh, 16rem);
           z-index: 4;
         }
         @media (max-width: 960px) {
           .panel-deck {
-            min-height: 70vh;
-            padding-top: clamp(13rem, 32vh, 16rem);
+            width: 100%;
+            height: clamp(360px, 60vh, 560px);
           }
         }
       `}</style>
@@ -1016,13 +1017,13 @@ function PanelSection({
   const layerBoost = Math.min(layersCount * 1.2, 6);
   const baseBlur = Math.max(exposureLook.depthBlur * (1 - focusDepth + 0.08), 0);
   const blur = isActive
-    ? Math.min(baseBlur * 0.25 + (isExpanded ? 0 : layerBoost * 0.08), 2.4)
-    : Math.min(baseBlur * 0.65 + layerBoost * 0.6, 8);
+    ? Math.min(baseBlur * 0.18 + (isExpanded ? 0 : layerBoost * 0.05), 1.6)
+    : Math.min(baseBlur * 0.4 + layerBoost * 0.45, 5);
   const translateInactive = slideDirection === 'next' ? -12 : 12;
   const translatePrevious = slideDirection === 'next' ? -18 : 18;
   const translateX = isActive ? 0 : isPrevious ? translatePrevious : translateInactive;
   const lensScale = isExpanded ? 1.03 : isActive ? 1 + (lens.zoomMultiplier - 1) * 0.25 : 0.94;
-  const opacity = isActive ? 1 : 0.35;
+  const opacity = isActive ? 1 : 0.5;
   const pointerEvents = isActive ? 'auto' : 'none';
 
   const handleCardClick = (event, payload) => {
@@ -1089,17 +1090,18 @@ function PanelSection({
             filter 0.48s ease;
         }
         .panel-shell {
-          min-width: min(72vw, 940px);
-          max-width: min(72vw, 940px);
-          min-height: min(70vh, 660px);
-          border-radius: 32px;
-          padding: clamp(1.6rem, 2.8vw, 2.6rem);
+          min-width: min(68vw, 900px);
+          max-width: min(68vw, 900px);
+          min-height: clamp(420px, 58vh, 620px);
+          border-radius: 30px;
+          padding: clamp(1.8rem, 3vw, 2.4rem);
           background: ${resolvedTheme === 'dark'
-            ? 'linear-gradient(180deg, rgba(14, 18, 34, 0.88), rgba(8, 12, 24, 0.92))'
-            : 'linear-gradient(180deg, rgba(250, 252, 255, 0.96), rgba(236, 242, 255, 0.92))'};
-          border: 1px solid rgba(${resolvedTheme === 'dark' ? '118, 148, 255, 0.22' : '82, 102, 180, 0.2'});
-          box-shadow: 0 24px 60px rgba(${resolvedTheme === 'dark' ? '4, 12, 32, 0.55' : '90, 120, 200, 0.26'});
-          backdrop-filter: blur(18px) saturate(112%);
+            ? 'linear-gradient(180deg, rgba(18, 24, 40, 0.96), rgba(10, 14, 26, 0.98))'
+            : 'linear-gradient(180deg, rgba(250, 252, 255, 0.98), rgba(230, 238, 255, 0.96))'};
+          border: 1px solid rgba(${resolvedTheme === 'dark' ? '132, 172, 255, 0.32' : '82, 112, 190, 0.28'});
+          box-shadow: 0 28px 70px rgba(${resolvedTheme === 'dark' ? '4, 12, 30, 0.55' : '96, 128, 196, 0.28'});
+          backdrop-filter: blur(14px) saturate(128%);
+          color: ${resolvedTheme === 'dark' ? '#f5f8ff' : '#0a1a32'};
           display: grid;
           grid-template-rows: auto 1fr;
           overflow: hidden;
@@ -1120,21 +1122,23 @@ function PanelSection({
           font-size: 0.62rem;
           font-weight: 600;
           text-transform: uppercase;
-          opacity: 0.72;
+          color: ${resolvedTheme === 'dark' ? 'rgba(132, 172, 255, 0.76)' : 'rgba(24, 52, 110, 0.72)'};
         }
         h2 {
           margin: 0;
-          font-size: clamp(2.1rem, 3.3vw, 3rem);
-          letter-spacing: -0.01em;
+          font-size: clamp(1.6rem, 3vw, 2.3rem);
+          letter-spacing: 0.02em;
+          color: inherit;
+          line-height: 1.18;
         }
         .panel-expand {
-          border: 1px solid rgba(134, 244, 255, 0.4);
-          background: rgba(134, 244, 255, 0.12);
+          border: 1px solid rgba(152, 182, 255, 0.42);
+          background: rgba(152, 182, 255, 0.16);
           color: inherit;
           border-radius: 999px;
           padding: 0.45rem 1.2rem;
-          font-size: 0.72rem;
-          letter-spacing: 0.18em;
+          font-size: 0.7rem;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
         }
         .panel-body {
@@ -1142,16 +1146,17 @@ function PanelSection({
           display: flex;
         }
         .panel-section.is-expanded .panel-shell {
-          max-width: min(92vw, 1180px);
-          min-height: min(84vh, 760px);
+          max-width: min(90vw, 1160px);
+          min-height: min(82vh, 760px);
         }
         .panel-body.expanded {
           padding-bottom: 0.4rem;
         }
         @media (max-width: 960px) {
           .panel-shell {
-            min-width: 88vw;
-            max-width: 88vw;
+            min-width: 90vw;
+            max-width: 90vw;
+            min-height: clamp(380px, 68vh, 640px);
             padding: 1.6rem;
           }
           header {
@@ -1836,11 +1841,13 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
         .section-menu {
           display: grid;
           gap: 0.75rem;
-          padding: 0.75rem 1rem;
+          padding: 0.85rem 1.1rem;
           border-radius: 20px;
-          background: rgba(8, 12, 24, 0.28);
-          border: 1px solid rgba(118, 148, 255, 0.16);
-          backdrop-filter: blur(14px);
+          background: linear-gradient(180deg, rgba(14, 20, 34, 0.92), rgba(8, 12, 22, 0.95));
+          border: 1px solid rgba(138, 176, 255, 0.28);
+          box-shadow: 0 18px 36px rgba(3, 10, 26, 0.32);
+          backdrop-filter: blur(18px);
+          color: rgba(235, 244, 255, 0.96);
         }
         .menu-scroll {
           display: flex;
@@ -1855,39 +1862,39 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
         .menu-item {
           flex: 0 0 auto;
           display: grid;
-          gap: 0.2rem;
-          padding: 0.65rem 1rem;
+          gap: 0.22rem;
+          padding: 0.7rem 1.05rem;
           border-radius: 16px;
-          border: 1px solid rgba(118, 148, 255, 0.2);
-          background: rgba(118, 148, 255, 0.08);
+          border: 1px solid rgba(138, 176, 255, 0.28);
+          background: rgba(138, 176, 255, 0.14);
           text-align: left;
-          min-width: clamp(140px, 14vw, 180px);
+          min-width: clamp(150px, 15vw, 200px);
           transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
         }
         .menu-item.active {
-          background: rgba(152, 182, 255, 0.18);
-          border-color: rgba(152, 182, 255, 0.36);
+          background: rgba(166, 198, 255, 0.24);
+          border-color: rgba(166, 198, 255, 0.5);
           transform: translateY(-2px);
-          box-shadow: 0 10px 24px rgba(5, 12, 24, 0.24);
+          box-shadow: 0 12px 26px rgba(4, 10, 24, 0.3);
         }
         .menu-title {
-          font-size: 0.82rem;
+          font-size: 0.84rem;
           font-weight: 600;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.04em;
         }
         .menu-type {
           font-size: 0.62rem;
-          letter-spacing: 0.28em;
+          letter-spacing: 0.26em;
           text-transform: uppercase;
-          opacity: 0.6;
+          opacity: 0.72;
         }
         .expand-toggle {
           justify-self: end;
-          border: 1px solid rgba(152, 182, 255, 0.3);
-          background: rgba(152, 182, 255, 0.12);
+          border: 1px solid rgba(166, 198, 255, 0.45);
+          background: rgba(166, 198, 255, 0.18);
           color: inherit;
           border-radius: 999px;
-          padding: 0.45rem 1.2rem;
+          padding: 0.45rem 1.25rem;
           font-size: 0.7rem;
           letter-spacing: 0.22em;
           text-transform: uppercase;
@@ -2091,13 +2098,13 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           transform: translateX(-50%);
           display: grid;
           gap: 0.6rem;
-          padding: 1rem 1.5rem;
+          padding: 1.05rem 1.6rem;
           border-radius: 24px;
-          background: rgba(8, 12, 24, 0.32);
-          border: 1px solid rgba(118, 148, 255, 0.16);
-          backdrop-filter: blur(16px);
+          background: linear-gradient(180deg, rgba(12, 18, 32, 0.9), rgba(6, 10, 20, 0.94));
+          border: 1px solid rgba(138, 176, 255, 0.3);
+          backdrop-filter: blur(18px);
           color: rgba(235, 244, 255, 0.96);
-          box-shadow: 0 18px 46px rgba(4, 10, 24, 0.38);
+          box-shadow: 0 22px 52px rgba(4, 10, 24, 0.42);
           width: min(92vw, 960px);
         }
         .hud-main {
@@ -2113,10 +2120,10 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           gap: 0.5rem;
         }
         .hud-group button {
-          border: 1px solid rgba(152, 182, 255, 0.3);
+          border: 1px solid rgba(166, 198, 255, 0.42);
           border-radius: 999px;
-          background: rgba(152, 182, 255, 0.14);
-          padding: 0.45rem 1.1rem;
+          background: rgba(166, 198, 255, 0.18);
+          padding: 0.45rem 1.15rem;
           color: inherit;
           font-size: 0.72rem;
           letter-spacing: 0.18em;
@@ -2139,7 +2146,7 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           font-size: 0.62rem;
           letter-spacing: 0.24em;
           text-transform: uppercase;
-          opacity: 0.6;
+          opacity: 0.68;
           white-space: nowrap;
         }
         .value {
@@ -2333,22 +2340,24 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
       <style jsx>{`
         .control-dock {
           display: grid;
-          grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
-          gap: clamp(0.75rem, 1.8vw, 1.4rem);
+          grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+          gap: clamp(0.75rem, 1.6vw, 1.2rem);
           width: 100%;
+          align-items: stretch;
+          color: rgba(235, 241, 255, 0.96);
         }
         .cluster {
-          background: rgba(10, 14, 28, 0.32);
-          border: 1px solid rgba(118, 148, 255, 0.16);
-          border-radius: 20px;
-          backdrop-filter: blur(16px);
-          box-shadow: 0 14px 30px rgba(2, 8, 24, 0.28);
+          background: linear-gradient(180deg, rgba(14, 20, 34, 0.9), rgba(8, 12, 22, 0.92));
+          border: 1px solid rgba(138, 176, 255, 0.28);
+          border-radius: 18px;
+          backdrop-filter: blur(20px);
+          box-shadow: 0 18px 36px rgba(3, 10, 26, 0.34);
           display: grid;
-          gap: 0.6rem;
-          padding: 1rem 1.1rem;
+          gap: 0.55rem;
+          padding: 0.9rem 1.05rem;
         }
         .cluster.collapsed {
-          padding-bottom: 0.8rem;
+          padding-bottom: 0.7rem;
         }
         .cluster-header {
           display: flex;
@@ -2358,53 +2367,53 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
         .cluster-header button {
           border: none;
           background: none;
-          color: rgba(235, 241, 255, 0.95);
+          color: rgba(235, 241, 255, 0.96);
           font-weight: 600;
-          letter-spacing: 0.18em;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
           text-align: left;
         }
         .cluster-sub {
           font-size: 0.7rem;
-          letter-spacing: 0.14em;
+          letter-spacing: 0.18em;
           text-transform: uppercase;
-          opacity: 0.65;
+          opacity: 0.7;
         }
         .cluster-body {
           display: grid;
-          gap: 0.8rem;
+          gap: 0.75rem;
         }
         .cluster-summary {
           font-size: 0.74rem;
-          letter-spacing: 0.18em;
+          letter-spacing: 0.16em;
           text-transform: uppercase;
-          opacity: 0.65;
+          opacity: 0.72;
         }
         .exposure-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 0.9rem;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 0.7rem;
         }
         .lens-list {
           display: grid;
-          gap: 0.6rem;
+          gap: 0.55rem;
         }
         .lens-item {
           display: grid;
           gap: 0.25rem;
           border-radius: 16px;
-          border: 1px solid rgba(118, 148, 255, 0.22);
-          padding: 0.8rem 1rem;
-          background: rgba(118, 148, 255, 0.08);
+          border: 1px solid rgba(138, 176, 255, 0.28);
+          padding: 0.75rem 1rem;
+          background: rgba(138, 176, 255, 0.12);
           text-align: left;
           transition: background 0.3s ease, border-color 0.3s ease;
         }
         .lens-item.active {
-          border-color: rgba(152, 182, 255, 0.5);
-          background: rgba(152, 182, 255, 0.18);
+          border-color: rgba(166, 198, 255, 0.6);
+          background: rgba(166, 198, 255, 0.22);
         }
         .lens-title {
-          font-size: 0.92rem;
+          font-size: 0.9rem;
           font-weight: 600;
         }
         .lens-info {
@@ -2415,7 +2424,7 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
         }
         .assist-grid {
           display: grid;
-          gap: 0.6rem;
+          gap: 0.55rem;
         }
         .assist-item {
           display: flex;
@@ -2429,7 +2438,7 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
         }
         @media (max-width: 960px) {
           .control-dock {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           }
         }
       `}</style>
@@ -2464,22 +2473,23 @@ function SliderControl({ label, min, max, step, value, onChange, displayValue })
         input[type='range'] {
           appearance: none;
           width: 100%;
-          height: 6px;
+          height: 5px;
           border-radius: 999px;
-          background: linear-gradient(90deg, rgba(134, 244, 255, 0.6), rgba(255, 255, 255, 0.15));
+          background: linear-gradient(90deg, rgba(120, 210, 255, 0.7), rgba(210, 228, 255, 0.2));
+          box-shadow: inset 0 0 0 1px rgba(120, 190, 255, 0.18);
         }
         input[type='range']::-webkit-slider-thumb {
           appearance: none;
-          width: 18px;
-          height: 18px;
+          width: 16px;
+          height: 16px;
           border-radius: 50%;
-          background: #78f8ff;
-          box-shadow: 0 6px 16px rgba(120, 248, 255, 0.4);
+          background: linear-gradient(180deg, #9ce9ff, #63c1ff);
+          box-shadow: 0 6px 16px rgba(120, 248, 255, 0.34);
         }
         .slider-value {
           font-size: 0.78rem;
           letter-spacing: 0.1em;
-          opacity: 0.8;
+          opacity: 0.85;
         }
       `}</style>
     </label>
