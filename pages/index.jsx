@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const LENSES = [
   {
@@ -49,6 +49,7 @@ const LENSES = [
 ];
 
 const HUD_LEVELS = ['none', 'few', 'most', 'all'];
+const FLASH_MODES = ['auto', 'on', 'off'];
 
 const PANELS = [
   {
@@ -201,16 +202,24 @@ export default function Home() {
   const [showFlashReady, setShowFlashReady] = useState(true);
   const [isLensTransitioning, setIsLensTransitioning] = useState(false);
   const [dynamicWordIndex, setDynamicWordIndex] = useState(0);
-  const [panelShuffle, setPanelShuffle] = useState(() => shuffleUniverse());
+  const [flashMode, setFlashMode] = useState('auto');
+  const [loremakerItems, setLoremakerItems] = useState(() => shuffleUniverseItems());
 
   const stageRef = useRef(null);
   const focusTimeoutRef = useRef(null);
   const flashTimeoutRef = useRef(null);
   const flashOverlayTimeoutRef = useRef(null);
   const lensRotationTimeoutRef = useRef(null);
+  const pointerFrameRef = useRef(null);
 
   const hudLevel = HUD_LEVELS[hudLevelIndex];
   const lens = useMemo(() => LENSES.find((item) => item.id === lensId) || LENSES[2], [lensId]);
+
+  const panels = useMemo(() => {
+    return PANELS.map((panel) =>
+      panel.id === 'loremaker' ? { ...panel, items: loremakerItems } : panel,
+    );
+  }, [loremakerItems]);
 
   const apertureBlur = useMemo(() => {
     const ratio = 1 - (exposure.aperture - lens.minAperture) / (lens.maxAperture - lens.minAperture || 1);
@@ -242,6 +251,9 @@ export default function Home() {
       clearTimeout(flashTimeoutRef.current || undefined);
       clearTimeout(flashOverlayTimeoutRef.current || undefined);
       clearTimeout(lensRotationTimeoutRef.current || undefined);
+      if (pointerFrameRef.current !== null) {
+        cancelAnimationFrame(pointerFrameRef.current);
+      }
     };
   }, []);
 
@@ -254,19 +266,24 @@ export default function Home() {
   }, [hudLevel]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setPanelShuffle(shuffleUniverse());
+    const interval = setInterval(() => {
+      setLoremakerItems(shuffleUniverseItems());
     }, 12000);
-    return () => clearTimeout(timeout);
-  }, [panelShuffle]);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handlePointerMove = (event) => {
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-    setCursorPos({ x, y });
-  };
+  const handlePointerMove = useCallback((event) => {
+    if (pointerFrameRef.current !== null) return;
+    const { clientX, clientY } = event;
+    pointerFrameRef.current = requestAnimationFrame(() => {
+      pointerFrameRef.current = null;
+      const rect = stageRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = ((clientX - rect.left) / rect.width) * 100;
+      const y = ((clientY - rect.top) / rect.height) * 100;
+      setCursorPos({ x, y });
+    });
+  }, []);
 
   const handleFocus = (event) => {
     event.preventDefault();
@@ -305,32 +322,32 @@ export default function Home() {
 
     if (absX > absY) {
       if (deltaX < 0) {
-        setActivePanel((prev) => Math.min(prev + 1, PANELS.length - 1));
+        setActivePanel((prev) => Math.min(prev + 1, panels.length - 1));
       } else {
         setActivePanel((prev) => Math.max(prev - 1, 0));
       }
     } else {
       if (deltaY < 0) {
-        setActivePanel((prev) => Math.min(prev + 1, PANELS.length - 1));
+        setActivePanel((prev) => Math.min(prev + 1, panels.length - 1));
       } else {
         setActivePanel((prev) => Math.max(prev - 1, 0));
       }
     }
   };
 
-  const cycleHudLevel = () => {
+  const cycleHudLevel = useCallback(() => {
     setHudLevelIndex((prev) => (prev + 1) % HUD_LEVELS.length);
-  };
+  }, []);
 
-  const toggleCameraMode = () => {
+  const toggleCameraMode = useCallback(() => {
     setCameraMode((prev) => (prev === 'mirrorless' ? 'dslr' : 'mirrorless'));
-  };
+  }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
+  }, []);
 
-  const adjustExposure = (key, delta) => {
+  const adjustExposure = useCallback((key, delta) => {
     setExposure((prev) => {
       if (key === 'iso') {
         const nextIso = clamp(prev.iso + delta, 100, 6400);
@@ -354,28 +371,26 @@ export default function Home() {
       }
       return prev;
     });
-  };
+  }, [lens.minAperture, lens.maxAperture]);
 
-  const handleLensChange = (id) => {
-    if (id === lensId || isLensTransitioning) return;
-    setIsLensTransitioning(true);
-    setLensId(id);
-    clearTimeout(lensRotationTimeoutRef.current || undefined);
-    lensRotationTimeoutRef.current = setTimeout(() => setIsLensTransitioning(false), 620);
-  };
+  const handleLensChange = useCallback(
+    (id) => {
+      if (id === lensId || isLensTransitioning) return;
+      setIsLensTransitioning(true);
+      setLensId(id);
+      clearTimeout(lensRotationTimeoutRef.current || undefined);
+      lensRotationTimeoutRef.current = setTimeout(() => setIsLensTransitioning(false), 620);
+    },
+    [isLensTransitioning, lensId],
+  );
 
-  const triggerFlash = () => {
-    setFlashActive(true);
-    setShowFlashReady(false);
-    clearTimeout(flashOverlayTimeoutRef.current || undefined);
-    flashOverlayTimeoutRef.current = setTimeout(() => {
-      setFlashActive(false);
-    }, 260);
-    clearTimeout(flashTimeoutRef.current || undefined);
-    flashTimeoutRef.current = setTimeout(() => {
-      setShowFlashReady(true);
-    }, 900);
-  };
+  const cycleFlashMode = useCallback(() => {
+    setFlashMode((prev) => {
+      const index = FLASH_MODES.indexOf(prev);
+      const nextIndex = index === -1 ? 0 : (index + 1) % FLASH_MODES.length;
+      return FLASH_MODES[nextIndex];
+    });
+  }, []);
 
   const temperatureTint = useMemo(() => {
     const ratio = (exposure.whiteBalance - 2500) / (9000 - 2500);
@@ -386,6 +401,38 @@ export default function Home() {
       cool,
     };
   }, [exposure.whiteBalance]);
+
+  const exposureLook = useMemo(() => calculateExposureLook(exposure, theme), [exposure, theme]);
+  const {
+    brightness: exposureBrightness,
+    contrast: exposureContrast,
+    grain: grainStrength,
+    shutterSmear,
+    sceneLuminance,
+  } = exposureLook;
+
+  const triggerFlash = useCallback(
+    (force = false) => {
+      if (flashActive) return;
+      if (flashMode === 'off') return;
+      if (!force && flashMode === 'auto' && sceneLuminance > 0.62) return;
+      setFlashActive(true);
+      setShowFlashReady(false);
+      clearTimeout(flashOverlayTimeoutRef.current || undefined);
+      flashOverlayTimeoutRef.current = setTimeout(() => {
+        setFlashActive(false);
+      }, 260);
+      clearTimeout(flashTimeoutRef.current || undefined);
+      flashTimeoutRef.current = setTimeout(() => {
+        setShowFlashReady(true);
+      }, 900);
+    },
+    [flashActive, flashMode, sceneLuminance],
+  );
+
+  const handleFlashPress = useCallback(() => {
+    triggerFlash(true);
+  }, [triggerFlash]);
 
   const vignetteStrength = useMemo(() => {
     return lens.vignette * (cameraMode === 'dslr' ? 1.1 : 0.9);
@@ -413,11 +460,24 @@ export default function Home() {
         ...base,
         { label: 'Lens', value: lens.name },
         { label: 'Mode', value: cameraMode.toUpperCase() },
-        { label: 'Meter', value: calculateMeter(exposure, theme) },
+        { label: 'Meter', value: calculateMeter(exposure, theme, sceneLuminance) },
+        { label: 'Flash', value: flashMode.toUpperCase() },
       ];
     }
     return [];
-  }, [exposure, hudLevel, lens.name, cameraMode, theme]);
+  }, [exposure, hudLevel, lens.name, cameraMode, theme, sceneLuminance, flashMode]);
+
+  const stageStyle = useMemo(
+    () => ({
+      '--exposure-brightness': exposureBrightness,
+      '--exposure-contrast': exposureContrast,
+      '--warm-overlay': warmOverlay,
+      '--cool-overlay': coolOverlay,
+      '--grain-strength': grainStrength,
+      '--shutter-strength': shutterSmear,
+    }),
+    [exposureBrightness, exposureContrast, warmOverlay, coolOverlay, grainStrength, shutterSmear],
+  );
 
   const stageClassNames = [
     'stage',
@@ -442,10 +502,17 @@ export default function Home() {
         onPointerMove={handlePointerMove}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
+        style={stageStyle}
       >
-        <LensOverlay vignette={vignetteStrength} distortion={distortion} fov={lens.fov} />
+        <LensOverlay
+          vignette={vignetteStrength}
+          distortion={distortion}
+          fov={lens.fov}
+          flashMode={flashMode}
+        />
+        <ExposureEffects grain={grainStrength} shutter={shutterSmear} />
         <PanelRail
-          panels={panelShuffle}
+          panels={panels}
           activePanel={activePanel}
           style={transformStyle}
           apertureBlur={apertureBlur}
@@ -456,7 +523,8 @@ export default function Home() {
           dynamicWordIndex={dynamicWordIndex}
         />
         <FocusCursor position={cursorPos} focusing={isFocusing} />
-        <FlashOverlay active={flashActive} focusPoint={focusPoint} theme={theme} />
+        <FlashOverlay active={flashActive} focusPoint={focusPoint} theme={theme} mode={flashMode} />
+        <FlashToggle mode={flashMode} onCycle={cycleFlashMode} theme={theme} />
         <Hud
           hudReadouts={hudReadouts}
           hudLevel={hudLevel}
@@ -464,7 +532,8 @@ export default function Home() {
           flashReady={!flashActive && showFlashReady}
           theme={theme}
           cameraMode={cameraMode}
-          activePanel={panelShuffle[activePanel]?.title ?? ''}
+          activePanel={panels[activePanel]?.title ?? ''}
+          flashMode={flashMode}
         />
         <ControlCluster
           exposure={exposure}
@@ -473,10 +542,11 @@ export default function Home() {
           hudLevel={hudLevel}
           cameraMode={cameraMode}
           onAdjust={adjustExposure}
-          onFlash={triggerFlash}
+          onFlash={handleFlashPress}
           onCycleHud={cycleHudLevel}
           onToggleTheme={toggleTheme}
           onToggleCameraMode={toggleCameraMode}
+          flashMode={flashMode}
         />
         <LensSelector
           lenses={LENSES}
@@ -506,6 +576,7 @@ export default function Home() {
           justify-content: center;
           overflow: hidden;
           transition: background 0.4s ease;
+          filter: brightness(var(--exposure-brightness, 1)) contrast(var(--exposure-contrast, 1));
         }
         .stage::before {
           content: '';
@@ -513,8 +584,8 @@ export default function Home() {
           inset: 0;
           background: radial-gradient(
             circle at 50% 50%,
-            rgba(255, 236, 210, ${warmOverlay}),
-            rgba(190, 215, 255, ${coolOverlay}) 42%,
+            rgba(255, 236, 210, var(--warm-overlay, 0.2)),
+            rgba(190, 215, 255, var(--cool-overlay, 0.2)) 42%,
             transparent 70%
           );
           pointer-events: none;
@@ -1020,7 +1091,16 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
   return null;
 }
 
-function Hud({ hudReadouts, hudLevel, showFlashReady, flashReady, theme, cameraMode, activePanel }) {
+function Hud({
+  hudReadouts,
+  hudLevel,
+  showFlashReady,
+  flashReady,
+  theme,
+  cameraMode,
+  activePanel,
+  flashMode,
+}) {
   return (
     <div className={`hud hud-${hudLevel}`}>
       <div className="hud-left">
@@ -1041,6 +1121,7 @@ function Hud({ hudReadouts, hudLevel, showFlashReady, flashReady, theme, cameraM
             {flashReady ? 'FLASH READY' : 'FLASH CHARGING'}
           </span>
         )}
+        <span className="flash-mode">MODE: {flashMode.toUpperCase()}</span>
       </div>
       <style jsx>{`
         .hud {
@@ -1074,6 +1155,11 @@ function Hud({ hudReadouts, hudLevel, showFlashReady, flashReady, theme, cameraM
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+        .flash-mode {
+          font-size: 0.72rem;
+          opacity: 0.65;
+          letter-spacing: 0.12em;
         }
         .hud-center {
           display: flex;
@@ -1136,6 +1222,7 @@ function ControlCluster({
   onCycleHud,
   onToggleTheme,
   onToggleCameraMode,
+  flashMode,
 }) {
   const shutterLabel = `1/${Math.round(1 / exposure.shutter)}`;
   return (
@@ -1171,8 +1258,13 @@ function ControlCluster({
         <button onClick={() => onAdjust('aperture', 0.2)} aria-label="Close aperture">
           F+
         </button>
-        <button className="flash" onClick={onFlash} aria-label="Trigger flash">
-          Flash
+        <button
+          className={`flash ${flashMode}`}
+          onClick={onFlash}
+          aria-label="Trigger flash"
+          disabled={flashMode === 'off'}
+        >
+          Flash {flashMode === 'auto' ? 'Auto' : flashMode === 'on' ? 'On' : 'Off'}
         </button>
         <button onClick={() => onAdjust('shutter', -1 / 1250)} aria-label="Faster shutter">
           S+
@@ -1235,10 +1327,20 @@ function ControlCluster({
           transform: translateY(-3px);
           background: rgba(255, 255, 255, ${theme === 'dark' ? 0.16 : 0.26});
         }
+        button:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+          transform: none;
+        }
         .flash {
           background: linear-gradient(135deg, #ffe45b, #ff8c00);
           color: #1a1406;
           font-weight: 700;
+        }
+        .flash.off {
+          background: rgba(255, 255, 255, ${theme === 'dark' ? 0.12 : 0.22});
+          color: inherit;
+          font-weight: 600;
         }
         .readout {
           font-weight: 600;
@@ -1391,14 +1493,15 @@ function FocusCursor({ position, focusing }) {
   );
 }
 
-function FlashOverlay({ active, focusPoint, theme }) {
+function FlashOverlay({ active, focusPoint, theme, mode }) {
+  const intensity = mode === 'on' ? 1 : mode === 'auto' ? 0.85 : 0.65;
+  const baseAlpha = theme === 'dark' ? 0.85 : 0.6;
+  const alpha = clamp(baseAlpha * intensity, 0, 1);
   return (
     <div
       className={`flash-overlay ${active ? 'active' : ''}`}
       style={{
-        background: `radial-gradient(circle at ${focusPoint.x}% ${focusPoint.y}%, ${
-          theme === 'dark' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.6)'
-        }, transparent 55%)`,
+        background: `radial-gradient(circle at ${focusPoint.x}% ${focusPoint.y}%, rgba(255,255,255, ${alpha}), transparent 55%)`,
       }}
     >
       <style jsx>{`
@@ -1418,11 +1521,106 @@ function FlashOverlay({ active, focusPoint, theme }) {
   );
 }
 
-function LensOverlay({ vignette, distortion, fov }) {
+function FlashToggle({ mode, onCycle, theme }) {
+  const label = mode === 'auto' ? 'AUTO' : mode === 'on' ? 'ON' : 'OFF';
+  return (
+    <button className="flash-toggle" onClick={onCycle} aria-label="Cycle flash mode">
+      Flash Toggle · {label}
+      <style jsx>{`
+        .flash-toggle {
+          position: absolute;
+          top: 24px;
+          left: 32px;
+          padding: 0.55rem 1.2rem;
+          border-radius: 999px;
+          border: none;
+          background: rgba(${theme === 'dark' ? '8, 10, 18, 0.72' : '238, 240, 255, 0.86'});
+          color: inherit;
+          letter-spacing: 0.14em;
+          font-size: 0.68rem;
+          text-transform: uppercase;
+          cursor: pointer;
+          backdrop-filter: blur(18px);
+          transition: transform 0.25s ease, background 0.25s ease;
+        }
+        .flash-toggle:hover {
+          transform: translateY(-2px);
+          background: rgba(${theme === 'dark' ? '12, 16, 28, 0.86' : '224, 227, 255, 0.92'});
+        }
+        @media (max-width: 768px) {
+          .flash-toggle {
+            left: 50%;
+            transform: translateX(-50%);
+            top: 16px;
+          }
+          .flash-toggle:hover {
+            transform: translate(-50%, -2px);
+          }
+        }
+      `}</style>
+    </button>
+  );
+}
+
+function ExposureEffects({ grain, shutter }) {
+  return (
+    <div className="exposure-effects" style={{ '--grain-strength': grain, '--shutter-strength': shutter }}>
+      <div className="grain-layer" />
+      <div className="shutter-layer" />
+      <style jsx>{`
+        .exposure-effects {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        .grain-layer {
+          position: absolute;
+          inset: -120%;
+          opacity: var(--grain-strength);
+          background-image:
+            radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+            radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 0.24) 0, rgba(0, 0, 0, 0.24) 1px, transparent 1px),
+            radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+          background-size: 120px 120px, 180px 180px, 90px 90px;
+          mix-blend-mode: soft-light;
+          animation: grainShift 1.8s steps(3) infinite;
+        }
+        .shutter-layer {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(120deg, rgba(255, 255, 255, 0.28), transparent 60%);
+          filter: blur(calc(var(--shutter-strength) * 32px));
+          opacity: calc(var(--shutter-strength) * 0.55);
+          transition: opacity 0.45s ease, filter 0.45s ease;
+          mix-blend-mode: screen;
+        }
+        @keyframes grainShift {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          50% {
+            transform: translate3d(-5%, 3%, 0);
+          }
+          100% {
+            transform: translate3d(4%, -6%, 0);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .grain-layer {
+            animation: none;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function LensOverlay({ vignette, distortion, fov, flashMode }) {
   return (
     <div className="lens-overlay">
       <div className="vignette" />
-      <div className="hud-top">Flash</div>
+      <div className="hud-top">Flash {flashMode.toUpperCase()}</div>
       <div className="hud-fov">{fov.toFixed(0)}°</div>
       <style jsx>{`
         .lens-overlay {
@@ -1466,25 +1664,44 @@ function LensOverlay({ vignette, distortion, fov }) {
   );
 }
 
-function calculateMeter(exposure, theme) {
-  const target = theme === 'dark' ? 0.3 : 0.6;
-  const exposureValue = Math.log2((exposure.aperture ** 2) / exposure.shutter) - Math.log2(exposure.iso / 100);
-  const normalized = (exposureValue + 5) / 14;
-  const diff = normalized - target;
-  if (diff > 0.15) return '+';
-  if (diff < -0.15) return '-';
+function calculateExposureLook(exposure, theme) {
+  const minShutter = 1 / 8000;
+  const maxShutter = 1 / 4;
+  const shutterSeconds = clamp(exposure.shutter, minShutter, maxShutter);
+  const ev100 = Math.log2((exposure.aperture ** 2) / exposure.shutter);
+  const ev = ev100 - Math.log2(exposure.iso / 100);
+  const normalized = clamp((ev + 2) / 12, 0, 1);
+  const brightness = clamp(0.65 + normalized * 0.9, 0.55, 1.6);
+  const contrast = clamp(0.85 + (normalized - 0.5) * 0.4, 0.75, 1.25);
+  const grain = clamp(0.08 + ((exposure.iso - 100) / (6400 - 100)) * 0.4, 0.08, 0.42);
+  const shutterNormalized = clamp(
+    (Math.log(shutterSeconds) - Math.log(minShutter)) / (Math.log(maxShutter) - Math.log(minShutter)),
+    0,
+    1,
+  );
+  const shutterSmear = 0.05 + shutterNormalized * 0.9;
+  const themeBias = theme === 'dark' ? -0.05 : 0.08;
+  const sceneLuminance = clamp(0.25 + normalized * 0.7 + themeBias, 0, 1);
+  return { brightness, contrast, grain, shutterSmear, sceneLuminance };
+}
+
+function calculateMeter(exposure, theme, sceneLuminance) {
+  const target = theme === 'dark' ? 0.45 : 0.62;
+  const diff = sceneLuminance - target;
+  if (diff > 0.12) return '+';
+  if (diff < -0.12) return '-';
+  const ev100 = Math.log2((exposure.aperture ** 2) / exposure.shutter);
+  const ev = ev100 - Math.log2(exposure.iso / 100);
+  const normalized = clamp((ev + 2) / 12, 0, 1);
+  if (normalized > target + 0.18) return '+';
+  if (normalized < target - 0.18) return '-';
   return '0';
 }
 
-function shuffleUniverse() {
+function shuffleUniverseItems() {
   const panel = PANELS.find((item) => item.id === 'loremaker');
-  if (!panel) return PANELS;
-  const shuffled = [...panel.items].sort(() => Math.random() - 0.5);
-  const updated = PANELS.map((item) => {
-    if (item.id === 'loremaker') {
-      return { ...item, items: shuffled.slice(0, 12) };
-    }
-    return item;
-  });
-  return updated;
+  if (!panel) {
+    return [];
+  }
+  return [...panel.items].sort(() => Math.random() - 0.5).slice(0, 12);
 }
