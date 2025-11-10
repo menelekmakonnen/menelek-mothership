@@ -1,59 +1,61 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const LENSES = [
   {
     id: '24mm',
-    name: '24mm Wide Prime',
-    fov: 84,
+    name: '24mm Signature Prime',
+    description: 'Sweeping cinematic width with gentle curvature.',
     minAperture: 1.4,
     maxAperture: 16,
-    vignette: 0.25,
-    distortion: 0.2,
+    depthResponse: 0.22,
+    zoomMultiplier: 0.92,
   },
   {
     id: '35mm',
     name: '35mm Street Prime',
-    fov: 63,
+    description: 'Balanced view for documentaries and lifestyle.',
     minAperture: 1.4,
-    maxAperture: 16,
-    vignette: 0.18,
-    distortion: 0.12,
+    maxAperture: 18,
+    depthResponse: 0.28,
+    zoomMultiplier: 0.97,
   },
   {
     id: '50mm',
-    name: '50mm Prime',
-    fov: 47,
+    name: '50mm Master Prime',
+    description: 'Natural perspective, silky depth falloff.',
     minAperture: 1.2,
     maxAperture: 22,
-    vignette: 0.12,
-    distortion: 0.05,
+    depthResponse: 0.34,
+    zoomMultiplier: 1,
   },
   {
     id: '85mm',
-    name: '85mm Portrait',
-    fov: 28,
+    name: '85mm Portrait Prime',
+    description: 'Compression-rich intimacy for human stories.',
     minAperture: 1.4,
     maxAperture: 22,
-    vignette: 0.08,
-    distortion: 0.03,
+    depthResponse: 0.4,
+    zoomMultiplier: 1.04,
   },
   {
     id: '70-200mm',
-    name: '70-200mm Telephoto',
-    fov: 20,
+    name: '70-200mm Royale Zoom',
+    description: 'Full telephoto sweep from detail to panorama.',
     minAperture: 2.8,
     maxAperture: 32,
-    vignette: 0.05,
-    distortion: 0.02,
+    depthResponse: 0.52,
+    zoomMultiplier: 1.08,
   },
 ];
 
+const FLASH_MODES = ['auto', 'bright', 'dark'];
 const HUD_LEVELS = ['none', 'few', 'most', 'all'];
-const FLASH_MODES = ['auto', 'on', 'off'];
 
 const PANELS = [
   {
     id: 'intro',
+    type: 'hero',
+    luminance: 0.48,
     title: 'Worldbuilder, AI Supernerd and',
     dynamicWords: [
       'Friend',
@@ -73,34 +75,64 @@ const PANELS = [
       'Prompt Engineer',
       'Instructor',
     ],
-    layout: 'hero',
   },
   {
     id: 'links',
+    type: 'links',
+    luminance: 0.62,
     title: 'All My Links',
-    layout: 'links',
-    items: [
-      { label: 'LinkedIn', url: 'https://www.linkedin.com/in/menelekmakonnen' },
-      { label: 'Instagram', url: 'https://www.instagram.com/menelekmakonnen' },
-      { label: 'YouTube', url: 'https://www.youtube.com/@menelekmakonnen' },
-      { label: 'TikTok', url: 'https://www.tiktok.com/@menelekmakonnen' },
+    cards: [
+      {
+        title: 'LinkedIn',
+        subtitle: 'Professional network + collaborations',
+        url: 'https://www.linkedin.com/in/menelekmakonnen',
+      },
+      {
+        title: 'Instagram',
+        subtitle: 'Daily frames + behind the scenes',
+        url: 'https://www.instagram.com/menelekmakonnen',
+      },
+      {
+        title: 'YouTube',
+        subtitle: 'Films, music videos, and breakdowns',
+        url: 'https://www.youtube.com/@menelekmakonnen',
+      },
+      {
+        title: 'TikTok',
+        subtitle: 'Short-form experiments and vibes',
+        url: 'https://www.tiktok.com/@menelekmakonnen',
+      },
     ],
   },
   {
     id: 'films',
+    type: 'reel',
+    luminance: 0.38,
     title: 'Films & Music Videos',
-    layout: 'carousel',
-    items: [
-      { label: 'Latest Film', url: 'https://youtube.com', description: 'Watch on YouTube' },
-      { label: 'Music Video Reel', url: 'https://youtube.com', description: 'High energy edits' },
-      { label: 'Behind The Scenes', url: 'https://youtube.com', description: 'On set moments' },
+    cards: [
+      {
+        title: 'The Skyline Thesis',
+        description: 'A short film exploring futurist Lagos and diasporan memory.',
+        url: 'https://www.youtube.com/watch?v=Q0j0w0rld',
+      },
+      {
+        title: 'Neon Dust',
+        description: 'Music video with kinetic choreography and LED light rigs.',
+        url: 'https://www.youtube.com/watch?v=F0cusBeats',
+      },
+      {
+        title: 'Afterlight',
+        description: 'Documenting cross-continental creatives forging new cinema.',
+        url: 'https://www.youtube.com/watch?v=AfterLight',
+      },
     ],
   },
   {
     id: 'loremaker',
+    type: 'loremaker',
+    luminance: 0.44,
     title: 'Explore My Loremaker Universe',
-    layout: 'grid',
-    items: [
+    characters: [
       'Aetherial Nomad',
       'Chrono Scribe',
       'Nebula Archivist',
@@ -116,64 +148,167 @@ const PANELS = [
       'Skyway Pilot',
       'Pulse Druid',
       'Celestial Maven',
+      'Flux Luthier',
     ],
   },
   {
     id: 'ai-projects',
+    type: 'columns',
+    luminance: 0.58,
     title: 'AI Projects',
-    layout: 'columns',
-    items: [
-      { label: 'Starterclass', description: 'Immersive AI learning journeys and workshops.' },
-      { label: 'Scholarships', description: 'Supporting the next wave of innovators with AI resources.' },
-      { label: 'Consultancy', description: 'Bespoke AI strategy and creative technology solutions.' },
+    cards: [
+      {
+        title: 'Starterclass',
+        description: 'Immersive learning modules guiding creatives into AI artistry.',
+      },
+      {
+        title: 'Scholarships',
+        description: 'Funding programs that elevate underrepresented dreamers.',
+      },
+      {
+        title: 'Consultancy',
+        description: 'Bespoke AI roadmaps for studios, agencies, and storytellers.',
+      },
     ],
   },
   {
     id: 'video-edits',
+    type: 'stack',
+    luminance: 0.42,
     title: 'Epic Video Edits',
-    layout: 'stack',
-    items: [
-      'Kinetic montage reels crafted for story-first experiences.',
-      'Cinematic grade transitions and colour narratives.',
-      'Collaborations with directors and agencies worldwide.',
+    bullets: [
+      'Kinetic montage reels engineered for emotion-rich storytelling.',
+      'Colour scripts that sculpt atmosphere from the first frame.',
+      'Global collaborations merging art direction and advanced VFX.',
     ],
   },
   {
     id: 'photography',
+    type: 'gallery',
+    luminance: 0.36,
     title: 'Photography Albums',
-    layout: 'albums',
-    items: [
-      { label: 'City Noir', folder: 'Google Drive Album', description: 'Moody night walks with neon drenched scenes.' },
-      { label: 'Golden Hour Faces', folder: 'Google Drive Album', description: 'Portraits with soulful warmth and depth.' },
-      { label: 'Architectural Silence', folder: 'Google Drive Album', description: 'Minimalist structures captured in bold compositions.' },
+    groupSizes: [8, 16],
+    albums: [
+      {
+        title: 'City Noir',
+        description: 'Moody night walks with neon drenched reflections.',
+        images: [
+          { src: 'https://images.unsplash.com/photo-1544194215-541c2d3561a4?auto=format&fit=crop&w=1200&q=80', alt: 'Neon skyline framed between rainy high-rises' },
+          { src: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80', alt: 'Silhouette walking through a misty alley with neon signage' },
+          { src: 'https://images.unsplash.com/photo-1526481280695-3c469fd10c04?auto=format&fit=crop&w=1200&q=80', alt: 'Taxi headlights blurring into colourful streaks' },
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80', alt: 'Metropolis skyline at midnight with cyan glow' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80', alt: 'Man under umbrella in cinematic rain' },
+          { src: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80', alt: 'Soft focus streetlights forming bokeh orbs' },
+          { src: 'https://images.unsplash.com/photo-1454789548928-9efd52dc4031?auto=format&fit=crop&w=1200&q=80', alt: 'Glass architecture reflecting a pink dusk sky' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1200&q=80', alt: 'Portrait with city lights creating bokeh background' },
+          { src: 'https://images.unsplash.com/photo-1486591978090-71d41e64e1c2?auto=format&fit=crop&w=1200&q=80', alt: 'Street crossing with dynamic light trails' },
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80', alt: 'Night view of futuristic skyline in teal hues' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80', alt: 'Fashion portrait with moody neon fill light' },
+          { src: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=900&q=80', alt: 'Motorbike speeding through rainy street' },
+          { src: 'https://images.unsplash.com/photo-1454789548928-9efd52dc4031?auto=format&fit=crop&w=900&q=80', alt: 'Architecture with shimmering reflections at night' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=900&q=80', alt: 'Close-up portrait with dramatic rim light' },
+          { src: 'https://images.unsplash.com/photo-1486591978090-71d41e64e1c2?auto=format&fit=crop&w=900&q=80', alt: 'Birds-eye perspective of neon intersection' },
+          { src: 'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?auto=format&fit=crop&w=900&q=80', alt: 'Reflective puddles under city lights' },
+        ],
+      },
+      {
+        title: 'Golden Hour Faces',
+        description: 'Portraits flooded with honeyed sunlight and gentle wind.',
+        images: [
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80', alt: 'Golden hour portrait with glowing backlight' },
+          { src: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=80', alt: 'Laughing friends bathed in sunset light' },
+          { src: 'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?auto=format&fit=crop&w=1200&q=80', alt: 'Windswept hair catching the sun flare' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1200&q=80', alt: 'Close portrait with warm tones and shallow depth' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80', alt: 'Model looking toward the sun with soft expression' },
+          { src: 'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?auto=format&fit=crop&w=900&q=80', alt: 'Hands catching sunlight in wheat field' },
+          { src: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80', alt: 'Group hug during a golden sunset' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=900&q=80', alt: 'Profile portrait with flare halo' },
+        ],
+      },
+      {
+        title: 'Architectural Silence',
+        description: 'Minimalist structures captured in bold compositions.',
+        images: [
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80', alt: 'Modern tower with teal reflections' },
+          { src: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80', alt: 'Angular staircase with contrasting lights' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80', alt: 'Symmetrical building facade at dusk' },
+          { src: 'https://images.unsplash.com/photo-1526481280695-3c469fd10c04?auto=format&fit=crop&w=1200&q=80', alt: 'Abstract architecture with sweeping curves' },
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80', alt: 'Minimalist skyscraper with gradient sky' },
+          { src: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80', alt: 'Concrete atrium with soft light' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80', alt: 'Architectural detail with repeating patterns' },
+          { src: 'https://images.unsplash.com/photo-1526481280695-3c469fd10c04?auto=format&fit=crop&w=900&q=80', alt: 'Curved roofline against twilight' },
+        ],
+      },
     ],
   },
   {
     id: 'ai-albums',
+    type: 'gallery',
+    luminance: 0.46,
     title: 'AI Albums',
-    layout: 'albums',
-    items: [
-      { label: 'Mythic Futures', folder: 'Drive Showcase', description: 'Speculative worlds rendered through machine imagination.' },
-      { label: 'Synesthetic Portraits', folder: 'Drive Showcase', description: 'Faces dreamed in colour, texture, and feeling.' },
-      { label: 'Impossible Landscapes', folder: 'Drive Showcase', description: 'New geologies emerging from code and vision.' },
+    groupSizes: [8, 16],
+    albums: [
+      {
+        title: 'Mythic Futures',
+        description: 'Speculative cities grown from neural imaginations.',
+        images: [
+          { src: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1200&q=80', alt: 'AI rendered floating city of lights' },
+          { src: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80', alt: 'Surreal desert metropolis at dusk' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80', alt: 'Synthwave skyline above ocean' },
+          { src: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80', alt: 'Cybernetic tower with glowing windows' },
+          { src: 'https://images.unsplash.com/photo-1526481280695-3c469fd10c04?auto=format&fit=crop&w=900&q=80', alt: 'Floating transit bridge through clouds' },
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80', alt: 'City with spiralling skyscrapers' },
+          { src: 'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?auto=format&fit=crop&w=900&q=80', alt: 'Aerial view of luminous AI-generated labyrinth' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=900&q=80', alt: 'Futuristic canal with neon reflections' },
+        ],
+      },
+      {
+        title: 'Synesthetic Portraits',
+        description: 'Faces dreamed in colour, texture, and feeling.',
+        images: [
+          { src: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80', alt: 'AI portrait swirling with pastel paint' },
+          { src: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80', alt: 'Vibrant face with geometric overlays' },
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80', alt: 'Dual-tone portrait shimmering with data streams' },
+          { src: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80', alt: 'Abstract human figure with neon outlines' },
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80', alt: 'Chromatic portrait dissolving into light' },
+          { src: 'https://images.unsplash.com/photo-1526481280695-3c469fd10c04?auto=format&fit=crop&w=900&q=80', alt: 'Face formed by shimmering shards' },
+          { src: 'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?auto=format&fit=crop&w=900&q=80', alt: 'Neural portrait woven with metallic threads' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=900&q=80', alt: 'Multi-exposure head with holographic aura' },
+        ],
+      },
+      {
+        title: 'Impossible Landscapes',
+        description: 'New geologies co-written with algorithms.',
+        images: [
+          { src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80', alt: 'Futuristic canyon bathed in violet light' },
+          { src: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80', alt: 'Mountains rising into a spiral sky' },
+          { src: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=900&q=80', alt: 'Floating rock arch glowing at sunrise' },
+          { src: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80', alt: 'Luminescent ice formations' },
+          { src: 'https://images.unsplash.com/photo-1526481280695-3c469fd10c04?auto=format&fit=crop&w=900&q=80', alt: 'Waterfall cascading through alien jungle' },
+          { src: 'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?auto=format&fit=crop&w=900&q=80', alt: 'Bioluminescent river under stars' },
+          { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80', alt: 'Crystalline desert with aurora' },
+          { src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=900&q=80', alt: 'Abstract cliff edges dissolving into mist' },
+        ],
+      },
     ],
   },
   {
     id: 'blog',
+    type: 'blog',
+    luminance: 0.52,
     title: 'Blog',
-    layout: 'blog',
-    items: [
+    posts: [
       {
-        label: 'On Crafting Cinematic Interfaces',
-        description: 'A manifesto on blending tactile camera controls with web design.',
+        title: 'On Crafting Cinematic Interfaces',
+        excerpt: 'A manifesto on blending tactile camera controls with future web rituals.',
       },
       {
-        label: 'AI + Storytelling',
-        description: 'Thoughts on co-creating worlds with neural collaborators.',
+        title: 'AI + Storytelling',
+        excerpt: 'How machine collaborators extend the lore worlds I build.',
       },
       {
-        label: 'Field Notes',
-        description: 'Travel logs, lens tests, and creative experiments.',
+        title: 'Field Notes',
+        excerpt: 'Lens tests, colour scripts, and practical insights from set.',
       },
     ],
   },
@@ -181,126 +316,170 @@ const PANELS = [
 
 const INITIAL_EXPOSURE = {
   iso: 200,
-  shutter: 1 / 125,
-  aperture: 1.8,
+  shutter: 1 / 120,
+  aperture: 2.2,
   whiteBalance: 5200,
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const formatShutter = (value) => {
+  if (value >= 1) return `${value.toFixed(0)}s`;
+  const denominator = Math.round(1 / value);
+  return `1/${denominator}`;
+};
+
+const calculateExposureLook = (exposure, luminance, lens, focusDepth) => {
+  const lensInfluence = lens.depthResponse * 1.8;
+  const apertureFactor = clamp((lens.maxAperture - exposure.aperture) / (lens.maxAperture - lens.minAperture + 0.0001), 0, 1);
+  const shutterFactor = clamp(Math.log10(1 / exposure.shutter) / 4, 0, 1);
+  const isoFactor = clamp((exposure.iso - 100) / 6000, 0, 1);
+
+  const brightness = clamp(luminance + isoFactor * 0.25 + apertureFactor * 0.18 - shutterFactor * 0.12, 0.2, 1.1);
+  const contrast = clamp(0.8 + apertureFactor * 0.2 + (1 - focusDepth) * 0.1, 0.85, 1.2);
+  const grain = clamp(isoFactor * 0.8 + shutterFactor * 0.2, 0, 1);
+  const smear = clamp((1 - shutterFactor) * 0.3, 0, 0.28);
+  const depthBlur = clamp((1 - focusDepth) * (0.5 + lensInfluence), 0.05, 1.2);
+
+  return { brightness, contrast, grain, smear, depthBlur };
+};
+
+const getTodayKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+};
 
 export default function Home() {
+  const stageRef = useRef(null);
+  const lastFocusTargetRef = useRef(null);
+  const lastBackdropClickRef = useRef(0);
+  const swipeStateRef = useRef({ startX: 0, startY: 0, active: false });
   const [activePanel, setActivePanel] = useState(0);
+  const [dynamicWordIndex, setDynamicWordIndex] = useState(0);
   const [hudLevelIndex, setHudLevelIndex] = useState(3);
   const [cameraMode, setCameraMode] = useState('mirrorless');
-  const [theme, setTheme] = useState('dark');
   const [lensId, setLensId] = useState('50mm');
-  const [exposure, setExposure] = useState(INITIAL_EXPOSURE);
-  const [isFocusing, setIsFocusing] = useState(false);
-  const [focusPoint, setFocusPoint] = useState({ x: 50, y: 50 });
-  const [cursorPos, setCursorPos] = useState({ x: 50, y: 50 });
-  const [flashActive, setFlashActive] = useState(false);
-  const [showFlashReady, setShowFlashReady] = useState(true);
-  const [isLensTransitioning, setIsLensTransitioning] = useState(false);
-  const [dynamicWordIndex, setDynamicWordIndex] = useState(0);
   const [flashMode, setFlashMode] = useState('auto');
-  const [loremakerItems, setLoremakerItems] = useState(() => shuffleUniverseItems());
-
-  const stageRef = useRef(null);
-  const focusTimeoutRef = useRef(null);
-  const flashTimeoutRef = useRef(null);
-  const flashOverlayTimeoutRef = useRef(null);
-  const lensRotationTimeoutRef = useRef(null);
-  const pointerFrameRef = useRef(null);
-
+  const [exposure, setExposure] = useState(INITIAL_EXPOSURE);
+  const [focusDepth, setFocusDepth] = useState(0.52);
+  const [focusPoint, setFocusPoint] = useState({ x: 50, y: 50 });
+  const [layers, setLayers] = useState([]);
+  const [galleryState, setGalleryState] = useState(null);
+  const [booting, setBooting] = useState(true);
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [batteryLevel, setBatteryLevel] = useState(1);
+  const [lensTransition, setLensTransition] = useState(null);
   const hudLevel = HUD_LEVELS[hudLevelIndex];
   const lens = useMemo(() => LENSES.find((item) => item.id === lensId) || LENSES[2], [lensId]);
 
-  const panels = useMemo(() => {
-    return PANELS.map((panel) =>
-      panel.id === 'loremaker' ? { ...panel, items: loremakerItems } : panel,
-    );
-  }, [loremakerItems]);
+  const [systemTheme, setSystemTheme] = useState('dark');
+  const resolvedTheme = flashMode === 'bright' ? 'light' : flashMode === 'dark' ? 'dark' : systemTheme;
 
-  const apertureBlur = useMemo(() => {
-    const ratio = 1 - (exposure.aperture - lens.minAperture) / (lens.maxAperture - lens.minAperture || 1);
-    return clamp(ratio * 12, 0, 14);
-  }, [exposure.aperture, lens.minAperture, lens.maxAperture]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setSystemTheme(query.matches ? 'dark' : 'light');
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const words = PANELS[0].dynamicWords;
     const interval = setInterval(() => {
       setDynamicWordIndex((prev) => (prev + 1) % words.length);
-    }, 2600);
+    }, 2400);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      const previousOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = previousOverflow;
-      };
+    const todayKey = getTodayKey();
+    const runBoot = () => {
+      setBooting(true);
+      const timer = setTimeout(() => setBooting(false), 2200);
+      return () => clearTimeout(timer);
+    };
+
+    if (typeof window === 'undefined') {
+      runBoot();
+      return undefined;
     }
-    return undefined;
+
+    const stored = window.localStorage.getItem('mm-camera-boot');
+    if (stored !== todayKey) {
+      window.localStorage.setItem('mm-camera-boot', todayKey);
+      return runBoot();
+    }
+    const timer = setTimeout(() => setBooting(false), 600);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
+    const updateBattery = () => {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      const fullDrainMinutes = 23 * 60 + 11;
+      const ratio = clamp(1 - minutes / fullDrainMinutes, 0, 1);
+      setBatteryLevel(ratio);
+    };
+    updateBattery();
+    const interval = setInterval(updateBattery, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
-      clearTimeout(focusTimeoutRef.current || undefined);
-      clearTimeout(flashTimeoutRef.current || undefined);
-      clearTimeout(flashOverlayTimeoutRef.current || undefined);
-      clearTimeout(lensRotationTimeoutRef.current || undefined);
-      if (pointerFrameRef.current !== null) {
-        cancelAnimationFrame(pointerFrameRef.current);
-      }
+      document.body.style.overflow = previous;
     };
   }, []);
 
-  useEffect(() => {
-    if (hudLevel === 'none') {
-      setShowFlashReady(false);
-    } else {
-      setShowFlashReady(true);
-    }
-  }, [hudLevel]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLoremakerItems(shuffleUniverseItems());
-    }, 12000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handlePointerMove = useCallback((event) => {
-    if (pointerFrameRef.current !== null) return;
-    const { clientX, clientY } = event;
-    pointerFrameRef.current = requestAnimationFrame(() => {
-      pointerFrameRef.current = null;
-      const rect = stageRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const x = ((clientX - rect.left) / rect.width) * 100;
-      const y = ((clientY - rect.top) / rect.height) * 100;
-      setCursorPos({ x, y });
+  const openLayer = (layer) => {
+    setLayers((prev) => {
+      const next = [...prev.slice(-9), { ...layer, id: layer.id || `layer-${Date.now()}-${Math.random()}` }];
+      return next;
     });
-  }, []);
-
-  const handleFocus = (event) => {
-    event.preventDefault();
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-    setFocusPoint({ x, y });
-    setIsFocusing(true);
-    clearTimeout(focusTimeoutRef.current || undefined);
-    focusTimeoutRef.current = setTimeout(() => setIsFocusing(false), 420);
   };
 
-  const swipeState = useRef({ startX: 0, startY: 0, active: false });
+  const closeTopLayer = () => {
+    setLayers((prev) => prev.slice(0, -1));
+  };
+
+  useEffect(() => {
+    if (!layers.length) {
+      setGalleryState(null);
+    }
+  }, [layers.length]);
+
+  const handleLayerBackdropClick = (event) => {
+    const now = Date.now();
+    if (now - lastBackdropClickRef.current < 400) {
+      closeTopLayer();
+    } else {
+      focusAtPointer(event, 'backdrop');
+    }
+    lastBackdropClickRef.current = now;
+  };
+
+  const focusAtPointer = (event, targetId) => {
+    if (!stageRef.current) return;
+    if (targetId && lastFocusTargetRef.current === targetId) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    const x = clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100);
+    const y = clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100);
+    setFocusPoint({ x, y });
+    lastFocusTargetRef.current = targetId || null;
+  };
+
+  const handleScrollFocus = (event) => {
+    event.preventDefault();
+    const delta = event.deltaY * -0.0006;
+    setFocusDepth((prev) => clamp(prev + delta, 0.1, 0.95));
+  };
 
   const handlePointerDown = (event) => {
-    swipeState.current = {
+    swipeStateRef.current = {
       startX: event.clientX,
       startY: event.clientY,
       active: true,
@@ -308,486 +487,382 @@ export default function Home() {
   };
 
   const handlePointerUp = (event) => {
-    if (!swipeState.current.active) return;
-    const deltaX = event.clientX - swipeState.current.startX;
-    const deltaY = event.clientY - swipeState.current.startY;
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
-    swipeState.current.active = false;
-
-    if (Math.max(absX, absY) < 40) {
-      handleFocus(event);
+    if (!swipeStateRef.current.active) return;
+    const { startX, startY } = swipeStateRef.current;
+    swipeStateRef.current.active = false;
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+    if (Math.abs(deltaX) < 24 && Math.abs(deltaY) < 24) {
+      focusAtPointer(event, 'stage');
       return;
     }
-
-    if (absX > absY) {
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
       if (deltaX < 0) {
-        setActivePanel((prev) => Math.min(prev + 1, panels.length - 1));
+        handlePanelChange('next');
       } else {
-        setActivePanel((prev) => Math.max(prev - 1, 0));
-      }
-    } else {
-      if (deltaY < 0) {
-        setActivePanel((prev) => Math.min(prev + 1, panels.length - 1));
-      } else {
-        setActivePanel((prev) => Math.max(prev - 1, 0));
+        handlePanelChange('prev');
       }
     }
   };
 
-  const cycleHudLevel = useCallback(() => {
+  const handlePanelChange = (direction) => {
+    setActivePanel((prev) => {
+      if (direction === 'next') {
+        return clamp(prev + 1, 0, PANELS.length - 1);
+      }
+      return clamp(prev - 1, 0, PANELS.length - 1);
+    });
+  };
+
+  const handleLensChange = (id) => {
+    if (id === lensId) return;
+    setLensId(id);
+    setLensTransition({ lens: LENSES.find((item) => item.id === id), timestamp: Date.now() });
+    setTimeout(() => {
+      setLensTransition(null);
+    }, 680);
+  };
+
+  const cycleHudLevel = () => {
     setHudLevelIndex((prev) => (prev + 1) % HUD_LEVELS.length);
-  }, []);
+  };
 
-  const toggleCameraMode = useCallback(() => {
+  const toggleCameraMode = () => {
     setCameraMode((prev) => (prev === 'mirrorless' ? 'dslr' : 'mirrorless'));
-  }, []);
+  };
 
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  }, []);
+  const cycleFlashMode = () => {
+    setFlashMode((prev) => {
+      const index = FLASH_MODES.indexOf(prev);
+      return FLASH_MODES[(index + 1) % FLASH_MODES.length];
+    });
+  };
 
-  const adjustExposure = useCallback((key, delta) => {
+  const handleExposureChange = (key) => (value) => {
     setExposure((prev) => {
       if (key === 'iso') {
-        const nextIso = clamp(prev.iso + delta, 100, 6400);
-        return { ...prev, iso: nextIso };
+        return { ...prev, iso: Math.round(value / 10) * 10 };
       }
       if (key === 'aperture') {
-        const nextAperture = clamp(
-          parseFloat((prev.aperture + delta).toFixed(1)),
-          lens.minAperture,
-          lens.maxAperture,
-        );
-        return { ...prev, aperture: nextAperture };
-      }
-      if (key === 'whiteBalance') {
-        const nextWB = clamp(prev.whiteBalance + delta, 2500, 9000);
-        return { ...prev, whiteBalance: nextWB };
+        const step = Math.round(value * 10) / 10;
+        return { ...prev, aperture: clamp(step, lens.minAperture, lens.maxAperture) };
       }
       if (key === 'shutter') {
-        const next = clamp(prev.shutter + delta, 1 / 8000, 1 / 4);
-        return { ...prev, shutter: next };
+        return { ...prev, shutter: clamp(value, 1 / 8000, 2) };
+      }
+      if (key === 'whiteBalance') {
+        return { ...prev, whiteBalance: Math.round(value / 10) * 10 };
       }
       return prev;
     });
-  }, [lens.minAperture, lens.maxAperture]);
+  };
 
-  const handleLensChange = useCallback(
-    (id) => {
-      if (id === lensId || isLensTransitioning) return;
-      setIsLensTransitioning(true);
-      setLensId(id);
-      clearTimeout(lensRotationTimeoutRef.current || undefined);
-      lensRotationTimeoutRef.current = setTimeout(() => setIsLensTransitioning(false), 620);
-    },
-    [isLensTransitioning, lensId],
-  );
-
-  const cycleFlashMode = useCallback(() => {
-    setFlashMode((prev) => {
-      const index = FLASH_MODES.indexOf(prev);
-      const nextIndex = index === -1 ? 0 : (index + 1) % FLASH_MODES.length;
-      return FLASH_MODES[nextIndex];
+  const openGallery = (panelId, album, event) => {
+    if (event) {
+      focusAtPointer(event, `${panelId}-${album.title}`);
+    }
+    setGalleryState({ panelId, album, groupSize: PANELS.find((p) => p.id === panelId)?.groupSizes?.[0] || 8, page: 0 });
+    openLayer({
+      id: `${panelId}-${album.title}`,
+      title: `${album.title} Gallery`,
+      type: 'gallery',
     });
-  }, []);
+  };
 
-  const temperatureTint = useMemo(() => {
-    const ratio = (exposure.whiteBalance - 2500) / (9000 - 2500);
-    const warm = clamp(ratio, 0, 1);
-    const cool = 1 - warm;
-    return {
-      warm,
-      cool,
-    };
-  }, [exposure.whiteBalance]);
-
-  const exposureLook = useMemo(() => calculateExposureLook(exposure, theme), [exposure, theme]);
-  const {
-    brightness: exposureBrightness,
-    contrast: exposureContrast,
-    grain: grainStrength,
-    shutterSmear,
-    sceneLuminance,
-  } = exposureLook;
-
-  const triggerFlash = useCallback(
-    (force = false) => {
-      if (flashActive) return;
-      if (flashMode === 'off') return;
-      if (!force && flashMode === 'auto' && sceneLuminance > 0.62) return;
-      setFlashActive(true);
-      setShowFlashReady(false);
-      clearTimeout(flashOverlayTimeoutRef.current || undefined);
-      flashOverlayTimeoutRef.current = setTimeout(() => {
-        setFlashActive(false);
-      }, 260);
-      clearTimeout(flashTimeoutRef.current || undefined);
-      flashTimeoutRef.current = setTimeout(() => {
-        setShowFlashReady(true);
-      }, 900);
-    },
-    [flashActive, flashMode, sceneLuminance],
-  );
-
-  const handleFlashPress = useCallback(() => {
-    triggerFlash(true);
-  }, [triggerFlash]);
-
-  const vignetteStrength = useMemo(() => {
-    return lens.vignette * (cameraMode === 'dslr' ? 1.1 : 0.9);
-  }, [lens.vignette, cameraMode]);
-
-  const distortion = useMemo(() => {
-    return lens.distortion * (lens.id === '24mm' ? 1.2 : 1);
-  }, [lens]);
-
-  const warmOverlay = 0.12 + temperatureTint.warm * 0.18;
-  const coolOverlay = 0.08 + temperatureTint.cool * 0.14;
+  const exposureLook = useMemo(() => {
+    const luminance = PANELS[activePanel]?.luminance ?? 0.5;
+    return calculateExposureLook(exposure, luminance, lens, focusDepth);
+  }, [activePanel, exposure, lens, focusDepth]);
 
   const hudReadouts = useMemo(() => {
     const base = [
       { label: 'ISO', value: exposure.iso },
       { label: 'F', value: exposure.aperture.toFixed(1) },
-      { label: 'S', value: `1/${Math.round(1 / exposure.shutter)}` },
+      { label: 'S', value: formatShutter(exposure.shutter) },
       { label: 'WB', value: `${exposure.whiteBalance}K` },
     ];
-
+    if (hudLevel === 'none') return [];
     if (hudLevel === 'few') return base.slice(0, 2);
     if (hudLevel === 'most') return [...base, { label: 'Lens', value: lens.name }];
-    if (hudLevel === 'all') {
-      return [
-        ...base,
-        { label: 'Lens', value: lens.name },
-        { label: 'Mode', value: cameraMode.toUpperCase() },
-        { label: 'Meter', value: calculateMeter(exposure, theme, sceneLuminance) },
-        { label: 'Flash', value: flashMode.toUpperCase() },
-      ];
-    }
-    return [];
-  }, [exposure, hudLevel, lens.name, cameraMode, theme, sceneLuminance, flashMode]);
+    return [
+      ...base,
+      { label: 'Lens', value: lens.name },
+      { label: 'Mode', value: cameraMode.toUpperCase() },
+      { label: 'HUD', value: hudLevel.toUpperCase() },
+      { label: 'Flash', value: flashMode.toUpperCase() },
+      { label: 'Battery', value: `${Math.round(batteryLevel * 100)}%` },
+    ];
+  }, [cameraMode, exposure, flashMode, hudLevel, lens.name, batteryLevel]);
 
-  const stageStyle = useMemo(
-    () => ({
-      '--exposure-brightness': exposureBrightness,
-      '--exposure-contrast': exposureContrast,
-      '--warm-overlay': warmOverlay,
-      '--cool-overlay': coolOverlay,
-      '--grain-strength': grainStrength,
-      '--shutter-strength': shutterSmear,
-    }),
-    [exposureBrightness, exposureContrast, warmOverlay, coolOverlay, grainStrength, shutterSmear],
-  );
+  const histogramData = useMemo(() => {
+    const luminance = PANELS[activePanel]?.luminance ?? 0.5;
+    const highlight = clamp(luminance + focusDepth * 0.25, 0, 1);
+    return [
+      clamp(0.4 - highlight * 0.4 + (1 - focusDepth) * 0.3, 0.05, 0.8),
+      clamp(0.6 - highlight * 0.2 + exposure.iso / 6400, 0.1, 0.8),
+      clamp(0.7 + highlight * 0.3 - exposure.shutter * 0.1, 0.15, 0.9),
+      clamp(0.5 + focusDepth * 0.4, 0.2, 0.9),
+      clamp(0.3 + highlight * 0.5, 0.15, 0.95),
+    ];
+  }, [activePanel, exposure.iso, exposure.shutter, focusDepth]);
 
-  const stageClassNames = [
-    'stage',
-    theme === 'dark' ? 'stage-dark' : 'stage-light',
-    cameraMode === 'dslr' ? 'stage-dslr' : 'stage-mirrorless',
-    isFocusing ? 'stage-focusing' : '',
-    flashActive ? 'stage-flash' : '',
-    isLensTransitioning ? 'stage-rotating' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const transformStyle = {
-    transform: `translate(-50%, -50%) translateX(${activePanel * -100}%)`,
-  };
+  const resolvedBrightness = exposureLook.brightness;
+  const stageClass = `viewport theme-${resolvedTheme} mode-${cameraMode}`;
+  const showOffScreen = !isCameraOn && !booting;
 
   return (
-    <div className={`viewport ${theme}`}>
+    <div className={stageClass}>
       <main
         ref={stageRef}
-        className={stageClassNames}
-        onPointerMove={handlePointerMove}
+        className="stage"
+        onWheel={handleScrollFocus}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
-        style={stageStyle}
+        onPointerLeave={handlePointerUp}
       >
-        <LensOverlay
-          vignette={vignetteStrength}
-          distortion={distortion}
-          fov={lens.fov}
-          flashMode={flashMode}
-        />
-        <ExposureEffects grain={grainStrength} shutter={shutterSmear} />
-        <PanelRail
-          panels={panels}
+        <LensCapTransition transition={lensTransition} />
+        <RuleOfThirdsOverlay visible={hudLevel !== 'none'} />
+        <HistogramOverlay visible={hudLevel === 'most' || hudLevel === 'all'} data={histogramData} />
+        <PanelDeck
           activePanel={activePanel}
-          style={transformStyle}
-          apertureBlur={apertureBlur}
-          exposure={exposure}
-          theme={theme}
-          focusPoint={focusPoint}
-          isFocusing={isFocusing}
+          panels={PANELS}
+          openLayer={openLayer}
+          openGallery={(panelId, album, event) => openGallery(panelId, album, event)}
+          focusAtPointer={focusAtPointer}
+          focusDepth={focusDepth}
+          exposureLook={exposureLook}
+          resolvedTheme={resolvedTheme}
           dynamicWordIndex={dynamicWordIndex}
         />
-        <FocusCursor position={cursorPos} focusing={isFocusing} />
-        <FlashOverlay active={flashActive} focusPoint={focusPoint} theme={theme} mode={flashMode} />
-        <FlashToggle mode={flashMode} onCycle={cycleFlashMode} theme={theme} />
+        <LayerStack
+          layers={layers}
+          onBackdropClick={handleLayerBackdropClick}
+          closeTopLayer={closeTopLayer}
+          galleryState={galleryState}
+          setGalleryState={setGalleryState}
+        />
         <Hud
-          hudReadouts={hudReadouts}
           hudLevel={hudLevel}
-          showFlashReady={showFlashReady}
-          flashReady={!flashActive && showFlashReady}
-          theme={theme}
+          readouts={hudReadouts}
+          batteryLevel={batteryLevel}
+          focusDepth={focusDepth}
+          cycleHudLevel={cycleHudLevel}
+          toggleCameraMode={toggleCameraMode}
           cameraMode={cameraMode}
-          activePanel={panels[activePanel]?.title ?? ''}
           flashMode={flashMode}
+          cycleFlashMode={cycleFlashMode}
+          setIsCameraOn={setIsCameraOn}
         />
-        <ControlCluster
-          exposure={exposure}
+        <ControlDock
           lens={lens}
-          theme={theme}
-          hudLevel={hudLevel}
-          cameraMode={cameraMode}
-          onAdjust={adjustExposure}
-          onFlash={handleFlashPress}
-          onCycleHud={cycleHudLevel}
-          onToggleTheme={toggleTheme}
-          onToggleCameraMode={toggleCameraMode}
-          flashMode={flashMode}
-        />
-        <LensSelector
+          exposure={exposure}
+          focusDepth={focusDepth}
+          onFocusDepthChange={setFocusDepth}
+          onExposureChange={handleExposureChange}
+          onLensChange={handleLensChange}
           lenses={LENSES}
-          activeLensId={lensId}
-          onSelect={handleLensChange}
+          cameraMode={cameraMode}
         />
+        <PanelNavigation onNavigate={handlePanelChange} />
+        <FocusCursor position={focusPoint} />
+        {booting && <BootOverlay batteryLevel={batteryLevel} />}
+        {showOffScreen && (
+          <CameraOffScreen
+            onPower={() => {
+              setIsCameraOn(true);
+              setBooting(true);
+              setTimeout(() => setBooting(false), 1800);
+            }}
+          />
+        )}
       </main>
       <style jsx>{`
-        .viewport {
-          width: 100vw;
-          height: 100vh;
-          overflow: hidden;
-          background: var(--bg, #02030a);
-          color: #f8f9fb;
-          font-family: 'Manrope', 'Inter', 'Helvetica Neue', sans-serif;
-          font-kerning: normal;
-        }
-        .viewport.light {
-          --bg: #f5f7fb;
-          color: #10121a;
-        }
         .stage {
           position: relative;
-          width: 100%;
-          height: 100%;
+          height: 100vh;
+          width: 100vw;
+          overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
-          overflow: hidden;
-          transition: background 0.4s ease, filter 0.4s ease;
-          filter: brightness(var(--exposure-brightness, 1)) contrast(var(--exposure-contrast, 1));
-          background: radial-gradient(circle at 20% 15%, rgba(72, 109, 255, 0.22), transparent 45%),
-            radial-gradient(circle at 80% 10%, rgba(255, 193, 122, 0.18), transparent 48%),
-            radial-gradient(circle at 50% 100%, rgba(77, 214, 189, 0.18), transparent 58%),
-            var(--stage-bg, #050510);
+          background: radial-gradient(circle at 20% 20%, rgba(90, 130, 255, 0.18), transparent 52%),
+            radial-gradient(circle at 80% 80%, rgba(255, 200, 120, 0.24), transparent 60%),
+            ${resolvedTheme === 'dark'
+            ? 'linear-gradient(140deg, #040612 0%, #121726 55%, #030409 100%)'
+            : 'linear-gradient(140deg, #f2f5ff 0%, #ffffff 55%, #e9efff 100%)'};
+          filter: brightness(${resolvedBrightness}) contrast(${exposureLook.contrast});
         }
-        .stage::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(120deg, rgba(255, 255, 255, 0.06), transparent 45%),
-            radial-gradient(
-              circle at 50% 50%,
-              rgba(255, 236, 210, calc(var(--warm-overlay, 0.2) * 0.8)),
-              transparent 65%
-            );
-          pointer-events: none;
-          mix-blend-mode: screen;
-          opacity: ${theme === 'dark' ? 0.5 : 0.28};
+        .viewport {
+          font-family: 'Montserrat', 'Inter', sans-serif;
+          color: ${resolvedTheme === 'dark' ? '#f4f7ff' : '#0b1633'};
         }
-        .stage::after {
-          content: '';
-          position: absolute;
-          inset: -40%;
-          background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 0);
-          background-size: 260px 260px;
-          opacity: 0.22;
-          transform: rotate(2deg);
-          pointer-events: none;
+        .viewport :global(*) {
+          user-select: none;
         }
-        .stage-dark {
-          --stage-bg: radial-gradient(circle at 50% 0%, rgba(7, 9, 21, 0.92), #050510 78%);
+        .viewport :global(button) {
+          cursor: pointer;
         }
-        .stage-light {
-          --stage-bg: linear-gradient(150deg, #fafafe 10%, #dce5ff 90%);
+        .viewport.theme-light {
+          background-color: #f5f7ff;
         }
-        .stage-dslr.stage-focusing .rail {
-          animation: mirrorFlip 0.4s ease;
+        .viewport.theme-dark {
+          background-color: #050611;
         }
-        .stage-flash::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(circle at ${focusPoint.x}% ${focusPoint.y}%, rgba(255, 255, 255, ${
-            theme === 'dark' ? 0.75 : 0.45
-          }), transparent 60%);
-          mix-blend-mode: screen;
-          pointer-events: none;
-        }
-        .stage-rotating {
-          animation: lensSwap 0.6s ease;
-        }
-        @keyframes lensSwap {
-          0% {
-            transform: rotate(0deg);
-          }
-          49% {
-            transform: rotate(180deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-        @keyframes mirrorFlip {
-          0% {
-            opacity: 1;
-          }
-          40% {
-            opacity: 0.2;
-          }
-          100% {
-            opacity: 1;
+        @media (max-width: 960px) {
+          .stage {
+            padding: 0 1.2rem;
           }
         }
       `}</style>
       <style jsx global>{`
-        *, *::before, *::after {
-          box-sizing: border-box;
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #04070f;
+          font-size: 16px;
         }
         body {
-          margin: 0;
-          background: #02030a;
-          color: inherit;
-          font-family: 'Manrope', 'Inter', 'Helvetica Neue', sans-serif;
+          overflow: hidden;
+        }
+        *, *::before, *::after {
+          box-sizing: border-box;
         }
         a {
           color: inherit;
           text-decoration: none;
         }
-        ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
+      `}</style>
+    </div>
+  );
+}
+
+function PanelDeck({ activePanel, panels, openLayer, openGallery, focusAtPointer, focusDepth, exposureLook, resolvedTheme, dynamicWordIndex }) {
+  return (
+    <div className="panel-deck" style={{ transform: `translateX(calc(${activePanel} * -100%))` }}>
+      {panels.map((panel) => (
+        <PanelSection
+          key={panel.id}
+          panel={panel}
+          focusDepth={focusDepth}
+          openLayer={openLayer}
+          openGallery={openGallery}
+          resolvedTheme={resolvedTheme}
+          exposureLook={exposureLook}
+          focusAtPointer={focusAtPointer}
+          dynamicWordIndex={dynamicWordIndex}
+        />
+      ))}
+      <style jsx>{`
+        .panel-deck {
+          position: relative;
+          display: flex;
+          gap: clamp(2.4rem, 4vw, 4.4rem);
+          transition: transform 0.64s cubic-bezier(0.22, 1, 0.36, 1);
+          will-change: transform;
         }
-        button {
-          font-family: inherit;
+        @media (max-width: 960px) {
+          .panel-deck {
+            gap: 1.6rem;
+          }
         }
       `}</style>
     </div>
   );
 }
 
-function PanelRail({
-  panels,
-  activePanel,
-  style,
-  apertureBlur,
-  exposure,
-  theme,
-  focusPoint,
-  isFocusing,
-  dynamicWordIndex,
-}) {
+function PanelSection({ panel, focusDepth, openLayer, openGallery, resolvedTheme, exposureLook, focusAtPointer, dynamicWordIndex }) {
+  const { id, title, type } = panel;
+  const depthBlur = exposureLook.depthBlur * (1 - focusDepth + 0.2);
+
+  const handleCardClick = (event, payload) => {
+    const targetId = `${id}-${payload?.title || payload?.url || 'card'}`;
+    focusAtPointer(event, targetId);
+    if (type === 'gallery' && payload?.album) {
+      openGallery(id, payload.album, event);
+      return;
+    }
+    if (payload?.url) {
+      window.open(payload.url, '_blank', 'noopener');
+      return;
+    }
+    openLayer({
+      title: payload?.title || title,
+      type: 'content',
+      body: payload?.description || payload?.excerpt || payload?.subtitle,
+    });
+  };
+
   return (
-    <div className="rail" style={style}>
-      {panels.map((panel, index) => (
-        <section
-          key={panel.id}
-          className={`panel ${panel.layout} ${activePanel === index ? 'panel-active' : ''} ${
-            isFocusing && activePanel !== index && exposure.aperture <= 1.6 ? 'panel-defocus' : ''
-          } ${activePanel !== index ? 'panel-deemphasized' : ''}`}
-          style={{
-            filter:
-              activePanel === index
-                ? 'none'
-                : `blur(${(apertureBlur * 0.7).toFixed(2)}px) brightness(${exposure.aperture < 2 ? 0.9 : 0.75})`,
-          }}
-        >
-          <PanelContent
-            panel={panel}
-            focusPoint={focusPoint}
-            theme={theme}
-            dynamicWordIndex={dynamicWordIndex}
-          />
-        </section>
-      ))}
+    <section className="panel-section" style={{ filter: `blur(${depthBlur}px)` }}>
+      <header>
+        <span className="panel-label">{String(id).toUpperCase()}</span>
+        <h2>{title}</h2>
+      </header>
+      <div className={`panel-body type-${type}`}>
+        <SectionContent
+          panel={panel}
+          onCardClick={handleCardClick}
+          resolvedTheme={resolvedTheme}
+          focusAtPointer={focusAtPointer}
+          dynamicWordIndex={dynamicWordIndex}
+        />
+      </div>
       <style jsx>{`
-        .rail {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          display: flex;
-          gap: 4.5rem;
-          transform: translate(-50%, -50%);
-          transition: transform 0.6s cubic-bezier(0.4, 0.01, 0.2, 1);
-        }
-        .panel {
-          position: relative;
-          width: min(66vw, 1040px);
-          min-height: 68vh;
+        .panel-section {
+          min-width: min(74vw, 980px);
+          max-width: min(74vw, 980px);
+          min-height: min(72vh, 680px);
           border-radius: 34px;
-          padding: 3.25rem;
-          background: linear-gradient(
-              140deg,
-              rgba(${theme === 'dark' ? '20, 26, 45, 0.72' : '244, 246, 255, 0.82'}),
-              rgba(${theme === 'dark' ? '13, 17, 34, 0.92' : '231, 236, 255, 0.88'})
-            ),
-            radial-gradient(circle at 0% 0%, rgba(134, 244, 255, 0.25), transparent 58%);
-          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.14' : '34, 52, 120, 0.18'});
-          box-shadow: 0 32px 80px rgba(${theme === 'dark' ? '3, 6, 18, 0.55' : '46, 55, 120, 0.18'});
-          backdrop-filter: blur(30px) saturate(120%);
+          padding: clamp(1.8rem, 3vw, 3rem);
+          background: linear-gradient(145deg, rgba(${resolvedTheme === 'dark' ? '14, 18, 34, 0.84' : '244, 247, 255, 0.92'}), rgba(${resolvedTheme === 'dark' ? '6, 8, 18, 0.94' : '232, 238, 255, 0.86'}));
+          border: 1px solid rgba(${resolvedTheme === 'dark' ? '132, 164, 255, 0.18' : '34, 58, 144, 0.16'});
+          box-shadow: 0 32px 80px rgba(${resolvedTheme === 'dark' ? '0, 8, 32, 0.64' : '32, 60, 140, 0.28'});
+          backdrop-filter: blur(24px) saturate(118%);
+          transition: transform 0.6s ease, box-shadow 0.6s ease, filter 0.4s ease;
           display: grid;
           grid-template-rows: auto 1fr;
           overflow: hidden;
-          transition: box-shadow 0.4s ease, transform 0.4s ease, filter 0.5s ease, border 0.4s ease;
         }
-        .panel::before {
-          content: '';
-          position: absolute;
-          inset: 1px;
-          border-radius: 32px;
-          background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), transparent 60%);
-          pointer-events: none;
+        header {
+          display: flex;
+          flex-direction: column;
+          gap: 0.6rem;
+          margin-bottom: 1.4rem;
         }
-        .panel-active {
-          transform: translateY(-18px) scale(1.025);
-          border-color: rgba(${theme === 'dark' ? '205, 235, 255, 0.5' : '32, 62, 150, 0.4'});
-          box-shadow: 0 48px 110px rgba(${theme === 'dark' ? '0, 12, 60, 0.65' : '34, 52, 120, 0.28'});
+        .panel-label {
+          letter-spacing: 0.34em;
+          font-size: 0.62rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          opacity: 0.72;
         }
-        .panel-defocus {
-          filter: blur(${apertureBlur.toFixed(2)}px) brightness(0.65) saturate(0.85) !important;
+        h2 {
+          margin: 0;
+          font-size: clamp(2.1rem, 3.6vw, 3.4rem);
+          letter-spacing: -0.01em;
         }
-        .panel-deemphasized {
-          opacity: 0.7;
+        .panel-body {
+          position: relative;
+          display: flex;
         }
         @media (max-width: 960px) {
-          .rail {
-            gap: 2.4rem;
-          }
-          .panel {
-            width: 88vw;
-            min-height: 64vh;
-            padding: 2.2rem;
-            border-radius: 28px;
-          }
-          .panel::before {
-            border-radius: 26px;
+          .panel-section {
+            min-width: 88vw;
+            max-width: 88vw;
+            padding: 1.8rem;
           }
         }
       `}</style>
-    </div>
+    </section>
   );
 }
 
-function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
-  const { layout } = panel;
-
-  if (layout === 'hero') {
-    const word = panel.dynamicWords[dynamicWordIndex % panel.dynamicWords.length];
+function SectionContent({ panel, onCardClick, resolvedTheme, focusAtPointer, dynamicWordIndex }) {
+  const { type } = panel;
+  if (type === 'hero') {
+    const word = panel.dynamicWords ? panel.dynamicWords[dynamicWordIndex % panel.dynamicWords.length] : '';
     return (
-      <div className="panel-hero">
+      <div className="hero">
         <div className="hero-meta">
           <span className="hero-pill">Menelek Makonnen</span>
           <span className="hero-pill tone">Luxury Creative Operating System</span>
@@ -797,20 +872,26 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           <span className="hero-word">{word}</span>
         </h1>
         <p>
-          Film director, photographer, and AI storyteller translating the poetry of light into digital worlds.
-          Navigate the interface as you would a flagship camera and step into each crafted universe.
+          Film director, photographer, and AI storyteller translating the poetry of light into digital worlds. Navigate the
+          interface as you would a flagship camera and step into each crafted universe.
         </p>
-        <div className="hero-cta">
-          <span className="cta-label">Swipe to explore</span>
-          <span className="cta-line" />
-          <span className="cta-detail">Lens shifts, HUD states, and flash all react in real time.</span>
+        <div className="hero-actions">
+          <button
+            type="button"
+            className="hero-button"
+            onClick={(event) => onCardClick(event, { title: 'Latest Showcase', description: 'Explore the newest launch films and immersive work.' })}
+          >
+            Enter showcase
+          </button>
+          <div className="hero-hint">
+            <span className="dot" /> Swipe or use the lens wheel to move between universes.
+          </div>
         </div>
         <style jsx>{`
-          .panel-hero {
+          .hero {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            gap: 2.4rem;
+            gap: 1.8rem;
           }
           .hero-meta {
             display: flex;
@@ -829,52 +910,61 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           }
           .hero-pill.tone {
             background: linear-gradient(135deg, rgba(134, 244, 255, 0.25), rgba(121, 141, 255, 0.18));
-            color: ${theme === 'dark' ? '#f4fbff' : '#13204d'};
+            color: ${resolvedTheme === 'dark' ? '#f4fbff' : '#13204d'};
           }
           h1 {
             font-size: clamp(2.9rem, 4.6vw, 5.1rem);
             line-height: 1.04;
             font-weight: 700;
             letter-spacing: -0.01em;
+            margin: 0;
           }
           .hero-word {
-            color: ${theme === 'dark' ? '#9df6ff' : '#2a3fde'};
-            text-shadow: 0 0 36px ${theme === 'dark' ? 'rgba(54, 214, 255, 0.6)' : 'rgba(42, 63, 222, 0.4)'};
+            color: ${resolvedTheme === 'dark' ? '#9df6ff' : '#2a3fde'};
+            text-shadow: 0 0 36px ${resolvedTheme === 'dark' ? 'rgba(54, 214, 255, 0.6)' : 'rgba(42, 63, 222, 0.4)'};
           }
           p {
             max-width: 38ch;
             font-size: 1.08rem;
             line-height: 1.8;
-            opacity: 0.85;
+            opacity: 0.88;
+            margin: 0;
           }
-          .hero-cta {
+          .hero-actions {
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
             gap: 1.2rem;
-            font-size: 0.85rem;
+            align-items: center;
+          }
+          .hero-button {
+            padding: 0.9rem 1.8rem;
+            border-radius: 999px;
+            border: none;
+            background: linear-gradient(120deg, #78f8ff, #637bff);
+            color: #040714;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            box-shadow: 0 16px 30px rgba(80, 140, 255, 0.32);
+          }
+          .hero-hint {
+            font-size: 0.78rem;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.72);
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
           }
-          .cta-line {
-            flex: 1 1 120px;
-            height: 1px;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), transparent);
-          }
-          .cta-detail {
-            font-size: 0.75rem;
-            letter-spacing: 0.08em;
-            opacity: 0.65;
+          .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #78f8ff;
           }
           @media (max-width: 960px) {
-            .hero-cta {
-              flex-direction: column;
-              align-items: flex-start;
-              gap: 0.6rem;
-            }
-            .cta-line {
-              display: none;
+            .hero {
+              gap: 1.2rem;
             }
           }
         `}</style>
@@ -882,317 +972,243 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
     );
   }
 
-  if (layout === 'links') {
+  if (type === 'links') {
     return (
-      <div className="panel-links">
-        <h2>{panel.title}</h2>
-        <ul>
-          {panel.items.map((item) => (
-            <li key={item.label}>
-              <a href={item.url} target="_blank" rel="noreferrer">
-                <span className="link-label">{item.label}</span>
-                <span className="link-arrow">↗</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+      <div className="links-grid">
+        {panel.cards.map((card) => (
+          <button type="button" key={card.title} className="link-card" onClick={(event) => onCardClick(event, card)}>
+            <div className="card-top">
+              <span className="card-title">{card.title}</span>
+              <span className="card-arrow">↗</span>
+            </div>
+            <p>{card.subtitle}</p>
+          </button>
+        ))}
         <style jsx>{`
-          .panel-links {
-            display: flex;
-            flex-direction: column;
-            gap: 1.6rem;
-          }
-          h2 {
-            font-size: clamp(2.2rem, 3vw, 3.2rem);
-          }
-          ul {
+          .links-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1.4rem;
+            width: 100%;
+            gap: 1.2rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           }
-          li a {
+          .link-card {
+            display: grid;
+            gap: 0.8rem;
+            padding: 1.2rem 1.5rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, ${resolvedTheme === 'dark' ? 0.18 : 0.2});
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+            text-align: left;
+            box-shadow: 0 20px 36px rgba(0, 0, 0, 0.24);
+          }
+          .card-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1.15rem 1.4rem;
-            border-radius: 18px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02));
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            color: inherit;
-            font-weight: 600;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
-            transition: transform 0.35s ease, border 0.35s ease, box-shadow 0.35s ease;
+            font-size: 0.74rem;
+            opacity: 0.72;
           }
-          li a:hover {
-            transform: translateY(-8px);
-            border-color: rgba(134, 244, 255, 0.65);
-            box-shadow: 0 26px 40px rgba(0, 0, 0, 0.35);
-          }
-          .link-arrow {
-            font-size: 1rem;
-            opacity: 0.8;
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (layout === 'carousel') {
-    return (
-      <div className="panel-carousel">
-        <h2>{panel.title}</h2>
-        <div className="reel">
-          {panel.items.map((item, index) => (
-            <article key={item.label}>
-              <span className="reel-index">{String(index + 1).padStart(2, '0')}</span>
-              <div className="reel-body">
-                <h3>{item.label}</h3>
-                <p>{item.description}</p>
-              </div>
-              <a href={item.url} target="_blank" rel="noreferrer">
-                Play on YouTube ↗
-              </a>
-            </article>
-          ))}
-        </div>
-        <style jsx>{`
-          .panel-carousel {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-          }
-          h2 {
-            font-size: clamp(2.1rem, 3vw, 3.1rem);
-          }
-          .reel {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: minmax(240px, 1fr);
-            gap: 1.8rem;
-            overflow: hidden;
-          }
-          article {
-            padding: 1.8rem;
-            border-radius: 22px;
-            background: linear-gradient(140deg, rgba(17, 20, 38, 0.68), rgba(22, 24, 48, 0.92));
-            border: 1px solid rgba(134, 244, 255, 0.18);
-            backdrop-filter: blur(22px);
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            gap: 1.2rem;
-            position: relative;
-            overflow: hidden;
-          }
-          article::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.12), transparent 55%);
-            opacity: 0.7;
-            pointer-events: none;
-          }
-          .reel-index {
-            font-size: 1.6rem;
-            font-weight: 700;
-            letter-spacing: 0.16em;
-            color: rgba(134, 244, 255, 0.8);
-          }
-          .reel-body {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-          }
-          a {
-            align-self: flex-start;
-            padding: 0.65rem 1.3rem;
-            border-radius: 999px;
-            background: ${theme === 'dark' ? 'rgba(134, 244, 255, 0.18)' : 'rgba(64, 88, 255, 0.22)'};
-            color: inherit;
-            text-decoration: none;
+          .card-title {
             font-weight: 600;
-            letter-spacing: 0.02em;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
           }
-          a:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+          .card-arrow {
+            font-size: 0.9rem;
+          }
+          p {
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            opacity: 0.82;
           }
         `}</style>
       </div>
     );
   }
 
-  if (layout === 'grid') {
+  if (type === 'reel') {
     return (
-      <div className="panel-grid">
-        <h2>{panel.title}</h2>
+      <div className="reel-list">
+        {panel.cards.map((card) => (
+          <button type="button" key={card.title} className="reel-card" onClick={(event) => onCardClick(event, card)}>
+            <div className="reel-header">
+              <span>{card.title}</span>
+              <span className="glyph">⟲</span>
+            </div>
+            <p>{card.description}</p>
+          </button>
+        ))}
+        <style jsx>{`
+          .reel-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+          }
+          .reel-card {
+            padding: 1.4rem 1.6rem;
+            border-radius: 26px;
+            border: none;
+            background: linear-gradient(120deg, rgba(134, 244, 255, 0.16), rgba(255, 255, 255, 0.05));
+            text-align: left;
+            display: grid;
+            gap: 0.8rem;
+            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+          }
+          .reel-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.08rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+          }
+          .glyph {
+            font-size: 1.4rem;
+            opacity: 0.4;
+          }
+          p {
+            margin: 0;
+            opacity: 0.78;
+            line-height: 1.7;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (type === 'loremaker') {
+    return (
+      <div className="loremaker">
         <div className="belt">
-          {panel.items.map((item, index) => (
-            <span key={`${item}-${index}`}>
-              <em>{String.fromCharCode(0x41 + ((index * 7) % 26))}</em>
-              {item}
-            </span>
+          {panel.characters.map((character) => (
+            <span key={character}>{character}</span>
+          ))}
+        </div>
+        <div className="belt belt-alt">
+          {panel.characters.slice().reverse().map((character) => (
+            <span key={`${character}-alt`}>{character}</span>
           ))}
         </div>
         <style jsx>{`
-          .panel-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 1.8rem;
-          }
-          h2 {
-            font-size: clamp(2.1rem, 3vw, 3.4rem);
+          .loremaker {
+            display: grid;
+            gap: 1rem;
+            width: 100%;
           }
           .belt {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1.4rem;
-            text-transform: uppercase;
+            grid-auto-flow: column;
+            gap: 2.2rem;
+            animation: marquee 36s linear infinite;
+            font-size: 1.18rem;
             letter-spacing: 0.08em;
           }
           .belt span {
-            position: relative;
-            padding: 1.05rem 1.5rem 1.2rem;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(134, 244, 255, 0.1));
-            backdrop-filter: blur(14px);
-            box-shadow: 0 20px 34px rgba(0, 0, 0, 0.25);
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-            overflow: hidden;
-            color: rgba(255, 255, 255, 0.92);
-            font-weight: 600;
-            z-index: 1;
+            padding: 0.6rem 1.2rem;
+            border-radius: 18px;
+            background: rgba(134, 244, 255, 0.12);
+            border: 1px solid rgba(134, 244, 255, 0.22);
+            box-shadow: 0 14px 24px rgba(0, 0, 0, 0.22);
           }
-          .belt span::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(160deg, rgba(255, 255, 255, 0.24), transparent 60%);
-            opacity: 0.35;
-            pointer-events: none;
+          .belt-alt {
+            animation-direction: reverse;
           }
-          .belt span em {
-            font-style: normal;
-            font-size: 0.8rem;
-            letter-spacing: 0.28em;
-            color: rgba(134, 244, 255, 0.75);
-            z-index: 1;
+          @keyframes marquee {
+            from {
+              transform: translateX(0);
+            }
+            to {
+              transform: translateX(-50%);
+            }
           }
         `}</style>
       </div>
     );
   }
 
-  if (layout === 'columns') {
+  if (type === 'columns') {
     return (
-      <div className="panel-columns">
-        <h2>{panel.title}</h2>
-        <div className="columns">
-          {panel.items.map((item) => (
-            <div className="column" key={item.label}>
-              <div className="column-top">
-                <span className="column-glyph" aria-hidden="true">◎</span>
-                <h3>{item.label}</h3>
-              </div>
-              <p>{item.description}</p>
+      <div className="columns">
+        {panel.cards.map((card) => (
+          <button type="button" key={card.title} className="column-card" onClick={(event) => onCardClick(event, card)}>
+            <span className="glyph">◎</span>
+            <div>
+              <h3>{card.title}</h3>
+              <p>{card.description}</p>
             </div>
-          ))}
-        </div>
+          </button>
+        ))}
         <style jsx>{`
-          .panel-columns {
-            display: flex;
-            flex-direction: column;
-            gap: 2.2rem;
-          }
-          h2 {
-            font-size: clamp(2.1rem, 3vw, 3.3rem);
-          }
           .columns {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.6rem;
+            width: 100%;
+            gap: 1.2rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           }
-          .column {
-            padding: 1.6rem 1.8rem;
+          .column-card {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: start;
+            gap: 1rem;
+            padding: 1.4rem 1.6rem;
             border-radius: 24px;
+            border: none;
             background: linear-gradient(140deg, rgba(17, 20, 36, 0.75), rgba(38, 44, 70, 0.65));
-            border: 1px solid rgba(134, 244, 255, 0.18);
-            backdrop-filter: blur(18px);
-            display: grid;
-            gap: 1rem;
-            box-shadow: 0 28px 42px rgba(0, 0, 0, 0.26);
+            color: inherit;
+            text-align: left;
+            box-shadow: 0 24px 40px rgba(0, 0, 0, 0.26);
           }
-          .column-top {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-          }
-          .column-glyph {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            background: rgba(134, 244, 255, 0.16);
-            font-size: 1.1rem;
-            letter-spacing: 0.2em;
+          .glyph {
+            font-size: 1.6rem;
+            opacity: 0.5;
           }
           h3 {
-            font-size: 1.45rem;
-            margin: 0;
+            margin: 0 0 0.6rem;
           }
           p {
-            font-size: 0.98rem;
+            margin: 0;
+            opacity: 0.8;
             line-height: 1.7;
-            opacity: 0.85;
           }
         `}</style>
       </div>
     );
   }
 
-  if (layout === 'stack') {
+  if (type === 'stack') {
     return (
-      <div className="panel-stack">
-        <h2>{panel.title}</h2>
-        <ul>
-          {panel.items.map((item, index) => (
-            <li key={`${item}-${index}`}>
-              <span className="stack-index">{String(index + 1).padStart(2, '0')}</span>
-              <p>{item}</p>
-            </li>
-          ))}
-        </ul>
+      <div className="stack">
+        {panel.bullets.map((item, index) => (
+          <button
+            type="button"
+            key={item}
+            className="stack-card"
+            onClick={(event) => onCardClick(event, { title: `Epic Edit ${index + 1}`, description: item })}
+          >
+            <span className="index">{String(index + 1).padStart(2, '0')}</span>
+            <p>{item}</p>
+          </button>
+        ))}
         <style jsx>{`
-          .panel-stack {
+          .stack {
             display: flex;
             flex-direction: column;
-            gap: 1.8rem;
+            gap: 1rem;
+            width: 100%;
           }
-          h2 {
-            font-size: clamp(2.1rem, 3vw, 3.3rem);
-          }
-          ul {
-            display: flex;
-            flex-direction: column;
-            gap: 1.1rem;
-          }
-          li {
-            display: flex;
-            align-items: center;
+          .stack-card {
+            display: grid;
+            grid-template-columns: auto 1fr;
             gap: 1.4rem;
-            padding: 1.1rem 1.4rem;
-            border-radius: 20px;
+            padding: 1.2rem 1.5rem;
+            border-radius: 22px;
+            border: none;
             background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(134, 244, 255, 0.06));
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            backdrop-filter: blur(14px);
+            text-align: left;
             box-shadow: 0 18px 32px rgba(0, 0, 0, 0.22);
           }
-          .stack-index {
+          .index {
             font-size: 1.2rem;
             font-weight: 700;
             letter-spacing: 0.28em;
@@ -1200,175 +1216,110 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           }
           p {
             margin: 0;
-            font-size: 1.02rem;
             line-height: 1.7;
-            opacity: 0.86;
+            opacity: 0.82;
           }
         `}</style>
       </div>
     );
   }
 
-  if (layout === 'albums') {
+  if (type === 'gallery') {
     return (
-      <div className="panel-albums">
-        <h2>{panel.title}</h2>
-        <div className="albums">
-          {panel.items.map((item) => (
-            <div className="album" key={item.label}>
-              <div className="album-header">
-                <span>{item.folder}</span>
-              </div>
-              <div className="album-body">
-                <h3>{item.label}</h3>
-                <p>{item.description}</p>
-              </div>
+      <div className="gallery">
+        {panel.albums.map((album) => (
+          <button
+            type="button"
+            key={album.title}
+            className="gallery-card"
+            onClick={(event) => onCardClick(event, { album, title: album.title, description: album.description })}
+          >
+            <div className="gallery-preview">
+              {album.images.slice(0, 3).map((image) => (
+                <img key={image.src} src={image.src} alt={image.alt} />
+              ))}
             </div>
-          ))}
-        </div>
+            <div className="gallery-text">
+              <h3>{album.title}</h3>
+              <p>{album.description}</p>
+            </div>
+          </button>
+        ))}
         <style jsx>{`
-          .panel-albums {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-          }
-          h2 {
-            font-size: clamp(2.1rem, 3vw, 3.3rem);
-          }
-          .albums {
+          .gallery {
             display: grid;
+            width: 100%;
+            gap: 1.1rem;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.8rem;
           }
-          .album {
-            position: relative;
+          .gallery-card {
+            display: grid;
+            gap: 0.9rem;
+            padding: 1.3rem;
             border-radius: 26px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: linear-gradient(160deg, rgba(14, 16, 32, 0.82), rgba(31, 36, 62, 0.9));
-            display: flex;
-            flex-direction: column;
-            min-height: 240px;
-            box-shadow: 0 32px 54px rgba(0, 0, 0, 0.3);
+            border: none;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+            text-align: left;
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.24);
           }
-          .album::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 80% 0%, rgba(134, 244, 255, 0.24), transparent 60%);
-            mix-blend-mode: screen;
-            pointer-events: none;
-          }
-          .album-header {
-            padding: 1rem 1.5rem;
-            font-size: 0.74rem;
-            text-transform: uppercase;
-            letter-spacing: 0.32em;
-            background: rgba(255, 255, 255, 0.06);
-            display: flex;
-            align-items: center;
+          .gallery-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 0.6rem;
-            z-index: 1;
           }
-          .album-header::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(134, 244, 255, 0.8);
-          }
-          .album-body {
-            flex: 1;
-            padding: 1.6rem 1.8rem 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.7rem;
-            position: relative;
-            z-index: 1;
+          .gallery-preview img {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            object-fit: cover;
           }
           h3 {
-            font-size: 1.45rem;
-            margin: 0;
+            margin: 0 0 0.4rem;
           }
           p {
-            font-size: 1.02rem;
-            line-height: 1.7;
-            opacity: 0.84;
             margin: 0;
+            opacity: 0.78;
+            line-height: 1.6;
           }
         `}</style>
       </div>
     );
   }
 
-  if (layout === 'blog') {
+  if (type === 'blog') {
     return (
-      <div className="panel-blog">
-        <h2>{panel.title}</h2>
-        <div className="posts">
-          {panel.items.map((item, index) => (
-            <article key={item.label}>
-              <span className="post-index">{String(index + 1).padStart(2, '0')}</span>
-              <div className="post-body">
-                <h3>{item.label}</h3>
-                <p>{item.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+      <div className="blog">
+        {panel.posts.map((post) => (
+          <button type="button" key={post.title} className="blog-card" onClick={(event) => onCardClick(event, post)}>
+            <span className="blog-title">{post.title}</span>
+            <p>{post.excerpt}</p>
+          </button>
+        ))}
         <style jsx>{`
-          .panel-blog {
+          .blog {
             display: flex;
             flex-direction: column;
-            gap: 2rem;
+            gap: 1rem;
+            width: 100%;
           }
-          h2 {
-            font-size: clamp(2.1rem, 3vw, 3.3rem);
-          }
-          .posts {
-            display: grid;
-            gap: 1.4rem;
-            position: relative;
-          }
-          .posts::before {
-            content: '';
-            position: absolute;
-            left: 26px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: linear-gradient(180deg, rgba(134, 244, 255, 0.5), transparent);
-          }
-          article {
-            position: relative;
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 1.4rem;
-            padding: 1.4rem 1.6rem;
+          .blog-card {
+            padding: 1.3rem 1.5rem;
             border-radius: 22px;
-            background: linear-gradient(130deg, rgba(255, 255, 255, 0.08), rgba(134, 244, 255, 0.08));
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            backdrop-filter: blur(16px);
-            box-shadow: 0 24px 40px rgba(0, 0, 0, 0.24);
-          }
-          .post-index {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, rgba(121, 140, 255, 0.16), rgba(255, 255, 255, 0.06));
+            text-align: left;
             display: grid;
-            place-items: center;
-            background: rgba(134, 244, 255, 0.16);
-            font-weight: 700;
-            letter-spacing: 0.24em;
+            gap: 0.6rem;
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
           }
-          h3 {
-            margin: 0 0 0.6rem;
-            font-size: 1.36rem;
+          .blog-title {
+            font-size: 1.18rem;
+            font-weight: 600;
           }
           p {
-            opacity: 0.84;
-            line-height: 1.7;
             margin: 0;
+            opacity: 0.8;
+            line-height: 1.7;
           }
         `}</style>
       </div>
@@ -1378,312 +1329,266 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
   return null;
 }
 
-function Hud({
-  hudReadouts,
-  hudLevel,
-  showFlashReady,
-  flashReady,
-  theme,
-  cameraMode,
-  activePanel,
-  flashMode,
-}) {
+function PanelNavigation({ onNavigate }) {
+  return (
+    <div className="panel-nav">
+      <button type="button" onClick={() => onNavigate('prev')} aria-label="Previous panel">
+        ←
+      </button>
+      <button type="button" onClick={() => onNavigate('next')} aria-label="Next panel">
+        →
+      </button>
+      <style jsx>{`
+        .panel-nav {
+          position: absolute;
+          bottom: clamp(1.6rem, 4vh, 3rem);
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 1rem;
+        }
+        button {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 50%;
+          border: none;
+          background: rgba(255, 255, 255, 0.12);
+          color: inherit;
+          font-size: 1.4rem;
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function FocusCursor({ position }) {
+  return (
+    <div className="focus-cursor" style={{ left: `${position.x}%`, top: `${position.y}%` }}>
+      <div className="ring" />
+      <div className="ring inner" />
+      <style jsx>{`
+        .focus-cursor {
+          position: absolute;
+          width: 80px;
+          height: 80px;
+          margin-left: -40px;
+          margin-top: -40px;
+          pointer-events: none;
+          transition: transform 0.18s ease;
+        }
+        .ring {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          border: 2px solid rgba(134, 244, 255, 0.6);
+        }
+        .ring.inner {
+          inset: 18px;
+          border-color: rgba(134, 244, 255, 0.8);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function RuleOfThirdsOverlay({ visible }) {
+  if (!visible) return null;
+  return (
+    <div className="grid-overlay" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={`v-${index}`} className="grid-line vertical" style={{ left: `${(index + 1) * 25}%` }} />
+      ))}
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={`h-${index}`} className="grid-line horizontal" style={{ top: `${(index + 1) * 25}%` }} />
+      ))}
+      <style jsx>{`
+        .grid-overlay {
+          position: absolute;
+          inset: 4rem clamp(2rem, 8vw, 6rem) clamp(6rem, 8vh, 7rem) clamp(2rem, 8vw, 6rem);
+          pointer-events: none;
+        }
+        .grid-line {
+          position: absolute;
+          background: rgba(134, 244, 255, 0.18);
+        }
+        .grid-line.vertical {
+          width: 1px;
+          top: 0;
+          bottom: 0;
+        }
+        .grid-line.horizontal {
+          height: 1px;
+          left: 0;
+          right: 0;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function HistogramOverlay({ visible, data }) {
+  if (!visible) return null;
+  return (
+    <div className="histogram" aria-hidden="true">
+      {data.map((value, index) => (
+        <div key={index} className="bar" style={{ height: `${value * 100}%` }} />
+      ))}
+      <style jsx>{`
+        .histogram {
+          position: absolute;
+          right: clamp(2rem, 6vw, 5rem);
+          bottom: clamp(6rem, 8vh, 7rem);
+          width: 120px;
+          height: 60px;
+          display: grid;
+          grid-template-columns: repeat(${data.length}, 1fr);
+          gap: 6px;
+          align-items: end;
+          background: rgba(4, 8, 18, 0.46);
+          border-radius: 14px;
+          padding: 0.6rem;
+          border: 1px solid rgba(134, 244, 255, 0.16);
+          backdrop-filter: blur(12px);
+        }
+        .bar {
+          background: linear-gradient(180deg, rgba(134, 244, 255, 0.8), rgba(134, 244, 255, 0.2));
+          border-radius: 6px 6px 2px 2px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, toggleCameraMode, cameraMode, flashMode, cycleFlashMode, setIsCameraOn }) {
   return (
     <div className={`hud hud-${hudLevel}`}>
       <div className="hud-left">
-        <span>{cameraMode === 'dslr' ? 'OVF MODE' : 'EVF LIVE'}</span>
-        <span className="hud-panel">{activePanel}</span>
+        <button type="button" onClick={cycleHudLevel} aria-label="Cycle HUD density">
+          HUD {hudLevel.toUpperCase()}
+        </button>
+        <button type="button" onClick={toggleCameraMode} aria-label="Toggle camera mode">
+          {cameraMode === 'mirrorless' ? 'Mirrorless' : 'DSLR'}
+        </button>
       </div>
       <div className="hud-center">
-        {hudReadouts.map((item) => (
-          <div key={item.label} className="hud-item">
+        {readouts.map((item) => (
+          <div key={item.label} className="readout">
             <span className="label">{item.label}</span>
             <span className="value">{item.value}</span>
           </div>
         ))}
       </div>
       <div className="hud-right">
-        {showFlashReady && (
-          <span className={`flash-ready ${flashReady ? 'ready' : 'charging'}`}>
-            {flashReady ? 'FLASH READY' : 'FLASH CHARGING'}
-          </span>
-        )}
-        <span className="flash-mode">MODE: {flashMode.toUpperCase()}</span>
+        <button type="button" onClick={cycleFlashMode} aria-label="Cycle flash mode">
+          Flash {flashMode.toUpperCase()}
+        </button>
+        <button type="button" onClick={() => setIsCameraOn(false)} aria-label="Power off camera">
+          Power
+        </button>
       </div>
+      <div className="battery">
+        <span className="battery-label">Battery</span>
+        <div className="battery-shell">
+          <div className="battery-level" style={{ width: `${batteryLevel * 100}%` }} />
+        </div>
+        <span className="battery-value">{Math.round(batteryLevel * 100)}%</span>
+      </div>
+      <div className="focus-depth">Focus Depth {Math.round(focusDepth * 100)}%</div>
       <style jsx>{`
         .hud {
           position: absolute;
-          bottom: 0;
+          bottom: clamp(1.6rem, 4vh, 3.2rem);
           left: 50%;
           transform: translateX(-50%);
-          width: min(90vw, 1180px);
-          padding: 1.3rem 2rem;
-          border-radius: 26px 26px 0 0;
-          background: rgba(${theme === 'dark' ? '6, 8, 18, 0.85' : '240, 242, 255, 0.92'});
-          backdrop-filter: blur(28px);
-          display: flex;
-          justify-content: space-between;
+          display: grid;
+          grid-template-columns: auto auto auto;
           align-items: center;
-          gap: 1.4rem;
-          letter-spacing: 0.08em;
-          font-size: 0.8rem;
-          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.2' : '34, 52, 120, 0.26'});
-          box-shadow: 0 -18px 36px rgba(0, 0, 0, 0.32);
+          gap: clamp(1rem, 4vw, 2.6rem);
+          padding: 1rem 1.8rem;
+          border-radius: 999px;
+          background: rgba(6, 10, 24, 0.58);
+          border: 1px solid rgba(134, 244, 255, 0.18);
+          backdrop-filter: blur(18px);
+          color: rgba(235, 244, 255, 0.95);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
         }
-        .hud-left,
-        .hud-right {
-          display: flex;
-          flex-direction: column;
-          gap: 0.3rem;
+        .hud button {
+          background: none;
+          border: 1px solid rgba(134, 244, 255, 0.3);
+          border-radius: 999px;
+          padding: 0.4rem 0.9rem;
+          color: inherit;
+          font-size: 0.72rem;
+          letter-spacing: 0.18em;
           text-transform: uppercase;
-          font-size: 0.72rem;
-          opacity: 0.8;
-        }
-        .hud-panel {
-          font-size: 0.75rem;
-          opacity: 0.7;
-          max-width: 16ch;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .flash-mode {
-          font-size: 0.72rem;
-          opacity: 0.65;
-          letter-spacing: 0.12em;
         }
         .hud-center {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 1.6rem;
+          display: grid;
+          grid-auto-flow: column;
+          gap: 1.4rem;
         }
-        .hud-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+        .readout {
+          display: grid;
           gap: 0.2rem;
-          padding: 0.4rem 0.6rem;
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.04);
+          text-align: center;
         }
         .label {
-          font-size: 0.7rem;
+          font-size: 0.62rem;
+          letter-spacing: 0.24em;
+          text-transform: uppercase;
           opacity: 0.6;
         }
         .value {
-          font-size: 1rem;
-          font-weight: 700;
-        }
-        .flash-ready {
-          padding: 0.4rem 0.8rem;
-          border-radius: 999px;
-          text-align: center;
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          background: rgba(255, 255, 255, 0.06);
-        }
-        .flash-ready.ready {
-          color: ${theme === 'dark' ? '#86f4ff' : '#3044ff'};
-        }
-        .flash-ready.charging {
-          color: #ffb347;
-        }
-        @media (max-width: 768px) {
-          .hud {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1rem 1.2rem 1.3rem;
-          }
-          .hud-center {
-            width: 100%;
-            justify-content: space-between;
-            flex-wrap: wrap;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function ControlCluster({
-  exposure,
-  lens,
-  theme,
-  hudLevel,
-  cameraMode,
-  onAdjust,
-  onFlash,
-  onCycleHud,
-  onToggleTheme,
-  onToggleCameraMode,
-  flashMode,
-}) {
-  const shutterLabel = `1/${Math.round(1 / exposure.shutter)}`;
-  return (
-    <div className="controls">
-      <div className="cluster left">
-        <button onClick={() => onAdjust('iso', -100)} aria-label="Decrease ISO">
-          ISO-
-        </button>
-        <span className="readout">ISO {exposure.iso}</span>
-        <button onClick={() => onAdjust('iso', 100)} aria-label="Increase ISO">
-          ISO+
-        </button>
-        <div className="dial">
-          <span>WB</span>
-          <input
-            type="range"
-            min={2500}
-            max={9000}
-            step={100}
-            value={exposure.whiteBalance}
-            onChange={(event) => onAdjust('whiteBalance', parseInt(event.target.value, 10) - exposure.whiteBalance)}
-          />
-        </div>
-        <button onClick={onToggleTheme} aria-label="Toggle theme">
-          {theme === 'dark' ? 'Bright Mode' : 'Dark Mode'}
-        </button>
-      </div>
-      <div className="cluster center">
-        <button onClick={() => onAdjust('aperture', -0.2)} aria-label="Open aperture">
-          F-
-        </button>
-        <span className="readout">ƒ/{exposure.aperture.toFixed(1)}</span>
-        <button onClick={() => onAdjust('aperture', 0.2)} aria-label="Close aperture">
-          F+
-        </button>
-        <button
-          className={`flash ${flashMode}`}
-          onClick={onFlash}
-          aria-label="Trigger flash"
-          disabled={flashMode === 'off'}
-        >
-          Flash {flashMode === 'auto' ? 'Auto' : flashMode === 'on' ? 'On' : 'Off'}
-        </button>
-        <button onClick={() => onAdjust('shutter', -1 / 1250)} aria-label="Faster shutter">
-          S+
-        </button>
-        <span className="readout">{shutterLabel}</span>
-        <button onClick={() => onAdjust('shutter', 1 / 1250)} aria-label="Slower shutter">
-          S-
-        </button>
-      </div>
-      <div className="cluster right">
-        <button onClick={onToggleCameraMode} aria-label="Toggle camera type">
-          {cameraMode === 'dslr' ? 'Mirrorless' : 'DSLR'}
-        </button>
-        <button onClick={onCycleHud} aria-label="Cycle HUD level">
-          HUD: {hudLevel.toUpperCase()}
-        </button>
-        <div className="lens-meta">
-          <span>{lens.name}</span>
-          <span>{lens.fov.toFixed(0)}° FOV</span>
-        </div>
-      </div>
-      <style jsx>{`
-        .controls {
-          position: absolute;
-          top: 28px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: min(92vw, 1260px);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 1.2rem;
-          pointer-events: none;
-        }
-        .cluster {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          pointer-events: auto;
-          background: rgba(${theme === 'dark' ? '6, 8, 18, 0.72' : '235, 238, 255, 0.88'});
-          padding: 1rem 1.2rem;
-          border-radius: 28px;
-          backdrop-filter: blur(24px);
-          box-shadow: 0 18px 34px rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.22' : '34, 52, 120, 0.26'});
-        }
-        .cluster.center {
-          gap: 1.1rem;
-        }
-        button {
-          border: none;
-          border-radius: 999px;
-          padding: 0.55rem 1.2rem;
-          font-size: 0.82rem;
+          font-size: 1.04rem;
+          font-weight: 600;
           letter-spacing: 0.08em;
-          text-transform: uppercase;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
-          color: inherit;
-          cursor: pointer;
-          transition: transform 0.28s ease, background 0.28s ease, box-shadow 0.28s ease;
         }
-        button:hover {
-          transform: translateY(-3px);
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(134, 244, 255, 0.22));
-          box-shadow: 0 18px 28px rgba(0, 0, 0, 0.25);
-        }
-        button:disabled {
-          cursor: not-allowed;
-          opacity: 0.55;
-          transform: none;
-          box-shadow: none;
-        }
-        .flash {
-          background: linear-gradient(135deg, #ffe45b, #ff8c00);
-          color: #1a1406;
-          font-weight: 700;
-          box-shadow: 0 16px 32px rgba(255, 162, 0, 0.32);
-        }
-        .flash.off {
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
-          color: inherit;
-          font-weight: 600;
-          box-shadow: none;
-        }
-        .readout {
-          font-weight: 600;
-          letter-spacing: 0.04em;
-        }
-        .dial {
+        .battery {
+          position: absolute;
+          top: -3.6rem;
+          right: 0;
           display: flex;
           align-items: center;
           gap: 0.6rem;
-          padding-left: 0.4rem;
-          border-left: 1px solid rgba(255, 255, 255, 0.12);
-        }
-        .dial input {
-          width: 140px;
-        }
-        .lens-meta {
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-          text-align: right;
-          font-size: 0.78rem;
-          letter-spacing: 0.12em;
+          font-size: 0.7rem;
+          letter-spacing: 0.18em;
           text-transform: uppercase;
         }
+        .battery-shell {
+          width: 120px;
+          height: 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(134, 244, 255, 0.4);
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .battery-level {
+          height: 100%;
+          background: linear-gradient(90deg, #78f8ff, #60d1ff, #4ca8ff);
+        }
+        .focus-depth {
+          position: absolute;
+          top: -3.6rem;
+          left: 0;
+          font-size: 0.72rem;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          opacity: 0.7;
+        }
         @media (max-width: 960px) {
-          .controls {
-            flex-direction: column;
-            gap: 1rem;
-            top: 16px;
+          .hud {
+            grid-template-columns: 1fr;
+            row-gap: 0.8rem;
+            padding: 0.9rem 1.2rem 2.6rem;
           }
-          .cluster {
-            width: 100%;
+          .hud-center {
+            grid-auto-flow: row;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .battery, .focus-depth {
+            position: static;
             justify-content: center;
-            flex-wrap: wrap;
-          }
-          .cluster.right {
-            flex-direction: column;
-            text-align: center;
-          }
-          .lens-meta {
-            text-align: center;
           }
         }
       `}</style>
@@ -1691,336 +1596,601 @@ function ControlCluster({
   );
 }
 
-function LensSelector({ lenses, activeLensId, onSelect }) {
+function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposureChange, onLensChange, lenses, cameraMode }) {
+  const [exposureOpen, setExposureOpen] = useState(true);
+  const [lensOpen, setLensOpen] = useState(false);
+  const [assistOpen, setAssistOpen] = useState(false);
+
   return (
-    <div className="lens-selector">
-      {lenses.map((item) => (
-        <button
-          key={item.id}
-          className={item.id === activeLensId ? 'active' : ''}
-          onClick={() => onSelect(item.id)}
-        >
-          {item.id}
+    <aside className="control-dock">
+      <div className={`cluster ${exposureOpen ? 'open' : ''}`}>
+        <button type="button" className="cluster-toggle" onClick={() => setExposureOpen((prev) => !prev)}>
+          Exposure
         </button>
+        {exposureOpen && (
+          <div className="cluster-body">
+            <SliderControl
+              label="Aperture"
+              min={lens.minAperture}
+              max={lens.maxAperture}
+              step={0.1}
+              value={exposure.aperture}
+              onChange={(value) => onExposureChange('aperture')(value)}
+            />
+            <SliderControl
+              label="Shutter"
+              min={1 / 8000}
+              max={2}
+              step={0.0005}
+              value={exposure.shutter}
+              displayValue={formatShutter}
+              onChange={(value) => onExposureChange('shutter')(value)}
+            />
+            <SliderControl
+              label="ISO"
+              min={100}
+              max={6400}
+              step={10}
+              value={exposure.iso}
+              onChange={(value) => onExposureChange('iso')(value)}
+            />
+            <SliderControl
+              label="White Balance"
+              min={2500}
+              max={9000}
+              step={50}
+              value={exposure.whiteBalance}
+              onChange={(value) => onExposureChange('whiteBalance')(value)}
+            />
+            <SliderControl
+              label="Focus Depth"
+              min={0.1}
+              max={0.95}
+              step={0.01}
+              value={focusDepth}
+              onChange={onFocusDepthChange}
+              displayValue={(value) => `${Math.round(value * 100)}%`}
+            />
+          </div>
+        )}
+      </div>
+      <div className={`cluster ${lensOpen ? 'open' : ''}`}>
+        <button type="button" className="cluster-toggle" onClick={() => setLensOpen((prev) => !prev)}>
+          Lenses
+        </button>
+        {lensOpen && (
+          <div className="cluster-body lens-list">
+            {lenses.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`lens-item ${lens.id === item.id ? 'active' : ''}`}
+                onClick={() => onLensChange(item.id)}
+              >
+                <span className="lens-title">{item.name}</span>
+                <span className="lens-info">f/{item.minAperture} - f/{item.maxAperture}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className={`cluster ${assistOpen ? 'open' : ''}`}>
+        <button type="button" className="cluster-toggle" onClick={() => setAssistOpen((prev) => !prev)}>
+          Assist
+        </button>
+        {assistOpen && (
+          <div className="cluster-body">
+            <div className="assist-item">Mode: {cameraMode === 'mirrorless' ? 'Electronic Viewfinder' : 'Optical Viewfinder'}</div>
+            <div className="assist-item">Lens: {lens.name}</div>
+            <div className="assist-item">Depth Response: {(lens.depthResponse * 100).toFixed(0)}%</div>
+          </div>
+        )}
+      </div>
+      <style jsx>{`
+        .control-dock {
+          position: absolute;
+          top: clamp(1.8rem, 6vh, 3.4rem);
+          right: clamp(2rem, 6vw, 5rem);
+          display: grid;
+          gap: 1rem;
+          width: clamp(240px, 22vw, 320px);
+        }
+        .cluster {
+          background: rgba(6, 10, 24, 0.6);
+          border: 1px solid rgba(134, 244, 255, 0.18);
+          border-radius: 20px;
+          backdrop-filter: blur(18px);
+          overflow: hidden;
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+          transition: transform 0.4s ease;
+        }
+        .cluster.open {
+          transform: translateY(-4px);
+        }
+        .cluster-toggle {
+          width: 100%;
+          padding: 0.9rem 1.2rem;
+          border: none;
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(235, 244, 255, 0.9);
+          font-weight: 600;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+        }
+        .cluster-body {
+          display: grid;
+          gap: 0.8rem;
+          padding: 1rem 1.4rem 1.2rem;
+        }
+        .lens-list {
+          gap: 0.4rem;
+        }
+        .lens-item {
+          display: grid;
+          gap: 0.2rem;
+          border: 1px solid rgba(134, 244, 255, 0.16);
+          border-radius: 14px;
+          padding: 0.8rem 1rem;
+          background: rgba(255, 255, 255, 0.04);
+          color: inherit;
+          text-align: left;
+        }
+        .lens-item.active {
+          border-color: rgba(134, 244, 255, 0.42);
+          background: rgba(134, 244, 255, 0.12);
+        }
+        .lens-title {
+          font-size: 0.92rem;
+          font-weight: 600;
+        }
+        .lens-info {
+          font-size: 0.72rem;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          opacity: 0.6;
+        }
+        .assist-item {
+          font-size: 0.82rem;
+          opacity: 0.78;
+          line-height: 1.5;
+        }
+        @media (max-width: 960px) {
+          .control-dock {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: min(90vw, 320px);
+          }
+        }
+      `}</style>
+    </aside>
+  );
+}
+
+function SliderControl({ label, min, max, step, value, onChange, displayValue }) {
+  return (
+    <label className="slider">
+      <span className="slider-label">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(parseFloat(event.target.value))}
+      />
+      <span className="slider-value">{displayValue ? displayValue(value) : Math.round(value)}</span>
+      <style jsx>{`
+        .slider {
+          display: grid;
+          gap: 0.4rem;
+        }
+        .slider-label {
+          font-size: 0.72rem;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          opacity: 0.72;
+        }
+        input[type='range'] {
+          appearance: none;
+          width: 100%;
+          height: 6px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(134, 244, 255, 0.6), rgba(255, 255, 255, 0.15));
+        }
+        input[type='range']::-webkit-slider-thumb {
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #78f8ff;
+          box-shadow: 0 6px 16px rgba(120, 248, 255, 0.4);
+        }
+        .slider-value {
+          font-size: 0.78rem;
+          letter-spacing: 0.1em;
+          opacity: 0.8;
+        }
+      `}</style>
+    </label>
+  );
+}
+
+function BootOverlay({ batteryLevel }) {
+  return (
+    <div className="boot" aria-live="polite">
+      <div className="boot-inner">
+        <span className="brand">Menelek Makonnen</span>
+        <span className="status">Booting flagship camera OS...</span>
+        <div className="boot-bar">
+          <div className="boot-progress" />
+        </div>
+        <span className="boot-battery">Battery {Math.round(batteryLevel * 100)}%</span>
+      </div>
+      <style jsx>{`
+        .boot {
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          background: radial-gradient(circle at 50% 50%, rgba(4, 8, 18, 0.9), rgba(4, 8, 18, 0.98));
+          z-index: 20;
+        }
+        .boot-inner {
+          display: grid;
+          gap: 1rem;
+          text-align: center;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: rgba(134, 244, 255, 0.92);
+        }
+        .brand {
+          font-size: 1.2rem;
+          font-weight: 700;
+        }
+        .status {
+          font-size: 0.72rem;
+        }
+        .boot-bar {
+          width: 220px;
+          height: 6px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.1);
+          overflow: hidden;
+        }
+        .boot-progress {
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, #78f8ff, #637bff);
+          animation: boot 1.8s ease forwards;
+        }
+        .boot-battery {
+          font-size: 0.68rem;
+          opacity: 0.7;
+        }
+        @keyframes boot {
+          from {
+            transform: translateX(-100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function CameraOffScreen({ onPower }) {
+  return (
+    <div className="camera-off">
+      <div className="off-inner">
+        <div className="off-icons">
+          <a href="https://www.linkedin.com/in/menelekmakonnen" target="_blank" rel="noreferrer" aria-label="LinkedIn">in</a>
+          <a href="https://www.instagram.com/menelekmakonnen" target="_blank" rel="noreferrer" aria-label="Instagram">IG</a>
+          <a href="https://www.youtube.com/@menelekmakonnen" target="_blank" rel="noreferrer" aria-label="YouTube">YT</a>
+          <a href="https://www.tiktok.com/@menelekmakonnen" target="_blank" rel="noreferrer" aria-label="TikTok">TT</a>
+        </div>
+        <button type="button" onClick={onPower} className="power-button">
+          Turn On
+        </button>
+      </div>
+      <style jsx>{`
+        .camera-off {
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          background: radial-gradient(circle at 50% 50%, rgba(3, 6, 12, 0.94), rgba(3, 6, 12, 0.98));
+          z-index: 19;
+        }
+        .off-inner {
+          display: grid;
+          gap: 1.6rem;
+          justify-items: center;
+        }
+        .off-icons {
+          display: flex;
+          gap: 1rem;
+        }
+        .off-icons a {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          border: 1px solid rgba(134, 244, 255, 0.26);
+          display: grid;
+          place-items: center;
+          font-size: 0.8rem;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+        .power-button {
+          padding: 0.9rem 2.8rem;
+          border-radius: 999px;
+          border: none;
+          background: linear-gradient(130deg, #78f8ff, #637bff);
+          color: #040612;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          font-weight: 700;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function LensCapTransition({ transition }) {
+  if (!transition) return null;
+  return (
+    <div className="lens-transition" aria-hidden="true">
+      <div className="cap">{transition.lens?.name}</div>
+      <style jsx>{`
+        .lens-transition {
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          background: rgba(2, 4, 10, 0.9);
+          z-index: 18;
+          animation: fadeOut 0.68s ease forwards;
+        }
+        .cap {
+          width: clamp(120px, 30vw, 240px);
+          height: clamp(120px, 30vw, 240px);
+          border-radius: 50%;
+          border: 6px solid rgba(134, 244, 255, 0.4);
+          display: grid;
+          place-items: center;
+          font-size: 0.78rem;
+          letter-spacing: 0.24em;
+          text-transform: uppercase;
+          color: rgba(134, 244, 255, 0.9);
+          animation: spinCap 0.68s ease forwards;
+        }
+        @keyframes fadeOut {
+          0% {
+            opacity: 1;
+          }
+          80% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
+        @keyframes spinCap {
+          from {
+            transform: rotate(0deg) scale(1.1);
+          }
+          to {
+            transform: rotate(-180deg) scale(0.4);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function LayerStack({ layers, onBackdropClick, closeTopLayer, galleryState, setGalleryState }) {
+  if (!layers.length) return null;
+  return (
+    <div className="layer-stack" onClick={onBackdropClick} role="presentation">
+      {layers.map((layer, index) => (
+        <div
+          key={layer.id}
+          className="layer"
+          style={{
+            zIndex: 30 + index,
+            transform: `translateY(${index * 6}px) scale(${1 - index * 0.03})`,
+            filter: `blur(${index * 1.2}px)`
+          }}
+          onClick={(event) => event.stopPropagation()}
+          role="presentation"
+        >
+          <header>
+            <h3>{layer.title}</h3>
+            <button type="button" onClick={closeTopLayer} aria-label="Close layer">
+              ✕
+            </button>
+          </header>
+          <div className="layer-content">
+            {layer.type === 'gallery' && galleryState ? (
+              <GalleryOverlay state={galleryState} setState={setGalleryState} />
+            ) : (
+              <p>{layer.body}</p>
+            )}
+          </div>
+        </div>
       ))}
       <style jsx>{`
-        .lens-selector {
+        .layer-stack {
           position: absolute;
-          right: 32px;
-          top: 50%;
-          transform: translateY(-50%);
-          display: flex;
-          flex-direction: column;
-          gap: 0.85rem;
-          padding: 1.4rem 1.1rem;
-          border-radius: 28px;
-          background: rgba(6, 8, 18, 0.6);
-          backdrop-filter: blur(22px);
-          box-shadow: 0 28px 46px rgba(0, 0, 0, 0.32);
-          border: 1px solid rgba(162, 174, 255, 0.22);
+          inset: 0;
+          background: rgba(4, 8, 18, 0.46);
+          backdrop-filter: blur(6px);
+          display: grid;
+          place-items: center;
+          padding: 4rem;
+          z-index: 25;
         }
-        button {
-          border: none;
-          border-radius: 16px;
-          padding: 0.65rem 1.1rem;
-          background: rgba(255, 255, 255, 0.12);
-          color: #fefefe;
-          cursor: pointer;
+        .layer {
+          width: min(640px, 90vw);
+          max-height: 80vh;
+          border-radius: 26px;
+          background: rgba(8, 12, 26, 0.92);
+          border: 1px solid rgba(134, 244, 255, 0.22);
+          backdrop-filter: blur(18px);
+          box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+          display: grid;
+          grid-template-rows: auto 1fr;
+        }
+        header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.2rem 1.6rem;
+          border-bottom: 1px solid rgba(134, 244, 255, 0.16);
           letter-spacing: 0.12em;
           text-transform: uppercase;
           font-size: 0.74rem;
-          transition: transform 0.28s ease, background 0.28s ease, box-shadow 0.28s ease;
         }
-        button.active {
-          background: linear-gradient(135deg, rgba(134, 244, 255, 0.9), rgba(118, 140, 255, 0.9));
-          color: #030510;
-          transform: translateX(-6px);
-          font-weight: 700;
-          box-shadow: 0 18px 32px rgba(83, 208, 255, 0.45);
+        header h3 {
+          margin: 0;
+          font-size: 0.78rem;
         }
-        button:hover {
-          transform: translateX(-4px);
-        }
-        @media (max-width: 768px) {
-          .lens-selector {
-            flex-direction: row;
-            bottom: 24px;
-            top: auto;
-            right: 50%;
-            transform: translate(50%, 0);
-          }
-          button.active {
-            transform: translateY(-4px);
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function FocusCursor({ position, focusing }) {
-  return (
-    <div
-      className={`focus-cursor ${focusing ? 'focusing' : ''}`}
-      style={{ left: `${position.x}%`, top: `${position.y}%` }}
-    >
-      <div className="ring" />
-      <div className="ring second" />
-      <style jsx>{`
-        .focus-cursor {
-          position: absolute;
-          pointer-events: none;
-          width: 120px;
-          height: 120px;
-          margin-left: -60px;
-          margin-top: -60px;
-          display: grid;
-          place-items: center;
-          mix-blend-mode: screen;
-          transition: transform 0.2s ease;
-        }
-        .focus-cursor.focusing {
-          animation: focusPulse 0.42s ease;
-        }
-        .ring {
-          width: 80px;
-          height: 80px;
-          border-radius: 28px;
-          border: 2px solid rgba(134, 244, 255, 0.8);
-          backdrop-filter: blur(2px);
-        }
-        .ring.second {
-          width: 56px;
-          height: 56px;
-          border-color: rgba(134, 244, 255, 0.45);
-        }
-        @keyframes focusPulse {
-          0% {
-            transform: scale(1.2);
-          }
-          70% {
-            transform: scale(0.9);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function FlashOverlay({ active, focusPoint, theme, mode }) {
-  const intensity = mode === 'on' ? 1 : mode === 'auto' ? 0.85 : 0.65;
-  const baseAlpha = theme === 'dark' ? 0.85 : 0.6;
-  const alpha = clamp(baseAlpha * intensity, 0, 1);
-  return (
-    <div
-      className={`flash-overlay ${active ? 'active' : ''}`}
-      style={{
-        background: `radial-gradient(circle at ${focusPoint.x}% ${focusPoint.y}%, rgba(255,255,255, ${alpha}), transparent 55%)`,
-      }}
-    >
-      <style jsx>{`
-        .flash-overlay {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          opacity: 0;
-          transition: opacity 0.18s ease;
-          mix-blend-mode: screen;
-        }
-        .flash-overlay.active {
-          opacity: 1;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function FlashToggle({ mode, onCycle, theme }) {
-  const label = mode === 'auto' ? 'AUTO' : mode === 'on' ? 'ON' : 'OFF';
-  return (
-    <button className="flash-toggle" onClick={onCycle} aria-label="Cycle flash mode">
-      Flash Toggle · {label}
-      <style jsx>{`
-        .flash-toggle {
-          position: absolute;
-          top: 26px;
-          left: 32px;
-          padding: 0.65rem 1.4rem;
-          border-radius: 999px;
-          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.26' : '34, 52, 120, 0.26'});
-          background: rgba(${theme === 'dark' ? '8, 10, 18, 0.78' : '238, 240, 255, 0.9'});
-          color: inherit;
-          letter-spacing: 0.14em;
-          font-size: 0.7rem;
-          text-transform: uppercase;
-          cursor: pointer;
-          backdrop-filter: blur(18px);
-          box-shadow: 0 18px 30px rgba(0, 0, 0, 0.28);
-          transition: transform 0.28s ease, background 0.28s ease, box-shadow 0.28s ease;
-        }
-        .flash-toggle:hover {
-          transform: translateY(-3px);
-          background: rgba(${theme === 'dark' ? '18, 22, 36, 0.9' : '224, 227, 255, 0.96'});
-          box-shadow: 0 22px 34px rgba(0, 0, 0, 0.32);
-        }
-        @media (max-width: 768px) {
-          .flash-toggle {
-            left: 50%;
-            transform: translateX(-50%);
-            top: 18px;
-          }
-          .flash-toggle:hover {
-            transform: translate(-50%, -3px);
-          }
-        }
-      `}</style>
-    </button>
-  );
-}
-
-function ExposureEffects({ grain, shutter }) {
-  return (
-    <div className="exposure-effects" style={{ '--grain-strength': grain, '--shutter-strength': shutter }}>
-      <div className="grain-layer" />
-      <div className="shutter-layer" />
-      <style jsx>{`
-        .exposure-effects {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-        .grain-layer {
-          position: absolute;
-          inset: -120%;
-          opacity: var(--grain-strength);
-          background-image:
-            radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-            radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 0.24) 0, rgba(0, 0, 0, 0.24) 1px, transparent 1px),
-            radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-          background-size: 120px 120px, 180px 180px, 90px 90px;
-          mix-blend-mode: soft-light;
-          animation: grainShift 1.8s steps(3) infinite;
-        }
-        .shutter-layer {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(120deg, rgba(255, 255, 255, 0.28), transparent 60%);
-          filter: blur(calc(var(--shutter-strength) * 32px));
-          opacity: calc(var(--shutter-strength) * 0.55);
-          transition: opacity 0.45s ease, filter 0.45s ease;
-          mix-blend-mode: screen;
-        }
-        @keyframes grainShift {
-          0% {
-            transform: translate3d(0, 0, 0);
-          }
-          50% {
-            transform: translate3d(-5%, 3%, 0);
-          }
-          100% {
-            transform: translate3d(4%, -6%, 0);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .grain-layer {
-            animation: none;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function LensOverlay({ vignette, distortion, fov, flashMode }) {
-  return (
-    <div className="lens-overlay">
-      <div className="vignette" />
-      <div className="hud-top">Flash {flashMode.toUpperCase()}</div>
-      <div className="hud-fov">{fov.toFixed(0)}°</div>
-      <style jsx>{`
-        .lens-overlay {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-        .vignette {
-          position: absolute;
-          inset: -10%;
+        header button {
+          border: none;
+          background: rgba(255, 255, 255, 0.08);
           border-radius: 50%;
-          transform: scale(${1 + distortion + Math.max(0, (60 - fov) / 220)});
-          box-shadow: inset 0 0 140px rgba(0, 0, 0, ${0.65 + vignette});
+          width: 32px;
+          height: 32px;
+          color: inherit;
         }
-        .hud-top {
-          position: absolute;
-          top: 22px;
-          right: 24px;
-          padding: 0.5rem 0.9rem;
-          border-radius: 999px;
-          background: rgba(0, 0, 0, 0.45);
-          color: #f0f3ff;
-          font-size: 0.75rem;
-          letter-spacing: 0.18em;
+        .layer-content {
+          padding: 1.6rem;
+          overflow-y: auto;
         }
-        .hud-fov {
-          position: absolute;
-          bottom: 24px;
-          left: 50%;
-          transform: translateX(-50%);
-          padding: 0.4rem 0.8rem;
-          border-radius: 999px;
-          background: rgba(0, 0, 0, 0.45);
-          color: #f0f3ff;
-          font-size: 0.7rem;
-          letter-spacing: 0.18em;
+        .layer-content p {
+          line-height: 1.7;
+          opacity: 0.82;
+        }
+        @media (max-width: 960px) {
+          .layer-stack {
+            padding: 2rem;
+          }
         }
       `}</style>
     </div>
   );
 }
 
-function calculateExposureLook(exposure, theme) {
-  const minShutter = 1 / 8000;
-  const maxShutter = 1 / 4;
-  const shutterSeconds = clamp(exposure.shutter, minShutter, maxShutter);
-  const ev100 = Math.log2((exposure.aperture ** 2) / exposure.shutter);
-  const ev = ev100 - Math.log2(exposure.iso / 100);
-  const normalized = clamp((ev + 2) / 12, 0, 1);
-  const brightness = clamp(0.65 + normalized * 0.9, 0.55, 1.6);
-  const contrast = clamp(0.85 + (normalized - 0.5) * 0.4, 0.75, 1.25);
-  const grain = clamp(0.08 + ((exposure.iso - 100) / (6400 - 100)) * 0.4, 0.08, 0.42);
-  const shutterNormalized = clamp(
-    (Math.log(shutterSeconds) - Math.log(minShutter)) / (Math.log(maxShutter) - Math.log(minShutter)),
-    0,
-    1,
+function GalleryOverlay({ state, setState }) {
+  const { album, groupSize, page } = state;
+  const totalPages = Math.ceil(album.images.length / groupSize);
+  const images = album.images.slice(page * groupSize, page * groupSize + groupSize);
+  const handleGroupChange = (event) => {
+    const nextGroup = parseInt(event.target.value, 10);
+    setState((prev) => ({ ...prev, groupSize: nextGroup, page: 0 }));
+  };
+  return (
+    <div className="gallery-overlay">
+      <div className="gallery-toolbar">
+        <label>
+          Group Size
+          <select value={groupSize} onChange={handleGroupChange}>
+            {[8, 16].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="gallery-nav">
+          <button type="button" disabled={page === 0} onClick={() => setState((prev) => ({ ...prev, page: Math.max(prev.page - 1, 0) }))}>
+            Prev
+          </button>
+          <span>
+            {page + 1}/{totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages - 1}
+            onClick={() => setState((prev) => ({ ...prev, page: Math.min(prev.page + 1, totalPages - 1) }))}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+      <div className="gallery-grid">
+        {images.map((image) => (
+          <figure key={image.src}>
+            <img src={image.src} alt={image.alt} />
+            <figcaption>{image.alt}</figcaption>
+          </figure>
+        ))}
+      </div>
+      <style jsx>{`
+        .gallery-overlay {
+          display: grid;
+          gap: 1.2rem;
+        }
+        .gallery-toolbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+        }
+        label {
+          display: flex;
+          gap: 0.6rem;
+          align-items: center;
+          font-size: 0.78rem;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+        select {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(134, 244, 255, 0.2);
+          color: inherit;
+          padding: 0.3rem 0.6rem;
+        }
+        .gallery-nav {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          font-size: 0.78rem;
+          letter-spacing: 0.18em;
+        }
+        .gallery-nav button {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(134, 244, 255, 0.18);
+          color: inherit;
+          padding: 0.4rem 0.9rem;
+        }
+        .gallery-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 1rem;
+        }
+        figure {
+          margin: 0;
+          display: grid;
+          gap: 0.4rem;
+        }
+        img {
+          width: 100%;
+          height: 100%;
+          border-radius: 12px;
+          object-fit: cover;
+        }
+        figcaption {
+          font-size: 0.7rem;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          opacity: 0.6;
+        }
+      `}</style>
+    </div>
   );
-  const shutterSmear = 0.05 + shutterNormalized * 0.9;
-  const themeBias = theme === 'dark' ? -0.05 : 0.08;
-  const sceneLuminance = clamp(0.25 + normalized * 0.7 + themeBias, 0, 1);
-  return { brightness, contrast, grain, shutterSmear, sceneLuminance };
 }
 
-function calculateMeter(exposure, theme, sceneLuminance) {
-  const target = theme === 'dark' ? 0.45 : 0.62;
-  const diff = sceneLuminance - target;
-  if (diff > 0.12) return '+';
-  if (diff < -0.12) return '-';
-  const ev100 = Math.log2((exposure.aperture ** 2) / exposure.shutter);
-  const ev = ev100 - Math.log2(exposure.iso / 100);
-  const normalized = clamp((ev + 2) / 12, 0, 1);
-  if (normalized > target + 0.18) return '+';
-  if (normalized < target - 0.18) return '-';
-  return '0';
-}
-
-function shuffleUniverseItems() {
-  const panel = PANELS.find((item) => item.id === 'loremaker');
-  if (!panel) {
-    return [];
-  }
-  return [...panel.items].sort(() => Math.random() - 0.5).slice(0, 12);
-}
