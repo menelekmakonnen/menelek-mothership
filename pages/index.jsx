@@ -456,6 +456,7 @@ export default function Home() {
   const lastFocusTargetRef = useRef(null);
   const lastBackdropClickRef = useRef(0);
   const swipeStateRef = useRef({ startX: 0, startY: 0, active: false });
+  const flashPulseTimeoutRef = useRef(null);
   const [activePanel, setActivePanel] = useState(0);
   const [previousPanel, setPreviousPanel] = useState(0);
   const [slideDirection, setSlideDirection] = useState('next');
@@ -475,6 +476,7 @@ export default function Home() {
   const [batteryLevel, setBatteryLevel] = useState(1);
   const [lensTransition, setLensTransition] = useState(null);
   const [expandedPanelId, setExpandedPanelId] = useState(null);
+  const [flashPulse, setFlashPulse] = useState(false);
   const hudLevel = HUD_LEVELS[hudLevelIndex];
   const lens = useMemo(() => LENSES.find((item) => item.id === lensId) || LENSES[2], [lensId]);
   const panelCount = PANELS.length;
@@ -499,6 +501,12 @@ export default function Home() {
     }, 2400);
     return () => clearInterval(interval);
   }, [heroPanel]);
+
+  useEffect(() => () => {
+    if (flashPulseTimeoutRef.current) {
+      clearTimeout(flashPulseTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const todayKey = getTodayKey();
@@ -668,6 +676,13 @@ export default function Home() {
       const index = FLASH_MODES.indexOf(prev);
       return FLASH_MODES[(index + 1) % FLASH_MODES.length];
     });
+    if (flashPulseTimeoutRef.current) {
+      clearTimeout(flashPulseTimeoutRef.current);
+    }
+    setFlashPulse(true);
+    flashPulseTimeoutRef.current = setTimeout(() => {
+      setFlashPulse(false);
+    }, 260);
   };
 
   const handleExposureChange = (key) => (value) => {
@@ -740,8 +755,8 @@ export default function Home() {
   }, [activePanel, exposure.iso, exposure.shutter, focusDepth]);
 
   const resolvedBrightness = resolvedTheme === 'light'
-    ? Math.min(Math.max(exposureLook.brightness, 0.68), 0.95)
-    : Math.min(Math.max(exposureLook.brightness, 0.72), 1.04);
+    ? Math.min(Math.max(exposureLook.brightness, 0.64), 0.9)
+    : Math.min(Math.max(exposureLook.brightness, 0.7), 0.98);
   const stageClass = `viewport theme-${resolvedTheme} mode-${cameraMode} ${!isCameraOn ? 'camera-idle' : ''}`;
   const showOffScreen = !isCameraOn && !booting && !isStandby;
   const showStandby = isStandby && !booting;
@@ -763,6 +778,7 @@ export default function Home() {
         <LensCapTransition transition={lensTransition} />
         <RuleOfThirdsOverlay visible={hudLevel !== 'none'} />
         <HistogramOverlay visible={hudLevel === 'most' || hudLevel === 'all'} data={histogramData} />
+        {flashPulse && <div className="flash-overlay" aria-hidden="true" />}
         <div className="top-interface">
           <ControlDock
             lens={lens}
@@ -773,6 +789,7 @@ export default function Home() {
             onLensChange={handleLensChange}
             lenses={LENSES}
             cameraMode={cameraMode}
+            resolvedTheme={resolvedTheme}
           />
           <SectionMenu
             panels={PANELS}
@@ -780,6 +797,7 @@ export default function Home() {
             onSelect={jumpToPanel}
             expandedPanelId={expandedPanelId}
             onToggleExpand={() => activePanelId && togglePanelExpansion(activePanelId)}
+            resolvedTheme={resolvedTheme}
           />
         </div>
         <PanelDeck
@@ -826,6 +844,7 @@ export default function Home() {
             setIsStandby(true);
             setIsCameraOn(false);
           }}
+          resolvedTheme={resolvedTheme}
         />
         <PanelNavigation onNavigate={handlePanelChange} />
         <FocusCursor position={focusPoint} />
@@ -846,6 +865,10 @@ export default function Home() {
               setIsStandby(false);
               setTimeout(() => setBooting(false), 1800);
             }}
+            onStandby={() => {
+              setIsStandby(true);
+              setBooting(false);
+            }}
           />
         )}
       </main>
@@ -859,22 +882,31 @@ export default function Home() {
           flex-direction: column;
           align-items: center;
           justify-content: flex-start;
-          gap: clamp(1.4rem, 3.2vh, 2.4rem);
+          gap: clamp(1.4rem, 3.2vh, 2.2rem);
           padding: clamp(1.4rem, 3vh, 2rem) clamp(1.4rem, 4vw, 2.8rem) clamp(1.6rem, 4vh, 2.6rem);
           isolation: isolate;
           background: ${resolvedTheme === 'dark'
-            ? 'radial-gradient(circle at 20% 20%, #101a32 0%, #070c19 32%, #03060d 100%)'
-            : 'radial-gradient(circle at 22% 18%, #fdfcff 0%, #eef2ff 34%, #dee5ff 100%)'};
-          filter: brightness(${resolvedBrightness}) contrast(${exposureLook.contrast});
+            ? 'radial-gradient(circle at 18% 18%, #101d3d 0%, #071021 38%, #050915 100%)'
+            : 'radial-gradient(circle at 20% 16%, #fdfbff 0%, #e9edff 40%, #d5ddff 100%)'};
+          filter: brightness(${resolvedBrightness}) contrast(${exposureLook.contrast}) saturate(1.05);
         }
         .stage::after {
           content: '';
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: radial-gradient(circle at 50% 50%, rgba(5, 10, 22, 0), rgba(5, 10, 22, 0.55));
+          background: radial-gradient(circle at 50% 50%, rgba(5, 10, 22, 0.1), rgba(5, 10, 22, 0.5));
           opacity: var(--lens-vignette, 0.3);
           mix-blend-mode: multiply;
+        }
+        .flash-overlay {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+          mix-blend-mode: screen;
+          animation: flash-pop 0.26s ease;
+          z-index: 11;
         }
         .viewport {
           font-family: 'Montserrat', 'Inter', sans-serif;
@@ -886,11 +918,23 @@ export default function Home() {
         .viewport :global(button) {
           cursor: pointer;
         }
+        @keyframes flash-pop {
+          0% {
+            opacity: 0.85;
+          }
+          80% {
+            opacity: 0.2;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
         .top-interface {
           position: relative;
           width: min(94vw, 1180px);
-          display: grid;
-          gap: clamp(0.6rem, 1.3vw, 1rem);
+          display: flex;
+          flex-direction: column;
+          gap: clamp(0.7rem, 1.6vw, 1.3rem);
           z-index: 6;
           align-items: stretch;
         }
@@ -1818,7 +1862,7 @@ function LoremakerSection({ panel, resolvedTheme, isExpanded }) {
   );
 }
 
-function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggleExpand }) {
+function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggleExpand, resolvedTheme }) {
   return (
     <nav className="section-menu" aria-label="Section menu">
       <div className="menu-scroll">
@@ -1843,11 +1887,13 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
           gap: 0.75rem;
           padding: 0.85rem 1.1rem;
           border-radius: 20px;
-          background: linear-gradient(180deg, rgba(14, 20, 34, 0.92), rgba(8, 12, 22, 0.95));
-          border: 1px solid rgba(138, 176, 255, 0.28);
-          box-shadow: 0 18px 36px rgba(3, 10, 26, 0.32);
+          background: ${resolvedTheme === 'dark'
+            ? 'linear-gradient(180deg, rgba(14, 20, 36, 0.92), rgba(6, 10, 22, 0.96))'
+            : 'linear-gradient(180deg, rgba(240, 245, 255, 0.92), rgba(224, 232, 255, 0.96))'};
+          border: 1px solid ${resolvedTheme === 'dark' ? 'rgba(138, 176, 255, 0.32)' : 'rgba(92, 120, 200, 0.38)'};
+          box-shadow: 0 18px 36px rgba(${resolvedTheme === 'dark' ? '3, 10, 26, 0.32' : '110, 140, 220, 0.26'});
           backdrop-filter: blur(18px);
-          color: rgba(235, 244, 255, 0.96);
+          color: ${resolvedTheme === 'dark' ? 'rgba(235, 244, 255, 0.96)' : 'rgba(18, 38, 82, 0.96)'};
         }
         .menu-scroll {
           display: flex;
@@ -1865,17 +1911,17 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
           gap: 0.22rem;
           padding: 0.7rem 1.05rem;
           border-radius: 16px;
-          border: 1px solid rgba(138, 176, 255, 0.28);
-          background: rgba(138, 176, 255, 0.14);
+          border: 1px solid ${resolvedTheme === 'dark' ? 'rgba(138, 176, 255, 0.28)' : 'rgba(90, 120, 210, 0.28)'};
+          background: ${resolvedTheme === 'dark' ? 'rgba(138, 176, 255, 0.14)' : 'rgba(160, 188, 255, 0.16)'};
           text-align: left;
           min-width: clamp(150px, 15vw, 200px);
           transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
         }
         .menu-item.active {
-          background: rgba(166, 198, 255, 0.24);
-          border-color: rgba(166, 198, 255, 0.5);
+          background: ${resolvedTheme === 'dark' ? 'rgba(166, 198, 255, 0.28)' : 'rgba(130, 156, 250, 0.32)'};
+          border-color: ${resolvedTheme === 'dark' ? 'rgba(166, 198, 255, 0.5)' : 'rgba(120, 148, 240, 0.55)'};
           transform: translateY(-2px);
-          box-shadow: 0 12px 26px rgba(4, 10, 24, 0.3);
+          box-shadow: 0 12px 26px rgba(${resolvedTheme === 'dark' ? '4, 10, 24, 0.3' : '90, 120, 210, 0.28'});
         }
         .menu-title {
           font-size: 0.84rem;
@@ -1890,8 +1936,8 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
         }
         .expand-toggle {
           justify-self: end;
-          border: 1px solid rgba(166, 198, 255, 0.45);
-          background: rgba(166, 198, 255, 0.18);
+          border: 1px solid ${resolvedTheme === 'dark' ? 'rgba(166, 198, 255, 0.45)' : 'rgba(110, 142, 232, 0.5)'};
+          background: ${resolvedTheme === 'dark' ? 'rgba(166, 198, 255, 0.18)' : 'rgba(144, 172, 248, 0.2)'};
           color: inherit;
           border-radius: 999px;
           padding: 0.45rem 1.25rem;
@@ -2050,7 +2096,8 @@ function HistogramOverlay({ visible, data }) {
   );
 }
 
-function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, toggleCameraMode, cameraMode, flashMode, cycleFlashMode, onPowerOff, onStandby }) {
+function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, toggleCameraMode, cameraMode, flashMode, cycleFlashMode, onPowerOff, onStandby, resolvedTheme }) {
+  const isDark = resolvedTheme === 'dark';
   return (
     <div className={`hud hud-${hudLevel}`}>
       <div className="hud-main">
@@ -2100,11 +2147,13 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           gap: 0.6rem;
           padding: 1.05rem 1.6rem;
           border-radius: 24px;
-          background: linear-gradient(180deg, rgba(12, 18, 32, 0.9), rgba(6, 10, 20, 0.94));
-          border: 1px solid rgba(138, 176, 255, 0.3);
+          background: ${isDark
+            ? 'linear-gradient(180deg, rgba(12, 18, 32, 0.9), rgba(6, 10, 20, 0.94))'
+            : 'linear-gradient(180deg, rgba(245, 248, 255, 0.92), rgba(226, 234, 255, 0.95))'};
+          border: 1px solid ${isDark ? 'rgba(138, 176, 255, 0.3)' : 'rgba(98, 126, 210, 0.38)'};
           backdrop-filter: blur(18px);
-          color: rgba(235, 244, 255, 0.96);
-          box-shadow: 0 22px 52px rgba(4, 10, 24, 0.42);
+          color: ${isDark ? 'rgba(235, 244, 255, 0.96)' : 'rgba(18, 38, 82, 0.92)'};
+          box-shadow: 0 22px 52px rgba(${isDark ? '4, 10, 24, 0.42' : '120, 152, 220, 0.32'});
           width: min(92vw, 960px);
         }
         .hud-main {
@@ -2120,9 +2169,9 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           gap: 0.5rem;
         }
         .hud-group button {
-          border: 1px solid rgba(166, 198, 255, 0.42);
+          border: 1px solid ${isDark ? 'rgba(166, 198, 255, 0.42)' : 'rgba(120, 150, 232, 0.48)'};
           border-radius: 999px;
-          background: rgba(166, 198, 255, 0.18);
+          background: ${isDark ? 'rgba(166, 198, 255, 0.18)' : 'rgba(164, 188, 255, 0.22)'};
           padding: 0.45rem 1.15rem;
           color: inherit;
           font-size: 0.72rem;
@@ -2134,13 +2183,15 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           flex-wrap: wrap;
           gap: clamp(0.6rem, 1.8vw, 1.2rem);
           justify-content: center;
-          min-width: 240px;
+          flex: 1 1 320px;
+          min-width: min(100%, 320px);
         }
         .readout {
           display: grid;
           gap: 0.2rem;
           text-align: center;
           min-width: 72px;
+          flex: 0 1 auto;
         }
         .label {
           font-size: 0.62rem;
@@ -2173,9 +2224,9 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           width: 140px;
           height: 12px;
           border-radius: 999px;
-          border: 1px solid rgba(134, 244, 255, 0.4);
+          border: 1px solid ${isDark ? 'rgba(134, 244, 255, 0.4)' : 'rgba(96, 136, 220, 0.36)'};
           overflow: hidden;
-          background: rgba(255, 255, 255, 0.08);
+          background: ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(180, 200, 255, 0.24)'};
         }
         .battery-level {
           height: 100%;
@@ -2205,194 +2256,214 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
   );
 }
 
-function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposureChange, onLensChange, lenses, cameraMode }) {
-  const [openClusters, setOpenClusters] = useState(['exposure']);
+function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposureChange, onLensChange, lenses, cameraMode, resolvedTheme }) {
+  const isDark = resolvedTheme === 'dark';
+  const [secondaryOpen, setSecondaryOpen] = useState(null);
 
-  useEffect(() => {
-    if (!openClusters.length) {
-      setOpenClusters(['exposure']);
-    }
-  }, [openClusters]);
-
-  const toggleCluster = (key) => {
-    setOpenClusters((prev) => {
-      if (prev.includes(key)) {
-        const filtered = prev.filter((item) => item !== key);
-        return filtered.length ? filtered : ['exposure'];
-      }
-      const next = [...prev, key];
-      if (next.length > 2) {
-        next.splice(0, next.length - 2);
-      }
-      return next;
-    });
+  const toggleSecondary = (key) => {
+    setSecondaryOpen((prev) => (prev === key ? null : key));
   };
 
-  const isOpen = (key) => openClusters.includes(key);
+  const isOpen = (key) => key === 'exposure' || secondaryOpen === key;
 
   return (
     <aside className="control-dock">
-      <div className={`cluster exposure ${isOpen('exposure') ? 'open' : 'collapsed'}`}>
-        <div className="cluster-header">
-          <button type="button" onClick={() => toggleCluster('exposure')} aria-expanded={isOpen('exposure')}>
-            Exposure
-          </button>
-          <span className="cluster-sub">Aperture · Shutter · ISO · WB · Focus</span>
-        </div>
-        {isOpen('exposure') && (
-          <div className="cluster-body exposure-grid">
-            <SliderControl
-              label="Aperture"
-              min={lens.minAperture}
-              max={lens.maxAperture}
-              step={0.1}
-              value={exposure.aperture}
-              onChange={(value) => onExposureChange('aperture')(value)}
-            />
-            <SliderControl
-              label="Shutter"
-              min={1 / 8000}
-              max={2}
-              step={0.0005}
-              value={exposure.shutter}
-              displayValue={formatShutter}
-              onChange={(value) => onExposureChange('shutter')(value)}
-            />
-            <SliderControl
-              label="ISO"
-              min={100}
-              max={6400}
-              step={10}
-              value={exposure.iso}
-              onChange={(value) => onExposureChange('iso')(value)}
-            />
-            <SliderControl
-              label="White Balance"
-              min={2500}
-              max={9000}
-              step={50}
-              value={exposure.whiteBalance}
-              onChange={(value) => onExposureChange('whiteBalance')(value)}
-            />
-            <SliderControl
-              label="Focus Depth"
-              min={0.1}
-              max={0.95}
-              step={0.01}
-              value={focusDepth}
-              onChange={onFocusDepthChange}
-              displayValue={(value) => `${Math.round(value * 100)}%`}
-            />
-          </div>
-        )}
-      </div>
-      <div className={`cluster lenses ${isOpen('lenses') ? 'open' : 'collapsed'}`}>
-        <div className="cluster-header">
-          <button type="button" onClick={() => toggleCluster('lenses')} aria-expanded={isOpen('lenses')}>
-            Lenses
-          </button>
-          <span className="cluster-sub">{lens.name}</span>
-        </div>
-        {isOpen('lenses') ? (
-          <div className="cluster-body lens-list">
-            {lenses.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                className={`lens-item ${lens.id === item.id ? 'active' : ''}`}
-                onClick={() => onLensChange(item.id)}
-              >
-                <span className="lens-title">{item.name}</span>
-                <span className="lens-info">f/{item.minAperture} – f/{item.maxAperture}</span>
+      <div className="dock-row">
+        <div className={`cluster lenses ${isOpen('lenses') ? 'open' : 'collapsed'}`}>
+          <div className="cluster-shell">
+            <div className="cluster-header">
+              <button type="button" onClick={() => toggleSecondary('lenses')} aria-expanded={isOpen('lenses')}>
+                Lenses
               </button>
-            ))}
+              <span className="cluster-sub">{lens.name}</span>
+            </div>
+            {isOpen('lenses') ? (
+              <div className="cluster-body lens-list">
+                {lenses.map((item) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={`lens-item ${lens.id === item.id ? 'active' : ''}`}
+                    onClick={() => onLensChange(item.id)}
+                  >
+                    <span className="lens-title">{item.name}</span>
+                    <span className="lens-info">f/{item.minAperture} – f/{item.maxAperture}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="cluster-summary">f/{lens.minAperture} – f/{lens.maxAperture}</div>
+            )}
           </div>
-        ) : (
-          <div className="cluster-summary">f/{lens.minAperture} – f/{lens.maxAperture}</div>
-        )}
-      </div>
-      <div className={`cluster assist ${isOpen('assist') ? 'open' : 'collapsed'}`}>
-        <div className="cluster-header">
-          <button type="button" onClick={() => toggleCluster('assist')} aria-expanded={isOpen('assist')}>
-            Assist
-          </button>
-          <span className="cluster-sub">Status console</span>
         </div>
-        {isOpen('assist') ? (
-          <div className="cluster-body assist-grid">
-            <div className="assist-item">
-              <span className="assist-label">Mode</span>
-              <span>{cameraMode === 'mirrorless' ? 'Mirrorless EVF' : 'DSLR OVF'}</span>
+        <div className="cluster exposure open">
+          <div className="cluster-shell">
+            <div className="cluster-header exposure-header">
+              <span className="cluster-title">Exposure Suite</span>
+              <span className="cluster-sub">Aperture · Shutter · ISO · WB · Focus</span>
             </div>
-            <div className="assist-item">
-              <span className="assist-label">Lens</span>
-              <span>{lens.name}</span>
-            </div>
-            <div className="assist-item">
-              <span className="assist-label">Depth</span>
-              <span>{(lens.depthResponse * 100).toFixed(0)}%</span>
+            <div className="cluster-body exposure-rail">
+              <SliderControl
+                label="Aperture"
+                min={lens.minAperture}
+                max={lens.maxAperture}
+                step={0.1}
+                value={exposure.aperture}
+                onChange={(value) => onExposureChange('aperture')(value)}
+              />
+              <SliderControl
+                label="Shutter"
+                min={1 / 8000}
+                max={2}
+                step={0.0005}
+                value={exposure.shutter}
+                displayValue={formatShutter}
+                onChange={(value) => onExposureChange('shutter')(value)}
+              />
+              <SliderControl
+                label="ISO"
+                min={100}
+                max={6400}
+                step={10}
+                value={exposure.iso}
+                onChange={(value) => onExposureChange('iso')(value)}
+              />
+              <SliderControl
+                label="White Balance"
+                min={2500}
+                max={9000}
+                step={50}
+                value={exposure.whiteBalance}
+                onChange={(value) => onExposureChange('whiteBalance')(value)}
+              />
+              <SliderControl
+                label="Focus Depth"
+                min={0.1}
+                max={0.95}
+                step={0.01}
+                value={focusDepth}
+                onChange={onFocusDepthChange}
+                displayValue={(value) => `${Math.round(value * 100)}%`}
+              />
             </div>
           </div>
-        ) : (
-          <div className="cluster-summary">{cameraMode === 'mirrorless' ? 'EVF live' : 'OVF live'}</div>
-        )}
+        </div>
+        <div className={`cluster assist ${isOpen('assist') ? 'open' : 'collapsed'}`}>
+          <div className="cluster-shell">
+            <div className="cluster-header">
+              <button type="button" onClick={() => toggleSecondary('assist')} aria-expanded={isOpen('assist')}>
+                Assist
+              </button>
+              <span className="cluster-sub">Status console</span>
+            </div>
+            {isOpen('assist') ? (
+              <div className="cluster-body assist-grid">
+                <div className="assist-item">
+                  <span className="assist-label">Mode</span>
+                  <span>{cameraMode === 'mirrorless' ? 'Mirrorless EVF' : 'DSLR OVF'}</span>
+                </div>
+                <div className="assist-item">
+                  <span className="assist-label">Lens</span>
+                  <span>{lens.name}</span>
+                </div>
+                <div className="assist-item">
+                  <span className="assist-label">Depth</span>
+                  <span>{(lens.depthResponse * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            ) : (
+              <div className="cluster-summary">{cameraMode === 'mirrorless' ? 'EVF live' : 'OVF live'}</div>
+            )}
+          </div>
+        </div>
       </div>
       <style jsx>{`
         .control-dock {
-          display: grid;
-          grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
-          gap: clamp(0.75rem, 1.6vw, 1.2rem);
           width: 100%;
-          align-items: stretch;
           color: rgba(235, 241, 255, 0.96);
         }
+        .dock-row {
+          display: flex;
+          align-items: stretch;
+          gap: clamp(0.8rem, 1.8vw, 1.6rem);
+        }
         .cluster {
-          background: linear-gradient(180deg, rgba(14, 20, 34, 0.9), rgba(8, 12, 22, 0.92));
-          border: 1px solid rgba(138, 176, 255, 0.28);
-          border-radius: 18px;
-          backdrop-filter: blur(20px);
-          box-shadow: 0 18px 36px rgba(3, 10, 26, 0.34);
-          display: grid;
-          gap: 0.55rem;
-          padding: 0.9rem 1.05rem;
+          position: relative;
+          border-radius: 22px;
+          background: ${isDark
+            ? 'linear-gradient(165deg, rgba(14, 20, 36, 0.95), rgba(8, 12, 24, 0.98))'
+            : 'linear-gradient(165deg, rgba(244, 248, 255, 0.96), rgba(224, 234, 255, 0.98))'};
+          border: 1px solid ${isDark ? 'rgba(138, 176, 255, 0.34)' : 'rgba(92, 124, 210, 0.32)'};
+          box-shadow: 0 18px 40px rgba(${isDark ? '3, 10, 26, 0.32' : '140, 168, 230, 0.26'});
+          backdrop-filter: blur(18px);
+          overflow: hidden;
+          display: flex;
+          color: ${isDark ? 'rgba(235, 241, 255, 0.96)' : 'rgba(18, 38, 82, 0.96)'};
         }
-        .cluster.collapsed {
-          padding-bottom: 0.7rem;
-        }
-        .cluster-header {
+        .cluster-shell {
           display: flex;
           flex-direction: column;
+          gap: 0.75rem;
+          padding: 1rem 1.1rem;
+          width: 100%;
+        }
+        .cluster.lenses,
+        .cluster.assist {
+          flex: 0 0 clamp(210px, 18vw, 260px);
+        }
+        .cluster.exposure {
+          flex: 1 1 auto;
+        }
+        .cluster.collapsed .cluster-shell {
+          padding-bottom: 0.9rem;
+        }
+        .cluster-header {
+          display: grid;
           gap: 0.3rem;
         }
         .cluster-header button {
           border: none;
           background: none;
-          color: rgba(235, 241, 255, 0.96);
-          font-weight: 600;
-          letter-spacing: 0.12em;
+          color: inherit;
+          font-weight: 700;
+          font-size: 0.75rem;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
           text-align: left;
         }
-        .cluster-sub {
-          font-size: 0.7rem;
-          letter-spacing: 0.18em;
+        .cluster-title {
+          font-weight: 700;
+          font-size: 0.78rem;
+          letter-spacing: 0.26em;
           text-transform: uppercase;
-          opacity: 0.7;
+        }
+        .cluster-sub {
+          font-size: 0.68rem;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          opacity: ${isDark ? 0.72 : 0.75};
+          white-space: nowrap;
         }
         .cluster-body {
           display: grid;
           gap: 0.75rem;
         }
         .cluster-summary {
-          font-size: 0.74rem;
-          letter-spacing: 0.16em;
+          font-size: 0.72rem;
+          letter-spacing: 0.2em;
           text-transform: uppercase;
-          opacity: 0.72;
+          opacity: 0.7;
         }
-        .exposure-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 0.7rem;
+        .exposure-rail {
+          display: flex;
+          gap: clamp(0.8rem, 1.4vw, 1.2rem);
+          align-items: stretch;
+          overflow-x: auto;
+          padding-bottom: 0.2rem;
+          scrollbar-width: none;
+        }
+        .exposure-rail::-webkit-scrollbar {
+          display: none;
         }
         .lens-list {
           display: grid;
@@ -2401,26 +2472,27 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
         .lens-item {
           display: grid;
           gap: 0.25rem;
-          border-radius: 16px;
-          border: 1px solid rgba(138, 176, 255, 0.28);
+          border-radius: 18px;
+          border: 1px solid ${isDark ? 'rgba(138, 176, 255, 0.28)' : 'rgba(110, 140, 220, 0.28)'};
           padding: 0.75rem 1rem;
-          background: rgba(138, 176, 255, 0.12);
+          background: ${isDark ? 'rgba(138, 176, 255, 0.12)' : 'rgba(184, 206, 255, 0.18)'};
           text-align: left;
-          transition: background 0.3s ease, border-color 0.3s ease;
+          transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
         }
         .lens-item.active {
-          border-color: rgba(166, 198, 255, 0.6);
-          background: rgba(166, 198, 255, 0.22);
+          border-color: ${isDark ? 'rgba(166, 198, 255, 0.6)' : 'rgba(126, 156, 246, 0.62)'};
+          background: ${isDark ? 'rgba(166, 198, 255, 0.24)' : 'rgba(140, 168, 248, 0.28)'};
+          transform: translateY(-2px);
         }
         .lens-title {
-          font-size: 0.9rem;
+          font-size: 0.92rem;
           font-weight: 600;
         }
         .lens-info {
-          font-size: 0.7rem;
-          letter-spacing: 0.18em;
+          font-size: 0.68rem;
+          letter-spacing: 0.2em;
           text-transform: uppercase;
-          opacity: 0.7;
+          opacity: 0.74;
         }
         .assist-grid {
           display: grid;
@@ -2430,15 +2502,23 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
           display: flex;
           justify-content: space-between;
           font-size: 0.78rem;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.1em;
         }
         .assist-label {
           text-transform: uppercase;
-          opacity: 0.6;
+          opacity: 0.62;
         }
-        @media (max-width: 960px) {
-          .control-dock {
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        @media (max-width: 1120px) {
+          .dock-row {
+            flex-direction: column;
+          }
+          .cluster.lenses,
+          .cluster.assist,
+          .cluster.exposure {
+            flex: 1 1 auto;
+          }
+          .cluster-sub {
+            white-space: normal;
           }
         }
       `}</style>
@@ -2462,7 +2542,13 @@ function SliderControl({ label, min, max, step, value, onChange, displayValue })
       <style jsx>{`
         .slider {
           display: grid;
-          gap: 0.4rem;
+          gap: 0.45rem;
+          min-width: clamp(160px, 18vw, 220px);
+          padding: 0.8rem 1rem 1rem;
+          border-radius: 18px;
+          background: linear-gradient(160deg, rgba(118, 156, 255, 0.18), rgba(78, 98, 186, 0.12));
+          border: 1px solid rgba(140, 182, 255, 0.26);
+          box-shadow: inset 0 0 0 1px rgba(120, 200, 255, 0.08), 0 12px 28px rgba(8, 18, 42, 0.28);
         }
         .slider-label {
           font-size: 0.72rem;
@@ -2473,10 +2559,10 @@ function SliderControl({ label, min, max, step, value, onChange, displayValue })
         input[type='range'] {
           appearance: none;
           width: 100%;
-          height: 5px;
+          height: 6px;
           border-radius: 999px;
-          background: linear-gradient(90deg, rgba(120, 210, 255, 0.7), rgba(210, 228, 255, 0.2));
-          box-shadow: inset 0 0 0 1px rgba(120, 190, 255, 0.18);
+          background: linear-gradient(90deg, rgba(120, 210, 255, 0.85), rgba(60, 130, 255, 0.5));
+          box-shadow: inset 0 0 0 1px rgba(120, 190, 255, 0.22);
         }
         input[type='range']::-webkit-slider-thumb {
           appearance: none;
@@ -2488,8 +2574,8 @@ function SliderControl({ label, min, max, step, value, onChange, displayValue })
         }
         .slider-value {
           font-size: 0.78rem;
-          letter-spacing: 0.1em;
-          opacity: 0.85;
+          letter-spacing: 0.12em;
+          opacity: 0.9;
         }
       `}</style>
     </label>
@@ -2561,7 +2647,7 @@ function BootOverlay({ batteryLevel }) {
   );
 }
 
-function CameraOffScreen({ onPower }) {
+function CameraOffScreen({ onPower, onStandby }) {
   return (
     <div className="camera-off">
       <div className="off-inner">
@@ -2571,6 +2657,9 @@ function CameraOffScreen({ onPower }) {
           <a href="https://www.youtube.com/@menelekmakonnen" target="_blank" rel="noreferrer" aria-label="YouTube">YT</a>
           <a href="https://www.tiktok.com/@menelekmakonnen" target="_blank" rel="noreferrer" aria-label="TikTok">TT</a>
         </div>
+        <button type="button" onClick={onStandby} className="standby-button">
+          Standby
+        </button>
         <button type="button" onClick={onPower} className="power-button">
           Turn On
         </button>
@@ -2604,15 +2693,23 @@ function CameraOffScreen({ onPower }) {
           letter-spacing: 0.18em;
           text-transform: uppercase;
         }
+        .standby-button,
         .power-button {
           padding: 0.9rem 2.8rem;
           border-radius: 999px;
           border: none;
-          background: linear-gradient(130deg, #78f8ff, #637bff);
-          color: #040612;
           letter-spacing: 0.22em;
           text-transform: uppercase;
           font-weight: 700;
+        }
+        .standby-button {
+          background: linear-gradient(130deg, rgba(120, 248, 255, 0.2), rgba(120, 160, 255, 0.2));
+          color: rgba(134, 244, 255, 0.9);
+          border: 1px solid rgba(134, 244, 255, 0.34);
+        }
+        .power-button {
+          background: linear-gradient(130deg, #78f8ff, #637bff);
+          color: #040612;
         }
       `}</style>
     </div>
@@ -2756,7 +2853,7 @@ function LayerStack({ layers, onBackdropClick, closeTopLayer, galleryState, setG
           className="layer"
           style={{
             zIndex: 30 + index,
-            transform: `translateY(${index * 6}px) scale(${1 - index * 0.03})`,
+            transform: `translateY(${(index - (layers.length - 1) / 2) * 12}px) scale(${Math.max(0.4, 1 - index * 0.03)})`,
             filter: `blur(${index * 1.2}px)`
           }}
           onClick={(event) => event.stopPropagation()}
@@ -2781,21 +2878,22 @@ function LayerStack({ layers, onBackdropClick, closeTopLayer, galleryState, setG
         .layer-stack {
           position: absolute;
           inset: 0;
-          background: rgba(4, 8, 18, 0.46);
-          backdrop-filter: blur(6px);
-          display: grid;
-          place-items: center;
-          padding: 4rem;
+          background: radial-gradient(circle at 50% 45%, rgba(6, 12, 28, 0.68), rgba(3, 6, 14, 0.86));
+          backdrop-filter: blur(12px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: clamp(2rem, 6vh, 4rem);
           z-index: 25;
         }
         .layer {
           width: min(640px, 90vw);
           max-height: 80vh;
-          border-radius: 26px;
-          background: rgba(8, 12, 26, 0.92);
-          border: 1px solid rgba(134, 244, 255, 0.22);
-          backdrop-filter: blur(18px);
-          box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+          border-radius: 28px;
+          background: linear-gradient(165deg, rgba(10, 16, 32, 0.96), rgba(5, 10, 22, 0.98));
+          border: 1px solid rgba(134, 244, 255, 0.3);
+          backdrop-filter: blur(24px);
+          box-shadow: 0 28px 80px rgba(3, 8, 20, 0.55);
           display: grid;
           grid-template-rows: auto 1fr;
         }
