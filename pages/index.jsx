@@ -437,11 +437,11 @@ const calculateExposureLook = (exposure, luminance, lens, focusDepth) => {
   const shutterFactor = clamp(Math.log10(1 / exposure.shutter) / 4, 0, 1);
   const isoFactor = clamp((exposure.iso - 100) / 6000, 0, 1);
 
-  const brightness = clamp(luminance + isoFactor * 0.25 + apertureFactor * 0.18 - shutterFactor * 0.12, 0.2, 1.1);
-  const contrast = clamp(0.8 + apertureFactor * 0.2 + (1 - focusDepth) * 0.1, 0.85, 1.2);
-  const grain = clamp(isoFactor * 0.8 + shutterFactor * 0.2, 0, 1);
-  const smear = clamp((1 - shutterFactor) * 0.3, 0, 0.28);
-  const depthBlur = clamp((1 - focusDepth) * (0.5 + lensInfluence), 0.05, 1.2);
+  const brightness = clamp(luminance + isoFactor * 0.18 + apertureFactor * 0.16 - shutterFactor * 0.1, 0.35, 1);
+  const contrast = clamp(0.9 + apertureFactor * 0.15 + (1 - focusDepth) * 0.08, 0.9, 1.15);
+  const grain = clamp(isoFactor * 0.6 + shutterFactor * 0.15, 0, 0.8);
+  const smear = clamp((1 - shutterFactor) * 0.25, 0, 0.22);
+  const depthBlur = clamp((1 - focusDepth) * (0.35 + lensInfluence * 0.6), 0.03, 0.8);
 
   return { brightness, contrast, grain, smear, depthBlur };
 };
@@ -465,7 +465,7 @@ export default function Home() {
   const [lensId, setLensId] = useState('50mm');
   const [flashMode, setFlashMode] = useState('auto');
   const [exposure, setExposure] = useState(INITIAL_EXPOSURE);
-  const [focusDepth, setFocusDepth] = useState(0.78);
+  const [focusDepth, setFocusDepth] = useState(0.9);
   const [focusPoint, setFocusPoint] = useState({ x: 50, y: 50 });
   const [layers, setLayers] = useState([]);
   const [galleryState, setGalleryState] = useState(null);
@@ -859,11 +859,9 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           isolation: isolate;
-          background: radial-gradient(circle at 20% 20%, rgba(90, 130, 255, 0.18), transparent 52%),
-            radial-gradient(circle at 80% 80%, rgba(255, 200, 120, 0.24), transparent 60%),
-            ${resolvedTheme === 'dark'
-            ? 'linear-gradient(140deg, #040612 0%, #121726 55%, #030409 100%)'
-            : 'linear-gradient(140deg, #f2f5ff 0%, #ffffff 55%, #e9efff 100%)'};
+          background: ${resolvedTheme === 'dark'
+            ? 'linear-gradient(160deg, #060a14 0%, #0b1424 55%, #060a14 100%)'
+            : 'linear-gradient(160deg, #f7f9ff 0%, #ffffff 55%, #edf1ff 100%)'};
           filter: brightness(${resolvedBrightness}) contrast(${exposureLook.contrast});
         }
         .stage::after {
@@ -871,8 +869,8 @@ export default function Home() {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: radial-gradient(circle at 50% 50%, rgba(4, 8, 18, 0), rgba(4, 8, 18, 0.68));
-          opacity: var(--lens-vignette, 0.4);
+          background: radial-gradient(circle at 50% 50%, rgba(8, 12, 22, 0), rgba(8, 12, 22, 0.6));
+          opacity: var(--lens-vignette, 0.35);
           mix-blend-mode: multiply;
         }
         .viewport {
@@ -887,12 +885,13 @@ export default function Home() {
         }
         .top-interface {
           position: absolute;
-          top: clamp(1.6rem, 5vh, 3.2rem);
+          top: clamp(1.4rem, 4.6vh, 3rem);
           left: 50%;
           transform: translateX(-50%);
           width: min(92vw, 1180px);
-          display: grid;
-          gap: clamp(0.6rem, 1.6vw, 1rem);
+          display: flex;
+          flex-direction: column;
+          gap: clamp(0.5rem, 1.2vw, 0.9rem);
           z-index: 6;
         }
         .viewport.theme-light {
@@ -978,10 +977,10 @@ function PanelDeck({
         .panel-deck {
           position: relative;
           width: 100%;
-          height: min(74vh, 720px);
+          height: min(72vh, 700px);
           display: grid;
           place-items: center;
-          padding-top: clamp(12rem, 28vh, 18rem);
+          padding-top: clamp(10rem, 24vh, 16rem);
           z-index: 4;
         }
         @media (max-width: 960px) {
@@ -1014,16 +1013,16 @@ function PanelSection({
   onJumpToPanel,
 }) {
   const { id, title, type } = panel;
-  const layerBoost = Math.min(layersCount * 1.4, 8);
-  const baseBlur = Math.max(exposureLook.depthBlur * (1 - focusDepth + 0.12), 0);
+  const layerBoost = Math.min(layersCount * 1.2, 6);
+  const baseBlur = Math.max(exposureLook.depthBlur * (1 - focusDepth + 0.08), 0);
   const blur = isActive
-    ? Math.min(baseBlur * 0.35 + (isExpanded ? 0 : layerBoost * 0.12), 3.6)
-    : Math.min(baseBlur * 0.92 + layerBoost * 0.8, 14);
-  const translateInactive = slideDirection === 'next' ? -18 : 18;
-  const translatePrevious = slideDirection === 'next' ? -26 : 26;
+    ? Math.min(baseBlur * 0.25 + (isExpanded ? 0 : layerBoost * 0.08), 2.4)
+    : Math.min(baseBlur * 0.65 + layerBoost * 0.6, 8);
+  const translateInactive = slideDirection === 'next' ? -12 : 12;
+  const translatePrevious = slideDirection === 'next' ? -18 : 18;
   const translateX = isActive ? 0 : isPrevious ? translatePrevious : translateInactive;
-  const lensScale = isExpanded ? 1.04 : isActive ? 1 + (lens.zoomMultiplier - 1) * 0.35 : 0.92;
-  const opacity = isActive ? 1 : 0;
+  const lensScale = isExpanded ? 1.03 : isActive ? 1 + (lens.zoomMultiplier - 1) * 0.25 : 0.94;
+  const opacity = isActive ? 1 : 0.35;
   const pointerEvents = isActive ? 'auto' : 'none';
 
   const handleCardClick = (event, payload) => {
@@ -1090,15 +1089,17 @@ function PanelSection({
             filter 0.48s ease;
         }
         .panel-shell {
-          min-width: min(74vw, 980px);
-          max-width: min(74vw, 980px);
-          min-height: min(72vh, 680px);
-          border-radius: 34px;
-          padding: clamp(1.8rem, 3vw, 3rem);
-          background: linear-gradient(145deg, rgba(${resolvedTheme === 'dark' ? '14, 18, 34, 0.84' : '244, 247, 255, 0.94'}), rgba(${resolvedTheme === 'dark' ? '6, 8, 18, 0.96' : '232, 238, 255, 0.9'}));
-          border: 1px solid rgba(${resolvedTheme === 'dark' ? '132, 164, 255, 0.2' : '34, 58, 144, 0.18'});
-          box-shadow: 0 32px 80px rgba(${resolvedTheme === 'dark' ? '0, 8, 32, 0.6' : '32, 60, 140, 0.26'});
-          backdrop-filter: blur(24px) saturate(118%);
+          min-width: min(72vw, 940px);
+          max-width: min(72vw, 940px);
+          min-height: min(70vh, 660px);
+          border-radius: 32px;
+          padding: clamp(1.6rem, 2.8vw, 2.6rem);
+          background: ${resolvedTheme === 'dark'
+            ? 'linear-gradient(180deg, rgba(14, 18, 34, 0.88), rgba(8, 12, 24, 0.92))'
+            : 'linear-gradient(180deg, rgba(250, 252, 255, 0.96), rgba(236, 242, 255, 0.92))'};
+          border: 1px solid rgba(${resolvedTheme === 'dark' ? '118, 148, 255, 0.22' : '82, 102, 180, 0.2'});
+          box-shadow: 0 24px 60px rgba(${resolvedTheme === 'dark' ? '4, 12, 32, 0.55' : '90, 120, 200, 0.26'});
+          backdrop-filter: blur(18px) saturate(112%);
           display: grid;
           grid-template-rows: auto 1fr;
           overflow: hidden;
@@ -1123,7 +1124,7 @@ function PanelSection({
         }
         h2 {
           margin: 0;
-          font-size: clamp(2.1rem, 3.6vw, 3.4rem);
+          font-size: clamp(2.1rem, 3.3vw, 3rem);
           letter-spacing: -0.01em;
         }
         .panel-expand {
@@ -1834,12 +1835,12 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
       <style jsx>{`
         .section-menu {
           display: grid;
-          gap: 0.8rem;
-          padding: 0.8rem 1rem;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
           border-radius: 20px;
-          background: rgba(6, 10, 24, 0.6);
-          border: 1px solid rgba(134, 244, 255, 0.18);
-          backdrop-filter: blur(18px);
+          background: rgba(8, 12, 24, 0.28);
+          border: 1px solid rgba(118, 148, 255, 0.16);
+          backdrop-filter: blur(14px);
         }
         .menu-scroll {
           display: flex;
@@ -1855,16 +1856,19 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
           flex: 0 0 auto;
           display: grid;
           gap: 0.2rem;
-          padding: 0.7rem 1rem;
+          padding: 0.65rem 1rem;
           border-radius: 16px;
-          border: 1px solid rgba(134, 244, 255, 0.18);
-          background: rgba(134, 244, 255, 0.08);
+          border: 1px solid rgba(118, 148, 255, 0.2);
+          background: rgba(118, 148, 255, 0.08);
           text-align: left;
           min-width: clamp(140px, 14vw, 180px);
+          transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
         }
         .menu-item.active {
-          background: rgba(134, 244, 255, 0.18);
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+          background: rgba(152, 182, 255, 0.18);
+          border-color: rgba(152, 182, 255, 0.36);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 24px rgba(5, 12, 24, 0.24);
         }
         .menu-title {
           font-size: 0.82rem;
@@ -1879,8 +1883,8 @@ function SectionMenu({ panels, activePanelId, onSelect, expandedPanelId, onToggl
         }
         .expand-toggle {
           justify-self: end;
-          border: 1px solid rgba(134, 244, 255, 0.3);
-          background: rgba(134, 244, 255, 0.12);
+          border: 1px solid rgba(152, 182, 255, 0.3);
+          background: rgba(152, 182, 255, 0.12);
           color: inherit;
           border-radius: 999px;
           padding: 0.45rem 1.2rem;
@@ -2087,30 +2091,31 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           transform: translateX(-50%);
           display: grid;
           gap: 0.6rem;
-          padding: 1rem 1.6rem;
+          padding: 1rem 1.5rem;
           border-radius: 24px;
-          background: rgba(6, 10, 24, 0.6);
-          border: 1px solid rgba(134, 244, 255, 0.18);
-          backdrop-filter: blur(18px);
-          color: rgba(235, 244, 255, 0.95);
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+          background: rgba(8, 12, 24, 0.32);
+          border: 1px solid rgba(118, 148, 255, 0.16);
+          backdrop-filter: blur(16px);
+          color: rgba(235, 244, 255, 0.96);
+          box-shadow: 0 18px 46px rgba(4, 10, 24, 0.38);
           width: min(92vw, 960px);
         }
         .hud-main {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: clamp(0.8rem, 2vw, 1.8rem);
+          display: flex;
+          flex-wrap: wrap;
+          gap: clamp(0.7rem, 1.6vw, 1.6rem);
           align-items: center;
+          justify-content: space-between;
         }
         .hud-group {
           display: flex;
           flex-wrap: wrap;
-          gap: 0.6rem;
+          gap: 0.5rem;
         }
         .hud-group button {
-          border: 1px solid rgba(134, 244, 255, 0.3);
+          border: 1px solid rgba(152, 182, 255, 0.3);
           border-radius: 999px;
-          background: rgba(134, 244, 255, 0.12);
+          background: rgba(152, 182, 255, 0.14);
           padding: 0.45rem 1.1rem;
           color: inherit;
           font-size: 0.72rem;
@@ -2118,11 +2123,11 @@ function Hud({ hudLevel, readouts, batteryLevel, focusDepth, cycleHudLevel, togg
           text-transform: uppercase;
         }
         .hud-readouts {
-          display: grid;
-          grid-auto-flow: column;
-          grid-auto-columns: minmax(72px, auto);
-          gap: clamp(0.6rem, 2vw, 1.4rem);
+          display: flex;
+          flex-wrap: wrap;
+          gap: clamp(0.6rem, 1.8vw, 1.2rem);
           justify-content: center;
+          min-width: 240px;
         }
         .readout {
           display: grid;
@@ -2328,19 +2333,19 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
       <style jsx>{`
         .control-dock {
           display: grid;
-          grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.85fr) minmax(0, 0.85fr);
-          gap: clamp(0.8rem, 2vw, 1.6rem);
+          grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+          gap: clamp(0.75rem, 1.8vw, 1.4rem);
           width: 100%;
         }
         .cluster {
-          background: rgba(6, 10, 24, 0.58);
-          border: 1px solid rgba(134, 244, 255, 0.18);
-          border-radius: 22px;
-          backdrop-filter: blur(18px);
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+          background: rgba(10, 14, 28, 0.32);
+          border: 1px solid rgba(118, 148, 255, 0.16);
+          border-radius: 20px;
+          backdrop-filter: blur(16px);
+          box-shadow: 0 14px 30px rgba(2, 8, 24, 0.28);
           display: grid;
           gap: 0.6rem;
-          padding: 0.9rem 1.1rem;
+          padding: 1rem 1.1rem;
         }
         .cluster.collapsed {
           padding-bottom: 0.8rem;
@@ -2353,17 +2358,17 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
         .cluster-header button {
           border: none;
           background: none;
-          color: rgba(235, 244, 255, 0.92);
+          color: rgba(235, 241, 255, 0.95);
           font-weight: 600;
-          letter-spacing: 0.24em;
+          letter-spacing: 0.18em;
           text-transform: uppercase;
           text-align: left;
         }
         .cluster-sub {
-          font-size: 0.68rem;
-          letter-spacing: 0.16em;
+          font-size: 0.7rem;
+          letter-spacing: 0.14em;
           text-transform: uppercase;
-          opacity: 0.6;
+          opacity: 0.65;
         }
         .cluster-body {
           display: grid;
@@ -2388,14 +2393,15 @@ function ControlDock({ lens, exposure, focusDepth, onFocusDepthChange, onExposur
           display: grid;
           gap: 0.25rem;
           border-radius: 16px;
-          border: 1px solid rgba(134, 244, 255, 0.18);
+          border: 1px solid rgba(118, 148, 255, 0.22);
           padding: 0.8rem 1rem;
-          background: rgba(134, 244, 255, 0.06);
+          background: rgba(118, 148, 255, 0.08);
           text-align: left;
+          transition: background 0.3s ease, border-color 0.3s ease;
         }
         .lens-item.active {
-          border-color: rgba(134, 244, 255, 0.42);
-          background: rgba(134, 244, 255, 0.14);
+          border-color: rgba(152, 182, 255, 0.5);
+          background: rgba(152, 182, 255, 0.18);
         }
         .lens-title {
           font-size: 0.92rem;
