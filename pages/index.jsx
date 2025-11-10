@@ -559,12 +559,13 @@ export default function Home() {
           width: 100vw;
           height: 100vh;
           overflow: hidden;
-          background: var(--bg, #05060a);
+          background: var(--bg, #02030a);
           color: #f8f9fb;
-          font-family: 'Inter', sans-serif;
+          font-family: 'Manrope', 'Inter', 'Helvetica Neue', sans-serif;
+          font-kerning: normal;
         }
         .viewport.light {
-          --bg: #f7f8fa;
+          --bg: #f5f7fb;
           color: #10121a;
         }
         .stage {
@@ -575,28 +576,42 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          transition: background 0.4s ease;
+          transition: background 0.4s ease, filter 0.4s ease;
           filter: brightness(var(--exposure-brightness, 1)) contrast(var(--exposure-contrast, 1));
+          background: radial-gradient(circle at 20% 15%, rgba(72, 109, 255, 0.22), transparent 45%),
+            radial-gradient(circle at 80% 10%, rgba(255, 193, 122, 0.18), transparent 48%),
+            radial-gradient(circle at 50% 100%, rgba(77, 214, 189, 0.18), transparent 58%),
+            var(--stage-bg, #050510);
         }
         .stage::before {
           content: '';
           position: absolute;
           inset: 0;
-          background: radial-gradient(
-            circle at 50% 50%,
-            rgba(255, 236, 210, var(--warm-overlay, 0.2)),
-            rgba(190, 215, 255, var(--cool-overlay, 0.2)) 42%,
-            transparent 70%
-          );
+          background: linear-gradient(120deg, rgba(255, 255, 255, 0.06), transparent 45%),
+            radial-gradient(
+              circle at 50% 50%,
+              rgba(255, 236, 210, calc(var(--warm-overlay, 0.2) * 0.8)),
+              transparent 65%
+            );
           pointer-events: none;
           mix-blend-mode: screen;
-          opacity: ${theme === 'dark' ? 0.35 : 0.15};
+          opacity: ${theme === 'dark' ? 0.5 : 0.28};
+        }
+        .stage::after {
+          content: '';
+          position: absolute;
+          inset: -40%;
+          background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 0);
+          background-size: 260px 260px;
+          opacity: 0.22;
+          transform: rotate(2deg);
+          pointer-events: none;
         }
         .stage-dark {
-          background: radial-gradient(circle at 50% 0%, rgba(18, 24, 36, 0.9), #030309 80%);
+          --stage-bg: radial-gradient(circle at 50% 0%, rgba(7, 9, 21, 0.92), #050510 78%);
         }
         .stage-light {
-          background: linear-gradient(160deg, #fcfcff, #cfd8ff 80%);
+          --stage-bg: linear-gradient(150deg, #fafafe 10%, #dce5ff 90%);
         }
         .stage-dslr.stage-focusing .rail {
           animation: mirrorFlip 0.4s ease;
@@ -635,6 +650,29 @@ export default function Home() {
           100% {
             opacity: 1;
           }
+        }
+      `}</style>
+      <style jsx global>{`
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
+        body {
+          margin: 0;
+          background: #02030a;
+          color: inherit;
+          font-family: 'Manrope', 'Inter', 'Helvetica Neue', sans-serif;
+        }
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+        ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        button {
+          font-family: inherit;
         }
       `}</style>
     </div>
@@ -681,42 +719,61 @@ function PanelRail({
           top: 50%;
           left: 50%;
           display: flex;
-          gap: 6rem;
+          gap: 4.5rem;
           transform: translate(-50%, -50%);
           transition: transform 0.6s cubic-bezier(0.4, 0.01, 0.2, 1);
         }
         .panel {
-          width: min(72vw, 1080px);
-          min-height: 70vh;
-          border-radius: 32px;
-          padding: 3rem;
-          box-shadow: 0 24px 60px rgba(0, 0, 0, ${theme === 'dark' ? 0.42 : 0.16});
-          background: rgba(${theme === 'dark' ? '10, 12, 22, 0.78' : '250, 250, 255, 0.85'});
-          backdrop-filter: blur(28px) saturate(120%);
+          position: relative;
+          width: min(66vw, 1040px);
+          min-height: 68vh;
+          border-radius: 34px;
+          padding: 3.25rem;
+          background: linear-gradient(
+              140deg,
+              rgba(${theme === 'dark' ? '20, 26, 45, 0.72' : '244, 246, 255, 0.82'}),
+              rgba(${theme === 'dark' ? '13, 17, 34, 0.92' : '231, 236, 255, 0.88'})
+            ),
+            radial-gradient(circle at 0% 0%, rgba(134, 244, 255, 0.25), transparent 58%);
+          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.14' : '34, 52, 120, 0.18'});
+          box-shadow: 0 32px 80px rgba(${theme === 'dark' ? '3, 6, 18, 0.55' : '46, 55, 120, 0.18'});
+          backdrop-filter: blur(30px) saturate(120%);
           display: grid;
           grid-template-rows: auto 1fr;
           overflow: hidden;
-          transition: box-shadow 0.35s ease, transform 0.35s ease, filter 0.45s ease;
+          transition: box-shadow 0.4s ease, transform 0.4s ease, filter 0.5s ease, border 0.4s ease;
+        }
+        .panel::before {
+          content: '';
+          position: absolute;
+          inset: 1px;
+          border-radius: 32px;
+          background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), transparent 60%);
+          pointer-events: none;
         }
         .panel-active {
-          transform: translateY(-12px) scale(1.02);
-          box-shadow: 0 28px 80px rgba(0, 0, 0, ${theme === 'dark' ? 0.55 : 0.18});
+          transform: translateY(-18px) scale(1.025);
+          border-color: rgba(${theme === 'dark' ? '205, 235, 255, 0.5' : '32, 62, 150, 0.4'});
+          box-shadow: 0 48px 110px rgba(${theme === 'dark' ? '0, 12, 60, 0.65' : '34, 52, 120, 0.28'});
         }
         .panel-defocus {
-          filter: blur(${apertureBlur.toFixed(2)}px) brightness(0.6) saturate(0.8) !important;
+          filter: blur(${apertureBlur.toFixed(2)}px) brightness(0.65) saturate(0.85) !important;
         }
         .panel-deemphasized {
-          opacity: 0.78;
+          opacity: 0.7;
         }
         @media (max-width: 960px) {
           .rail {
-            gap: 3rem;
+            gap: 2.4rem;
           }
           .panel {
-            width: 86vw;
-            min-height: 68vh;
-            padding: 2rem;
-            border-radius: 24px;
+            width: 88vw;
+            min-height: 64vh;
+            padding: 2.2rem;
+            border-radius: 28px;
+          }
+          .panel::before {
+            border-radius: 26px;
           }
         }
       `}</style>
@@ -731,35 +788,94 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
     const word = panel.dynamicWords[dynamicWordIndex % panel.dynamicWords.length];
     return (
       <div className="panel-hero">
+        <div className="hero-meta">
+          <span className="hero-pill">Menelek Makonnen</span>
+          <span className="hero-pill tone">Luxury Creative Operating System</span>
+        </div>
         <h1>
           {panel.title}{' '}
           <span className="hero-word">{word}</span>
         </h1>
         <p>
-          Menelek Makonnen crafts cinematic worlds across film, photography, AI experiences, and immersive
-          storytelling. Glide through the camera-inspired interface to discover the full body of work.
+          Film director, photographer, and AI storyteller translating the poetry of light into digital worlds.
+          Navigate the interface as you would a flagship camera and step into each crafted universe.
         </p>
+        <div className="hero-cta">
+          <span className="cta-label">Swipe to explore</span>
+          <span className="cta-line" />
+          <span className="cta-detail">Lens shifts, HUD states, and flash all react in real time.</span>
+        </div>
         <style jsx>{`
           .panel-hero {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            gap: 2.5rem;
+            gap: 2.4rem;
+          }
+          .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+          }
+          .hero-pill {
+            padding: 0.45rem 1.2rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            font-weight: 600;
+          }
+          .hero-pill.tone {
+            background: linear-gradient(135deg, rgba(134, 244, 255, 0.25), rgba(121, 141, 255, 0.18));
+            color: ${theme === 'dark' ? '#f4fbff' : '#13204d'};
           }
           h1 {
-            font-size: clamp(2.6rem, 4vw, 4.6rem);
-            line-height: 1.05;
+            font-size: clamp(2.9rem, 4.6vw, 5.1rem);
+            line-height: 1.04;
             font-weight: 700;
+            letter-spacing: -0.01em;
           }
           .hero-word {
-            color: ${theme === 'dark' ? '#86f4ff' : '#4158ff'};
-            text-shadow: 0 0 24px ${theme === 'dark' ? 'rgba(0, 255, 240, 0.35)' : 'rgba(65, 88, 255, 0.35)'};
+            color: ${theme === 'dark' ? '#9df6ff' : '#2a3fde'};
+            text-shadow: 0 0 36px ${theme === 'dark' ? 'rgba(54, 214, 255, 0.6)' : 'rgba(42, 63, 222, 0.4)'};
           }
           p {
-            max-width: 34ch;
-            font-size: 1.12rem;
-            line-height: 1.7;
-            opacity: 0.82;
+            max-width: 38ch;
+            font-size: 1.08rem;
+            line-height: 1.8;
+            opacity: 0.85;
+          }
+          .hero-cta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1.2rem;
+            font-size: 0.85rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.72);
+          }
+          .cta-line {
+            flex: 1 1 120px;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), transparent);
+          }
+          .cta-detail {
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            opacity: 0.65;
+          }
+          @media (max-width: 960px) {
+            .hero-cta {
+              flex-direction: column;
+              align-items: flex-start;
+              gap: 0.6rem;
+            }
+            .cta-line {
+              display: none;
+            }
           }
         `}</style>
       </div>
@@ -774,7 +890,8 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           {panel.items.map((item) => (
             <li key={item.label}>
               <a href={item.url} target="_blank" rel="noreferrer">
-                {item.label}
+                <span className="link-label">{item.label}</span>
+                <span className="link-arrow">↗</span>
               </a>
             </li>
           ))}
@@ -790,23 +907,31 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           }
           ul {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 1.2rem;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1.4rem;
           }
           li a {
-            display: block;
-            padding: 1.1rem 1.2rem;
-            border-radius: 16px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.15rem 1.4rem;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02));
+            border: 1px solid rgba(255, 255, 255, 0.16);
             color: inherit;
-            text-decoration: none;
             font-weight: 600;
-            letter-spacing: 0.02em;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            transition: transform 0.35s ease, border 0.35s ease, box-shadow 0.35s ease;
           }
           li a:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.2);
+            transform: translateY(-8px);
+            border-color: rgba(134, 244, 255, 0.65);
+            box-shadow: 0 26px 40px rgba(0, 0, 0, 0.35);
+          }
+          .link-arrow {
+            font-size: 1rem;
+            opacity: 0.8;
           }
         `}</style>
       </div>
@@ -818,12 +943,15 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
       <div className="panel-carousel">
         <h2>{panel.title}</h2>
         <div className="reel">
-          {panel.items.map((item) => (
+          {panel.items.map((item, index) => (
             <article key={item.label}>
-              <h3>{item.label}</h3>
-              <p>{item.description}</p>
+              <span className="reel-index">{String(index + 1).padStart(2, '0')}</span>
+              <div className="reel-body">
+                <h3>{item.label}</h3>
+                <p>{item.description}</p>
+              </div>
               <a href={item.url} target="_blank" rel="noreferrer">
-                View
+                Play on YouTube ↗
               </a>
             </article>
           ))}
@@ -840,28 +968,55 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           .reel {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: minmax(220px, 1fr);
-            gap: 1.6rem;
+            grid-auto-columns: minmax(240px, 1fr);
+            gap: 1.8rem;
             overflow: hidden;
           }
           article {
-            padding: 1.5rem;
-            border-radius: 20px;
-            background: rgba(20, 24, 38, 0.4);
-            backdrop-filter: blur(18px);
+            padding: 1.8rem;
+            border-radius: 22px;
+            background: linear-gradient(140deg, rgba(17, 20, 38, 0.68), rgba(22, 24, 48, 0.92));
+            border: 1px solid rgba(134, 244, 255, 0.18);
+            backdrop-filter: blur(22px);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 1.2rem;
+            position: relative;
+            overflow: hidden;
+          }
+          article::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.12), transparent 55%);
+            opacity: 0.7;
+            pointer-events: none;
+          }
+          .reel-index {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            color: rgba(134, 244, 255, 0.8);
+          }
+          .reel-body {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.8rem;
           }
           a {
             align-self: flex-start;
-            padding: 0.6rem 1.2rem;
+            padding: 0.65rem 1.3rem;
             border-radius: 999px;
-            background: ${theme === 'dark' ? '#86f4ff33' : '#4058ff22'};
+            background: ${theme === 'dark' ? 'rgba(134, 244, 255, 0.18)' : 'rgba(64, 88, 255, 0.22)'};
             color: inherit;
             text-decoration: none;
             font-weight: 600;
             letter-spacing: 0.02em;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+          }
+          a:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
           }
         `}</style>
       </div>
@@ -874,7 +1029,10 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
         <h2>{panel.title}</h2>
         <div className="belt">
           {panel.items.map((item, index) => (
-            <span key={`${item}-${index}`}>{item}</span>
+            <span key={`${item}-${index}`}>
+              <em>{String.fromCharCode(0x41 + ((index * 7) % 26))}</em>
+              {item}
+            </span>
           ))}
         </div>
         <style jsx>{`
@@ -888,17 +1046,41 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           }
           .belt {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1.2rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.4rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
           }
           .belt span {
-            padding: 1rem 1.4rem;
-            border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            background: rgba(255, 255, 255, ${theme === 'dark' ? 0.04 : 0.26});
-            backdrop-filter: blur(10px);
+            position: relative;
+            padding: 1.05rem 1.5rem 1.2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(134, 244, 255, 0.1));
+            backdrop-filter: blur(14px);
+            box-shadow: 0 20px 34px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            overflow: hidden;
+            color: rgba(255, 255, 255, 0.92);
+            font-weight: 600;
+            z-index: 1;
+          }
+          .belt span::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.24), transparent 60%);
+            opacity: 0.35;
+            pointer-events: none;
+          }
+          .belt span em {
+            font-style: normal;
+            font-size: 0.8rem;
+            letter-spacing: 0.28em;
+            color: rgba(134, 244, 255, 0.75);
+            z-index: 1;
           }
         `}</style>
       </div>
@@ -912,7 +1094,10 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
         <div className="columns">
           {panel.items.map((item) => (
             <div className="column" key={item.label}>
-              <h3>{item.label}</h3>
+              <div className="column-top">
+                <span className="column-glyph" aria-hidden="true">◎</span>
+                <h3>{item.label}</h3>
+              </div>
               <p>{item.description}</p>
             </div>
           ))}
@@ -932,14 +1117,38 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
             gap: 1.6rem;
           }
           .column {
-            padding: 1.4rem;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, ${theme === 'dark' ? 0.05 : 0.6});
-            backdrop-filter: blur(10px);
+            padding: 1.6rem 1.8rem;
+            border-radius: 24px;
+            background: linear-gradient(140deg, rgba(17, 20, 36, 0.75), rgba(38, 44, 70, 0.65));
+            border: 1px solid rgba(134, 244, 255, 0.18);
+            backdrop-filter: blur(18px);
+            display: grid;
+            gap: 1rem;
+            box-shadow: 0 28px 42px rgba(0, 0, 0, 0.26);
+          }
+          .column-top {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+          }
+          .column-glyph {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(134, 244, 255, 0.16);
+            font-size: 1.1rem;
+            letter-spacing: 0.2em;
           }
           h3 {
-            font-size: 1.5rem;
-            margin-bottom: 0.7rem;
+            font-size: 1.45rem;
+            margin: 0;
+          }
+          p {
+            font-size: 0.98rem;
+            line-height: 1.7;
+            opacity: 0.85;
           }
         `}</style>
       </div>
@@ -952,7 +1161,10 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
         <h2>{panel.title}</h2>
         <ul>
           {panel.items.map((item, index) => (
-            <li key={`${item}-${index}`}>{item}</li>
+            <li key={`${item}-${index}`}>
+              <span className="stack-index">{String(index + 1).padStart(2, '0')}</span>
+              <p>{item}</p>
+            </li>
           ))}
         </ul>
         <style jsx>{`
@@ -967,10 +1179,30 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           ul {
             display: flex;
             flex-direction: column;
-            gap: 1.2rem;
-            font-size: 1.1rem;
+            gap: 1.1rem;
+          }
+          li {
+            display: flex;
+            align-items: center;
+            gap: 1.4rem;
+            padding: 1.1rem 1.4rem;
+            border-radius: 20px;
+            background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(134, 244, 255, 0.06));
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.22);
+          }
+          .stack-index {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 0.28em;
+            color: rgba(134, 244, 255, 0.85);
+          }
+          p {
+            margin: 0;
+            font-size: 1.02rem;
             line-height: 1.7;
-            opacity: 0.85;
+            opacity: 0.86;
           }
         `}</style>
       </div>
@@ -1005,39 +1237,64 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           }
           .albums {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.6rem;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.8rem;
           }
           .album {
-            border-radius: 24px;
+            position: relative;
+            border-radius: 26px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            background: rgba(10, 12, 26, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: linear-gradient(160deg, rgba(14, 16, 32, 0.82), rgba(31, 36, 62, 0.9));
             display: flex;
             flex-direction: column;
-            min-height: 220px;
+            min-height: 240px;
+            box-shadow: 0 32px 54px rgba(0, 0, 0, 0.3);
+          }
+          .album::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 80% 0%, rgba(134, 244, 255, 0.24), transparent 60%);
+            mix-blend-mode: screen;
+            pointer-events: none;
           }
           .album-header {
-            padding: 0.8rem 1.2rem;
-            font-size: 0.85rem;
+            padding: 1rem 1.5rem;
+            font-size: 0.74rem;
             text-transform: uppercase;
-            letter-spacing: 0.12em;
-            background: rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.32em;
+            background: rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            z-index: 1;
+          }
+          .album-header::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(134, 244, 255, 0.8);
           }
           .album-body {
             flex: 1;
-            padding: 1.4rem 1.3rem 1.6rem;
+            padding: 1.6rem 1.8rem 2rem;
             display: flex;
             flex-direction: column;
             gap: 0.7rem;
+            position: relative;
+            z-index: 1;
           }
           h3 {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
+            margin: 0;
           }
           p {
-            font-size: 1rem;
-            line-height: 1.6;
-            opacity: 0.8;
+            font-size: 1.02rem;
+            line-height: 1.7;
+            opacity: 0.84;
+            margin: 0;
           }
         `}</style>
       </div>
@@ -1049,10 +1306,13 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
       <div className="panel-blog">
         <h2>{panel.title}</h2>
         <div className="posts">
-          {panel.items.map((item) => (
+          {panel.items.map((item, index) => (
             <article key={item.label}>
-              <h3>{item.label}</h3>
-              <p>{item.description}</p>
+              <span className="post-index">{String(index + 1).padStart(2, '0')}</span>
+              <div className="post-body">
+                <h3>{item.label}</h3>
+                <p>{item.description}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -1067,21 +1327,48 @@ function PanelContent({ panel, focusPoint, theme, dynamicWordIndex }) {
           }
           .posts {
             display: grid;
-            gap: 1.6rem;
+            gap: 1.4rem;
+            position: relative;
+          }
+          .posts::before {
+            content: '';
+            position: absolute;
+            left: 26px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, rgba(134, 244, 255, 0.5), transparent);
           }
           article {
-            padding: 1.6rem;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, ${theme === 'dark' ? 0.05 : 0.6});
-            backdrop-filter: blur(14px);
+            position: relative;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 1.4rem;
+            padding: 1.4rem 1.6rem;
+            border-radius: 22px;
+            background: linear-gradient(130deg, rgba(255, 255, 255, 0.08), rgba(134, 244, 255, 0.08));
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 24px 40px rgba(0, 0, 0, 0.24);
+          }
+          .post-index {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(134, 244, 255, 0.16);
+            font-weight: 700;
+            letter-spacing: 0.24em;
           }
           h3 {
-            margin-bottom: 0.6rem;
-            font-size: 1.4rem;
+            margin: 0 0 0.6rem;
+            font-size: 1.36rem;
           }
           p {
-            opacity: 0.82;
-            line-height: 1.6;
+            opacity: 0.84;
+            line-height: 1.7;
+            margin: 0;
           }
         `}</style>
       </div>
@@ -1130,16 +1417,18 @@ function Hud({
           left: 50%;
           transform: translateX(-50%);
           width: min(90vw, 1180px);
-          padding: 1.2rem 1.8rem;
-          border-radius: 22px 22px 0 0;
-          background: rgba(${theme === 'dark' ? '6, 8, 16, 0.85' : '240, 242, 255, 0.92'});
-          backdrop-filter: blur(24px);
+          padding: 1.3rem 2rem;
+          border-radius: 26px 26px 0 0;
+          background: rgba(${theme === 'dark' ? '6, 8, 18, 0.85' : '240, 242, 255, 0.92'});
+          backdrop-filter: blur(28px);
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 1.2rem;
+          gap: 1.4rem;
           letter-spacing: 0.08em;
           font-size: 0.8rem;
+          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.2' : '34, 52, 120, 0.26'});
+          box-shadow: 0 -18px 36px rgba(0, 0, 0, 0.32);
         }
         .hud-left,
         .hud-right {
@@ -1147,6 +1436,8 @@ function Hud({
           flex-direction: column;
           gap: 0.3rem;
           text-transform: uppercase;
+          font-size: 0.72rem;
+          opacity: 0.8;
         }
         .hud-panel {
           font-size: 0.75rem;
@@ -1165,13 +1456,16 @@ function Hud({
           display: flex;
           justify-content: center;
           align-items: center;
-          gap: 1.4rem;
+          gap: 1.6rem;
         }
         .hud-item {
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 0.2rem;
+          padding: 0.4rem 0.6rem;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.04);
         }
         .label {
           font-size: 0.7rem;
@@ -1185,7 +1479,8 @@ function Hud({
           padding: 0.4rem 0.8rem;
           border-radius: 999px;
           text-align: center;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.06);
         }
         .flash-ready.ready {
           color: ${theme === 'dark' ? '#86f4ff' : '#3044ff'};
@@ -1289,58 +1584,65 @@ function ControlCluster({
       <style jsx>{`
         .controls {
           position: absolute;
-          top: 20px;
+          top: 28px;
           left: 50%;
           transform: translateX(-50%);
-          width: min(90vw, 1200px);
+          width: min(92vw, 1260px);
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 1.2rem;
           pointer-events: none;
         }
         .cluster {
           display: flex;
           align-items: center;
-          gap: 0.8rem;
+          gap: 1rem;
           pointer-events: auto;
-          background: rgba(${theme === 'dark' ? '6, 8, 16, 0.72' : '238, 240, 255, 0.85'});
-          padding: 0.8rem 1rem;
-          border-radius: 999px;
-          backdrop-filter: blur(20px);
+          background: rgba(${theme === 'dark' ? '6, 8, 18, 0.72' : '235, 238, 255, 0.88'});
+          padding: 1rem 1.2rem;
+          border-radius: 28px;
+          backdrop-filter: blur(24px);
+          box-shadow: 0 18px 34px rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.22' : '34, 52, 120, 0.26'});
         }
         .cluster.center {
-          gap: 0.9rem;
+          gap: 1.1rem;
         }
         button {
           border: none;
           border-radius: 999px;
-          padding: 0.5rem 1rem;
-          font-size: 0.8rem;
-          letter-spacing: 0.06em;
+          padding: 0.55rem 1.2rem;
+          font-size: 0.82rem;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
-          background: rgba(255, 255, 255, ${theme === 'dark' ? 0.08 : 0.18});
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
           color: inherit;
           cursor: pointer;
-          transition: transform 0.25s ease, background 0.25s ease;
+          transition: transform 0.28s ease, background 0.28s ease, box-shadow 0.28s ease;
         }
         button:hover {
           transform: translateY(-3px);
-          background: rgba(255, 255, 255, ${theme === 'dark' ? 0.16 : 0.26});
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(134, 244, 255, 0.22));
+          box-shadow: 0 18px 28px rgba(0, 0, 0, 0.25);
         }
         button:disabled {
           cursor: not-allowed;
           opacity: 0.55;
           transform: none;
+          box-shadow: none;
         }
         .flash {
           background: linear-gradient(135deg, #ffe45b, #ff8c00);
           color: #1a1406;
           font-weight: 700;
+          box-shadow: 0 16px 32px rgba(255, 162, 0, 0.32);
         }
         .flash.off {
-          background: rgba(255, 255, 255, ${theme === 'dark' ? 0.12 : 0.22});
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
           color: inherit;
           font-weight: 600;
+          box-shadow: none;
         }
         .readout {
           font-weight: 600;
@@ -1350,21 +1652,26 @@ function ControlCluster({
           display: flex;
           align-items: center;
           gap: 0.6rem;
+          padding-left: 0.4rem;
+          border-left: 1px solid rgba(255, 255, 255, 0.12);
         }
         .dial input {
-          width: 120px;
+          width: 140px;
         }
         .lens-meta {
           display: flex;
           flex-direction: column;
-          gap: 0.1rem;
+          gap: 0.2rem;
           text-align: right;
+          font-size: 0.78rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
         }
         @media (max-width: 960px) {
           .controls {
             flex-direction: column;
             gap: 1rem;
-            top: 12px;
+            top: 16px;
           }
           .cluster {
             width: 100%;
@@ -1373,6 +1680,10 @@ function ControlCluster({
           }
           .cluster.right {
             flex-direction: column;
+            text-align: center;
+          }
+          .lens-meta {
+            text-align: center;
           }
         }
       `}</style>
@@ -1400,29 +1711,32 @@ function LensSelector({ lenses, activeLensId, onSelect }) {
           transform: translateY(-50%);
           display: flex;
           flex-direction: column;
-          gap: 1rem;
-          padding: 1.2rem 1rem;
-          border-radius: 24px;
-          background: rgba(0, 0, 0, 0.32);
-          backdrop-filter: blur(18px);
+          gap: 0.85rem;
+          padding: 1.4rem 1.1rem;
+          border-radius: 28px;
+          background: rgba(6, 8, 18, 0.6);
+          backdrop-filter: blur(22px);
+          box-shadow: 0 28px 46px rgba(0, 0, 0, 0.32);
+          border: 1px solid rgba(162, 174, 255, 0.22);
         }
         button {
           border: none;
-          border-radius: 14px;
-          padding: 0.6rem 1rem;
+          border-radius: 16px;
+          padding: 0.65rem 1.1rem;
           background: rgba(255, 255, 255, 0.12);
           color: #fefefe;
           cursor: pointer;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
-          font-size: 0.75rem;
-          transition: transform 0.25s ease, background 0.25s ease;
+          font-size: 0.74rem;
+          transition: transform 0.28s ease, background 0.28s ease, box-shadow 0.28s ease;
         }
         button.active {
-          background: #86f4ff;
-          color: #0a0d19;
+          background: linear-gradient(135deg, rgba(134, 244, 255, 0.9), rgba(118, 140, 255, 0.9));
+          color: #030510;
           transform: translateX(-6px);
           font-weight: 700;
+          box-shadow: 0 18px 32px rgba(83, 208, 255, 0.45);
         }
         button:hover {
           transform: translateX(-4px);
@@ -1434,6 +1748,9 @@ function LensSelector({ lenses, activeLensId, onSelect }) {
             top: auto;
             right: 50%;
             transform: translate(50%, 0);
+          }
+          button.active {
+            transform: translateY(-4px);
           }
         }
       `}</style>
@@ -1529,32 +1846,34 @@ function FlashToggle({ mode, onCycle, theme }) {
       <style jsx>{`
         .flash-toggle {
           position: absolute;
-          top: 24px;
+          top: 26px;
           left: 32px;
-          padding: 0.55rem 1.2rem;
+          padding: 0.65rem 1.4rem;
           border-radius: 999px;
-          border: none;
-          background: rgba(${theme === 'dark' ? '8, 10, 18, 0.72' : '238, 240, 255, 0.86'});
+          border: 1px solid rgba(${theme === 'dark' ? '162, 174, 255, 0.26' : '34, 52, 120, 0.26'});
+          background: rgba(${theme === 'dark' ? '8, 10, 18, 0.78' : '238, 240, 255, 0.9'});
           color: inherit;
           letter-spacing: 0.14em;
-          font-size: 0.68rem;
+          font-size: 0.7rem;
           text-transform: uppercase;
           cursor: pointer;
           backdrop-filter: blur(18px);
-          transition: transform 0.25s ease, background 0.25s ease;
+          box-shadow: 0 18px 30px rgba(0, 0, 0, 0.28);
+          transition: transform 0.28s ease, background 0.28s ease, box-shadow 0.28s ease;
         }
         .flash-toggle:hover {
-          transform: translateY(-2px);
-          background: rgba(${theme === 'dark' ? '12, 16, 28, 0.86' : '224, 227, 255, 0.92'});
+          transform: translateY(-3px);
+          background: rgba(${theme === 'dark' ? '18, 22, 36, 0.9' : '224, 227, 255, 0.96'});
+          box-shadow: 0 22px 34px rgba(0, 0, 0, 0.32);
         }
         @media (max-width: 768px) {
           .flash-toggle {
             left: 50%;
             transform: translateX(-50%);
-            top: 16px;
+            top: 18px;
           }
           .flash-toggle:hover {
-            transform: translate(-50%, -2px);
+            transform: translate(-50%, -3px);
           }
         }
       `}</style>
