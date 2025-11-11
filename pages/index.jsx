@@ -5,6 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 // Camera components
 import BootSequence from '@/components/camera/BootSequence';
 import PowerButton from '@/components/camera/PowerButton';
+import PowerControls from '@/components/camera/PowerControls';
 import CameraHUD from '@/components/camera/CameraHUD';
 import ControlBoxes from '@/components/camera/ControlBoxes';
 import FlashToggle from '@/components/camera/FlashToggle';
@@ -15,6 +16,7 @@ import FocusIndicator from '@/components/camera/FocusIndicator';
 // UI components
 import RuleOfThirds from '@/components/ui/RuleOfThirds';
 import Histogram from '@/components/ui/Histogram';
+import HomeButton from '@/components/ui/HomeButton';
 
 // Section components
 import SectionNavigation from '@/components/SectionNavigation';
@@ -37,6 +39,7 @@ export default function Home() {
     theme,
     isChangingLens,
     setCurrentSection,
+    currentSection,
     getIsoNoise,
     getWhiteBalanceFilter,
   } = useCameraContext();
@@ -110,6 +113,14 @@ export default function Home() {
 
       {/* Histogram */}
       <Histogram />
+
+      {/* Home button (only show if not on cover page) */}
+      {currentSection !== 0 && (
+        <HomeButton onClick={() => setCurrentSection(0)} />
+      )}
+
+      {/* Power controls */}
+      <PowerControls />
 
       {/* Flash toggle */}
       <FlashToggle />

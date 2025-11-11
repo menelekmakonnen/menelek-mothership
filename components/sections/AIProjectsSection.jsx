@@ -38,7 +38,7 @@ const projects = [
 
 export default function AIProjectsSection() {
   return (
-    <div className="w-full h-full p-8 overflow-auto">
+    <div className="w-full min-h-screen p-8 pt-32 overflow-auto">
       <div className="max-w-7xl mx-auto">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}

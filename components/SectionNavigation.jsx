@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import BlurLayer from './ui/BlurLayer';
 
 export default function SectionNavigation({ sections }) {
-  const { currentSection, setCurrentSection, currentLens, shutterSpeed } = useCameraContext();
+  const { currentSection, setCurrentSection, currentLens, shutterSpeed, setFocusedLayer } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
 
@@ -13,10 +13,14 @@ export default function SectionNavigation({ sections }) {
 
   const nextSection = () => {
     setCurrentSection((prev) => (prev + 1) % sections.length);
+    // Trigger refocus event
+    setFocusedLayer(100);
   };
 
   const prevSection = () => {
     setCurrentSection((prev) => (prev - 1 + sections.length) % sections.length);
+    // Trigger refocus event
+    setFocusedLayer(100);
   };
 
   const onTouchStart = (e) => {
@@ -71,16 +75,16 @@ export default function SectionNavigation({ sections }) {
       {/* Navigation arrows */}
       <button
         onClick={prevSection}
-        className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+        className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-2 md:p-3 rounded-full hover:scale-110 transition-transform"
       >
-        <ChevronLeft className="w-6 h-6" />
+        <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
       </button>
 
       <button
         onClick={nextSection}
-        className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+        className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-2 md:p-3 rounded-full hover:scale-110 transition-transform"
       >
-        <ChevronRight className="w-6 h-6" />
+        <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
       </button>
 
       {/* Section indicator dots */}

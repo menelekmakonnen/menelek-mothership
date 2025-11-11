@@ -1,0 +1,11 @@
+/* Section padding to prevent camera controls from covering content */
+.section-content {
+  padding-top: 7rem; /* Space for camera controls at top */
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .section-content {
+    padding-top: 6rem;
+  }
+}

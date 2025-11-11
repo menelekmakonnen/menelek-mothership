@@ -60,7 +60,7 @@ export const CameraProvider = ({ children }) => {
   const [focusMode, setFocusMode] = useState('single'); // 'single', 'continuous', 'manual'
 
   // Control boxes state
-  const [openBoxes, setOpenBoxes] = useState(['exposure']); // Can have max 2 open
+  const [openBoxes, setOpenBoxes] = useState([]); // Can have max 2 open, start with none
 
   // Focus system
   const [focusedLayer, setFocusedLayer] = useState(null);
@@ -93,34 +93,41 @@ export const CameraProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [powerState]);
 
-  // Check if boot sequence should show
+  // Check if boot sequence should show (only first load of the day)
   useEffect(() => {
     const lastBoot = localStorage.getItem('lastBootDate');
+    const hasBootedThisSession = sessionStorage.getItem('hasBootedThisSession');
     const today = new Date().toDateString();
 
-    if (lastBoot !== today) {
+    if (lastBoot !== today && !hasBootedThisSession) {
       setHasBooted(false);
       localStorage.setItem('lastBootDate', today);
     } else {
       setHasBooted(true);
+      setPowerState('on'); // Start powered on if already booted today
     }
   }, []);
 
   // Power management
   const powerOn = useCallback(() => {
-    if (!hasBooted) {
+    const needsBoot = !sessionStorage.getItem('hasBootedThisSession');
+
+    if (needsBoot) {
       setPowerState('booting');
       setTimeout(() => {
         setPowerState('on');
         setHasBooted(true);
+        sessionStorage.setItem('hasBootedThisSession', 'true');
       }, 3000); // Boot sequence duration
     } else {
       setPowerState('on');
     }
-  }, [hasBooted]);
+  }, []);
 
   const powerOff = useCallback(() => {
     setPowerState('off');
+    // Clear session boot flag so next power on triggers boot
+    sessionStorage.removeItem('hasBootedThisSession');
   }, []);
 
   const setStandby = useCallback(() => {

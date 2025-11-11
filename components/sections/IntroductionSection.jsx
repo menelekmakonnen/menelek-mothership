@@ -20,7 +20,7 @@ export default function IntroductionSection() {
   }, []);
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-8 overflow-auto">
+    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 overflow-auto">
       <div className="max-w-6xl w-full grid md:grid-cols-2 gap-12 items-center">
         {/* Left - Image */}
         <motion.div

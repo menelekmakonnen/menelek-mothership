@@ -31,7 +31,7 @@ export default function ControlBoxes() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
-      <div className="flex gap-2 p-4">
+      <div className="flex gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide">
         {boxes.map((box) => {
           const isOpen = openBoxes.includes(box.id);
           const Icon = box.icon;
