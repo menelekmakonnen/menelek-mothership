@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Play, Film, User, Link2, Camera, Brain, Video, Image, Sparkles, BookOpen } from 'lucide-react';
+import IconBox from '@/components/ui/IconBox';
 
 const slides = [
   {
@@ -41,15 +42,15 @@ const slides = [
 ];
 
 const quickNavLinks = [
-  { name: 'Intro', icon: User, section: 1 },
-  { name: 'Links', icon: Link2, section: 2 },
-  { name: 'Films', icon: Film, section: 3 },
-  { name: 'Loremaker', icon: BookOpen, section: 4 },
-  { name: 'AI', icon: Brain, section: 5 },
-  { name: 'Edits', icon: Video, section: 6 },
-  { name: 'Photos', icon: Camera, section: 7 },
-  { name: 'AI Art', icon: Sparkles, section: 8 },
-  { name: 'Blog', icon: Image, section: 9 },
+  { name: 'Intro', icon: User, section: 1, gradient: 'from-purple-600 to-blue-600' },
+  { name: 'Links', icon: Link2, section: 2, gradient: 'from-pink-600 to-purple-600' },
+  { name: 'Films', icon: Film, section: 3, gradient: 'from-red-600 to-orange-600' },
+  { name: 'Loremaker', icon: BookOpen, section: 4, gradient: 'from-green-600 to-emerald-600' },
+  { name: 'AI', icon: Brain, section: 5, gradient: 'from-fuchsia-600 to-pink-600' },
+  { name: 'Edits', icon: Video, section: 6, gradient: 'from-yellow-600 to-orange-600' },
+  { name: 'Photos', icon: Camera, section: 7, gradient: 'from-cyan-600 to-blue-600' },
+  { name: 'AI Art', icon: Sparkles, section: 8, gradient: 'from-violet-600 to-purple-600' },
+  { name: 'Blog', icon: Image, section: 9, gradient: 'from-teal-600 to-green-600' },
 ];
 
 export default function CoverSection({ onSectionSelect }) {
@@ -155,24 +156,26 @@ export default function CoverSection({ onSectionSelect }) {
       </div>
 
       {/* Floating Quick Nav */}
+      {/* Floating Quick Nav - Premium Style */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
         className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 max-w-full px-4"
       >
-        <div className="camera-hud rounded-full px-3 md:px-6 py-2 md:py-3 flex gap-1 md:gap-3 overflow-x-auto scrollbar-hide max-w-[90vw]">
+        <div className="camera-hud rounded-2xl px-4 md:px-6 py-3 md:py-4 flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide max-w-[90vw]">
           {quickNavLinks.map((link) => {
-            const Icon = link.icon;
             return (
               <button
                 key={link.section}
                 onClick={() => onSectionSelect && onSectionSelect(link.section)}
-                className="flex flex-col md:flex-row items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-2 rounded-lg hover:bg-white/10 transition-all whitespace-nowrap flex-shrink-0"
+                className="group flex flex-col items-center gap-2 flex-shrink-0 hover:scale-105 transition-transform"
                 title={link.name}
               >
-                <Icon className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="text-[9px] md:text-xs font-mono hidden md:inline">{link.name}</span>
+                <IconBox icon={link.icon} gradient={link.gradient} size="sm" />
+                <span className="text-[9px] md:text-xs font-mono opacity-75 group-hover:opacity-100 transition-opacity">
+                  {link.name}
+                </span>
               </button>
             );
           })}
