@@ -58,7 +58,7 @@ export default function CameraHUD() {
   const formatAperture = (ap) => `f/${ap.toFixed(1)}`;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[2000] pointer-events-none">
+    <div className="fixed bottom-0 left-0 right-0 z-[2500] pointer-events-none">
       <div className="camera-hud border-t px-4 py-3 flex items-center justify-between gap-4 mono text-xs pointer-events-auto">
         {/* Left section - Camera mode and lens */}
         <div className="flex items-center gap-4">

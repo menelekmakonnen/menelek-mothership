@@ -72,19 +72,21 @@ export default function SectionNavigation({ sections }) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Navigation arrows */}
+      {/* Navigation arrows - Fixed desktop position */}
       <button
         onClick={prevSection}
-        className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-2 md:p-3 rounded-full hover:scale-110 transition-transform"
+        className="hidden md:flex fixed left-8 top-1/2 -translate-y-1/2 z-[1500] camera-hud p-4 rounded-full hover:scale-110 transition-all pointer-events-auto items-center justify-center shadow-lg"
+        style={{ width: '56px', height: '56px' }}
       >
-        <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
+        <ChevronLeft className="w-8 h-8" />
       </button>
 
       <button
         onClick={nextSection}
-        className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-2 md:p-3 rounded-full hover:scale-110 transition-transform"
+        className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 z-[1500] camera-hud p-4 rounded-full hover:scale-110 transition-all pointer-events-auto items-center justify-center shadow-lg"
+        style={{ width: '56px', height: '56px' }}
       >
-        <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
+        <ChevronRight className="w-8 h-8" />
       </button>
 
       {/* Section indicator dots */}
@@ -102,25 +104,32 @@ export default function SectionNavigation({ sections }) {
         ))}
       </div>
 
-      {/* Sections */}
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={currentSection}
-          initial={{ opacity: 0, x: 100, filter: `blur(${getMotionBlur()}px)` }}
-          animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, x: -100, filter: `blur(${getMotionBlur()}px)` }}
-          transition={{
-            duration: 0.5,
-            ease: [0.4, 0, 0.2, 1],
-          }}
-          className="w-full h-full"
-          style={{ transform: `scale(${currentLens.zoom})` }}
-        >
-          <BlurLayer depth={100}>
-            {sections[currentSection]}
-          </BlurLayer>
-        </motion.div>
-      </AnimatePresence>
+      {/* Sections with lens zoom effect */}
+      <div
+        className="w-full h-full transition-transform duration-700 ease-out"
+        style={{
+          transform: `scale(${currentLens.zoom})`,
+          transformOrigin: 'center center'
+        }}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentSection}
+            initial={{ opacity: 0, x: 100, filter: `blur(${getMotionBlur()}px)` }}
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, x: -100, filter: `blur(${getMotionBlur()}px)` }}
+            transition={{
+              duration: 0.5,
+              ease: [0.4, 0, 0.2, 1],
+            }}
+            className="w-full h-full"
+          >
+            <BlurLayer depth={100}>
+              {sections[currentSection]}
+            </BlurLayer>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

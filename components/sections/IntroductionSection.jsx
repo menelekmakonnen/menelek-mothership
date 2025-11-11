@@ -1,5 +1,7 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import IconBox from '@/components/ui/IconBox';
+import { Camera, Film, Brain, Code, Sparkles, Heart, Video, Pen } from 'lucide-react';
 
 const rotatingWords = [
   'Friend', 'Brother', 'Boyfriend', 'Bro', 'Son',
@@ -8,9 +10,22 @@ const rotatingWords = [
   'Vibe Coder', 'Prompt Engineer', 'Instructor'
 ];
 
+const rotatingIcons = [
+  { icon: Camera, gradient: 'from-blue-600 to-cyan-600' },
+  { icon: Film, gradient: 'from-red-600 to-orange-600' },
+  { icon: Brain, gradient: 'from-purple-600 to-pink-600' },
+  { icon: Code, gradient: 'from-green-600 to-emerald-600' },
+  { icon: Sparkles, gradient: 'from-yellow-600 to-orange-600' },
+  { icon: Heart, gradient: 'from-pink-600 to-rose-600' },
+  { icon: Video, gradient: 'from-indigo-600 to-purple-600' },
+  { icon: Pen, gradient: 'from-teal-600 to-cyan-600' },
+];
+
 export default function IntroductionSection() {
   const [wordIndex, setWordIndex] = useState(0);
+  const [iconIndex, setIconIndex] = useState(0);
 
+  // Rotate words every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setWordIndex((prev) => (prev + 1) % rotatingWords.length);
@@ -19,19 +34,43 @@ export default function IntroductionSection() {
     return () => clearInterval(interval);
   }, []);
 
+  // Rotate icons every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIconIndex((prev) => (prev + 1) % rotatingIcons.length);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 overflow-auto">
       <div className="max-w-6xl w-full grid md:grid-cols-2 gap-12 items-center">
-        {/* Left - Image */}
+        {/* Left - Rotating Icon */}
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
           className="relative"
         >
-          <div className="aspect-square rounded-2xl overflow-hidden border-2 border-green-500/30 shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-            {/* Placeholder for professional headshot */}
-            <div className="text-6xl">📸</div>
+          <div className="aspect-square rounded-2xl overflow-hidden border-2 border-green-500/30 shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center p-12">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={iconIndex}
+                initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
+                transition={{ duration: 0.5 }}
+                className="w-full h-full"
+              >
+                <IconBox
+                  icon={rotatingIcons[iconIndex].icon}
+                  gradient={rotatingIcons[iconIndex].gradient}
+                  size="xl"
+                  className="w-full h-full !rounded-3xl"
+                />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </motion.div>
 
@@ -43,16 +82,21 @@ export default function IntroductionSection() {
           className="space-y-6"
         >
           <h1 className="text-5xl font-bold leading-tight">
-            Worldbuilder, AI Supernerd and{' '}
-            <motion.span
-              key={wordIndex}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="text-green-400 inline-block"
-            >
-              {rotatingWords[wordIndex]}
-            </motion.span>
+            <div className="mb-2">
+              Worldbuilder, AI Supernerd and
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={wordIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="text-green-400"
+              >
+                {rotatingWords[wordIndex]}
+              </motion.div>
+            </AnimatePresence>
           </h1>
 
           <div className="space-y-4 text-lg text-gray-300">

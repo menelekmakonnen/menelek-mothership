@@ -57,7 +57,6 @@ export default function Home() {
   const sections = [
     <CoverSection key="cover" onSectionSelect={(index) => setCurrentSection(index)} />,
     <IntroductionSection key="intro" />,
-    <LinksSection key="links" />,
     <FilmsSection key="films" />,
     <LoremakerSection key="loremaker" />,
     <AIProjectsSection key="ai-projects" />,
@@ -65,6 +64,7 @@ export default function Home() {
     <PhotographySection key="photography" />,
     <AIAlbumsSection key="ai-albums" />,
     <BlogSection key="blog" />,
+    <LinksSection key="links" />,
   ];
 
   // Power off state

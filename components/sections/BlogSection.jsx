@@ -120,7 +120,7 @@ export default function BlogSection() {
           Creative opinions, insights, and stories
         </motion.p>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           {articles.map((article, index) => (
             <motion.div
               key={article.id}
@@ -128,47 +128,45 @@ export default function BlogSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * index }}
               onClick={() => setSelectedArticle(article)}
-              className={`luxury-card group cursor-pointer ${
-                article.featured ? 'md:col-span-2' : ''
-              }`}
+              className="luxury-card group cursor-pointer flex flex-col h-full"
             >
-              <div className="flex items-start justify-between gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xs mono text-green-400">{article.category}</span>
-                    <span className="text-xs text-gray-500">•</span>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Calendar className="w-3 h-3" />
-                      {new Date(article.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </div>
-                    <span className="text-xs text-gray-500">•</span>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      {article.readTime}
-                    </div>
+              {/* Thumbnail area */}
+              <div className="w-full aspect-video bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg mb-4 group-hover:scale-[1.02] transition-transform flex items-center justify-center text-4xl">
+                📝
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 flex flex-col">
+                <div className="mb-3">
+                  <span className="text-xs mono text-green-400">{article.category}</span>
+                </div>
+
+                <h3 className="text-xl font-bold mb-3 group-hover:text-green-400 transition-colors line-clamp-2">
+                  {article.title}
+                </h3>
+
+                <p className="text-sm text-gray-400 mb-4 line-clamp-3 flex-1">{article.excerpt}</p>
+
+                {/* Meta info */}
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(article.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
                   </div>
-
-                  <h3 className="text-2xl font-bold mb-3 group-hover:text-green-400 transition-colors">
-                    {article.title}
-                  </h3>
-
-                  <p className="text-gray-400 mb-4">{article.excerpt}</p>
-
-                  <div className="flex items-center gap-2 text-green-400 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Read Article
-                    <ArrowRight className="w-4 h-4" />
+                  <span>•</span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {article.readTime}
                   </div>
                 </div>
 
-                {article.featured && (
-                  <div className="hidden md:block w-48 h-48 bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg flex-shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center text-4xl">
-                    📝
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-green-400 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  Read Article
+                  <ArrowRight className="w-4 h-4" />
+                </div>
               </div>
             </motion.div>
           ))}

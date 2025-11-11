@@ -16,41 +16,41 @@ const slides = [
     title: 'Films & Music Videos',
     description: 'Cinematic storytelling and visual artistry',
     gradient: 'from-red-900 via-orange-900 to-yellow-900',
-    targetSection: 3,
+    targetSection: 2,
   },
   {
     id: 'loremaker',
     title: 'Loremaker Universe',
     description: 'Epic character-driven narratives',
     gradient: 'from-green-900 via-emerald-900 to-teal-900',
-    targetSection: 4,
+    targetSection: 3,
   },
   {
     id: 'photography',
     title: 'Photography',
     description: 'Capturing moments through the lens',
     gradient: 'from-blue-900 via-cyan-900 to-sky-900',
-    targetSection: 7,
+    targetSection: 6,
   },
   {
     id: 'ai',
     title: 'AI Projects',
     description: 'Innovation in artificial intelligence',
     gradient: 'from-pink-900 via-fuchsia-900 to-purple-900',
-    targetSection: 5,
+    targetSection: 4,
   },
 ];
 
 const quickNavLinks = [
   { name: 'Intro', icon: User, section: 1, gradient: 'from-purple-600 to-blue-600' },
-  { name: 'Links', icon: Link2, section: 2, gradient: 'from-pink-600 to-purple-600' },
-  { name: 'Films', icon: Film, section: 3, gradient: 'from-red-600 to-orange-600' },
-  { name: 'Loremaker', icon: BookOpen, section: 4, gradient: 'from-green-600 to-emerald-600' },
-  { name: 'AI', icon: Brain, section: 5, gradient: 'from-fuchsia-600 to-pink-600' },
-  { name: 'Edits', icon: Video, section: 6, gradient: 'from-yellow-600 to-orange-600' },
-  { name: 'Photos', icon: Camera, section: 7, gradient: 'from-cyan-600 to-blue-600' },
-  { name: 'AI Art', icon: Sparkles, section: 8, gradient: 'from-violet-600 to-purple-600' },
-  { name: 'Blog', icon: Image, section: 9, gradient: 'from-teal-600 to-green-600' },
+  { name: 'Films', icon: Film, section: 2, gradient: 'from-red-600 to-orange-600' },
+  { name: 'Loremaker', icon: BookOpen, section: 3, gradient: 'from-green-600 to-emerald-600' },
+  { name: 'AI', icon: Brain, section: 4, gradient: 'from-fuchsia-600 to-pink-600' },
+  { name: 'Edits', icon: Video, section: 5, gradient: 'from-yellow-600 to-orange-600' },
+  { name: 'Photos', icon: Camera, section: 6, gradient: 'from-cyan-600 to-blue-600' },
+  { name: 'AI Art', icon: Sparkles, section: 7, gradient: 'from-violet-600 to-purple-600' },
+  { name: 'Blog', icon: Image, section: 8, gradient: 'from-teal-600 to-green-600' },
+  { name: 'Connect', icon: Link2, section: 9, gradient: 'from-pink-600 to-purple-600' },
 ];
 
 export default function CoverSection({ onSectionSelect }) {
@@ -163,18 +163,22 @@ export default function CoverSection({ onSectionSelect }) {
         transition={{ delay: 0.5 }}
         className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 max-w-full px-4"
       >
-        <div className="camera-hud rounded-2xl px-4 md:px-6 py-3 md:py-4 flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide max-w-[90vw]">
+        <div className="camera-hud rounded-2xl px-4 md:px-6 py-3 md:py-4 flex gap-3 md:gap-6 overflow-x-auto scrollbar-hide max-w-[90vw]">
           {quickNavLinks.map((link) => {
             return (
               <button
                 key={link.section}
                 onClick={() => onSectionSelect && onSectionSelect(link.section)}
-                className="group flex flex-col items-center gap-2 flex-shrink-0 hover:scale-105 transition-transform"
+                className="group relative flex flex-col items-center gap-2 flex-shrink-0 hover:scale-110 transition-all"
                 title={link.name}
               >
-                <IconBox icon={link.icon} gradient={link.gradient} size="sm" />
-                <span className="text-[9px] md:text-xs font-mono opacity-75 group-hover:opacity-100 transition-opacity">
+                <IconBox icon={link.icon} gradient={link.gradient} size="md" />
+                <span className="text-xs md:text-sm font-mono font-bold opacity-90 group-hover:opacity-100 transition-opacity group-hover:text-green-400">
                   {link.name}
+                </span>
+                {/* Hover tooltip for desktop */}
+                <span className="hidden md:block absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 px-4 py-2 rounded-lg text-sm font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-green-500/30">
+                  Go to {link.name}
                 </span>
               </button>
             );
