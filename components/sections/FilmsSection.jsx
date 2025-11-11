@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Play, Film, Music } from 'lucide-react';
+import { useCameraContext } from '@/context/CameraContext';
 
 const videos = [
   {
@@ -55,10 +56,21 @@ const videos = [
 
 export default function FilmsSection() {
   const [filter, setFilter] = useState('all');
+  const { currentLens } = useCameraContext();
 
   const filteredVideos = filter === 'all'
     ? videos
     : videos.filter(v => v.type === filter);
+
+  // Calculate grid columns based on lens zoom
+  // zoom: 0.7 (widest) -> 4 cols, 0.85 -> 3 cols, 0.9-1.0 -> 3 cols, 1.2+ -> 2 cols
+  const getGridCols = () => {
+    const zoom = currentLens.zoom;
+    if (zoom <= 0.7) return 'grid-cols-2 md:grid-cols-4'; // Wide angle: 2 mobile, 4 desktop
+    if (zoom <= 0.9) return 'grid-cols-2 md:grid-cols-3'; // Normal-wide: 2 mobile, 3 desktop
+    if (zoom <= 1.0) return 'grid-cols-2 md:grid-cols-3'; // Normal: 2 mobile, 3 desktop
+    return 'grid-cols-2 md:grid-cols-2'; // Telephoto: 2 mobile, 2 desktop
+  };
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 overflow-auto">
@@ -80,33 +92,34 @@ export default function FilmsSection() {
           Cinematic storytelling and visual artistry
         </motion.p>
 
-        {/* Filter buttons */}
-        <div className="flex gap-4 mb-8">
+        {/* Filter buttons - Mobile responsive */}
+        <div className="flex flex-wrap gap-2 md:gap-4 mb-8">
           {[
             { id: 'all', label: 'All', icon: Play },
             { id: 'film', label: 'Films', icon: Film },
-            { id: 'music', label: 'Music Videos', icon: Music },
+            { id: 'music', label: 'Music Videos', shortLabel: 'Music', icon: Music },
           ].map((btn) => {
             const Icon = btn.icon;
             return (
               <button
                 key={btn.id}
                 onClick={() => setFilter(btn.id)}
-                className={`px-6 py-3 rounded-lg flex items-center gap-2 mono font-bold transition-all ${
+                className={`px-3 md:px-6 py-2 md:py-3 rounded-lg flex items-center gap-2 mono font-bold transition-all text-xs md:text-base ${
                   filter === btn.id
                     ? 'bg-green-500/20 text-green-400 border border-green-500/50'
                     : 'bg-white/5 border border-white/10 hover:border-white/30'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                {btn.label}
+                <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="hidden md:inline">{btn.label}</span>
+                <span className="md:hidden">{btn.shortLabel || btn.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Video grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        {/* Video grid - Responsive to lens zoom */}
+        <div className={`grid ${getGridCols()} gap-4 md:gap-6 transition-all duration-700`}>
           {filteredVideos.map((video, index) => (
             <motion.div
               key={video.id}
@@ -133,8 +146,8 @@ export default function FilmsSection() {
               </div>
 
               {/* Info */}
-              <h3 className="font-bold text-lg mb-2">{video.title}</h3>
-              <div className="flex items-center justify-between text-sm text-gray-400">
+              <h3 className="font-bold text-base md:text-lg mb-2 line-clamp-2">{video.title}</h3>
+              <div className="flex items-center justify-between text-xs md:text-sm text-gray-400">
                 <span className="capitalize">{video.type}</span>
                 <span>{video.year}</span>
               </div>

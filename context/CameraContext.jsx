@@ -10,12 +10,14 @@ export const useCameraContext = () => {
   return context;
 };
 
+// Lenses ordered from widest (most zoomed out) to most zoomed in
 const LENSES = [
-  { id: '50mm', name: '50mm f/1.4 Prime', focalLength: 50, maxAperture: 1.4, zoom: 1 },
-  { id: '24-70mm', name: '24-70mm f/2.8', focalLength: 47, maxAperture: 2.8, zoom: 0.85 },
-  { id: '70-200mm', name: '70-200mm f/2.8', focalLength: 135, maxAperture: 2.8, zoom: 1.5 },
-  { id: '85mm', name: '85mm f/1.4 Portrait', focalLength: 85, maxAperture: 1.4, zoom: 1.2 },
   { id: '16-35mm', name: '16-35mm f/2.8 Wide', focalLength: 25, maxAperture: 2.8, zoom: 0.7 },
+  { id: '24-70mm', name: '24-70mm f/2.8', focalLength: 47, maxAperture: 2.8, zoom: 0.85 },
+  { id: '35mm', name: '35mm f/1.8 Prime', focalLength: 35, maxAperture: 1.8, zoom: 0.9 }, // Human eye equivalent - DEFAULT
+  { id: '50mm', name: '50mm f/1.4 Prime', focalLength: 50, maxAperture: 1.4, zoom: 1 },
+  { id: '85mm', name: '85mm f/1.4 Portrait', focalLength: 85, maxAperture: 1.4, zoom: 1.2 },
+  { id: '70-200mm', name: '70-200mm f/2.8', focalLength: 135, maxAperture: 2.8, zoom: 1.5 },
 ];
 
 const WHITE_BALANCE_MODES = {
@@ -44,8 +46,8 @@ export const CameraProvider = ({ children }) => {
   const [exposureComp, setExposureComp] = useState(0);
   const [whiteBalance, setWhiteBalance] = useState('daylight');
 
-  // Lens system
-  const [currentLens, setCurrentLens] = useState(LENSES[0]);
+  // Lens system - Default to 35mm (human eye equivalent)
+  const [currentLens, setCurrentLens] = useState(LENSES[2]); // 35mm lens
   const [isChangingLens, setIsChangingLens] = useState(false);
 
   // Flash mode

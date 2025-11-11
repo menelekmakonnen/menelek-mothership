@@ -27,7 +27,7 @@ export default function FlashToggle() {
   const Icon = getIcon();
 
   return (
-    <div className="fixed top-4 right-4 z-[1600] pointer-events-auto">
+    <div className="hidden md:block fixed top-4 right-4 z-[1600] pointer-events-auto">
       <motion.button
         onClick={cycleFlashMode}
         className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:scale-105 transition-transform"

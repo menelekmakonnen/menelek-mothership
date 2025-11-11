@@ -8,16 +8,19 @@ export default function SectionNavigation({ sections }) {
   const { currentSection, setCurrentSection, currentLens, shutterSpeed, setFocusedLayer } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [swipeDirection, setSwipeDirection] = useState(1); // 1 for next, -1 for prev
 
   const minSwipeDistance = 50;
 
   const nextSection = () => {
+    setSwipeDirection(1);
     setCurrentSection((prev) => (prev + 1) % sections.length);
     // Trigger refocus event
     setFocusedLayer(100);
   };
 
   const prevSection = () => {
+    setSwipeDirection(-1);
     setCurrentSection((prev) => (prev - 1 + sections.length) % sections.length);
     // Trigger refocus event
     setFocusedLayer(100);
@@ -112,12 +115,13 @@ export default function SectionNavigation({ sections }) {
           transformOrigin: 'center center'
         }}
       >
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
           <motion.div
             key={currentSection}
-            initial={{ opacity: 0, x: 100, filter: `blur(${getMotionBlur()}px)` }}
+            custom={swipeDirection}
+            initial={{ opacity: 0, x: swipeDirection * 100, filter: `blur(${getMotionBlur()}px)` }}
             animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, x: -100, filter: `blur(${getMotionBlur()}px)` }}
+            exit={{ opacity: 0, x: swipeDirection * -100, filter: `blur(${getMotionBlur()}px)` }}
             transition={{
               duration: 0.5,
               ease: [0.4, 0, 0.2, 1],

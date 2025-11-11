@@ -12,7 +12,7 @@ export default function CameraModeToggle() {
   return (
     <motion.button
       onClick={toggleMode}
-      className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:scale-105 transition-transform"
+      className="hidden md:flex camera-hud px-4 py-2 rounded-lg items-center gap-2 mono text-xs font-bold hover:scale-105 transition-transform"
       whileTap={{ scale: 0.95 }}
     >
       <Camera className="w-4 h-4" />
