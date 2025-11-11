@@ -73,19 +73,18 @@ export default function ExposureControls() {
         </div>
         <input
           type="range"
-          min="8000"
-          max="30"
-          step="1"
+          min="30"
+          max="8000"
+          step="10"
           value={shutterSpeed}
           onChange={(e) => setShutterSpeed(Number(e.target.value))}
           className="camera-slider w-full"
-          style={{ direction: 'rtl' }} // Reverse direction for shutter speed
         />
         <div className="flex justify-between text-[9px] opacity-50">
-          <span>1/8000</span>
-          <span>1/250</span>
-          <span>1/30</span>
           <span>30"</span>
+          <span>1/250</span>
+          <span>1/1000</span>
+          <span>1/8000</span>
         </div>
       </div>
 

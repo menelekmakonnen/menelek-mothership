@@ -5,7 +5,7 @@ export default function IrisTransition({ isActive }) {
   const [blades, setBlades] = useState([]);
 
   useEffect(() => {
-    // Create 8 iris blades
+    // Create 8 iris blades in a circular pattern
     const bladeCount = 8;
     const newBlades = Array.from({ length: bladeCount }, (_, i) => ({
       id: i,
@@ -21,54 +21,81 @@ export default function IrisTransition({ isActive }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[5000] pointer-events-none"
+          className="fixed inset-0 z-[5000] pointer-events-none flex items-center justify-center"
         >
-          {/* Background overlay */}
+          {/* Darkening overlay */}
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: 0.9 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="absolute inset-0 bg-black"
           />
 
-          {/* Iris blades */}
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-            {blades.map((blade) => (
-              <motion.div
-                key={blade.id}
-                className="absolute w-[200%] h-[200%] origin-center"
-                style={{
-                  transform: `rotate(${blade.rotation}deg)`,
-                }}
-                initial={{ clipPath: 'polygon(50% 50%, 50% 50%, 50% 50%)' }}
-                animate={{
-                  clipPath: [
-                    'polygon(50% 50%, 50% 50%, 50% 50%)',
-                    'polygon(50% 50%, 48% 45%, 52% 45%)',
-                    'polygon(50% 50%, 45% 40%, 55% 40%)',
-                    'polygon(50% 50%, 40% 30%, 60% 30%)',
-                    'polygon(50% 50%, 30% 0%, 70% 0%)',
-                  ],
-                }}
-                transition={{
-                  duration: 0.6,
-                  times: [0, 0.25, 0.5, 0.75, 1],
-                  ease: 'easeInOut',
-                }}
-              >
-                <div className="w-full h-full bg-gradient-to-b from-gray-800 to-gray-900 opacity-95" />
-              </motion.div>
-            ))}
+          {/* Iris blade mechanism */}
+          <svg
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="xMidYMid slice"
+          >
+            <defs>
+              <radialGradient id="bladeGrad" cx="50%" cy="50%">
+                <stop offset="0%" stopColor="#2a2a2a" />
+                <stop offset="100%" stopColor="#1a1a1a" />
+              </radialGradient>
+            </defs>
 
-            {/* Center circle that grows */}
-            <motion.div
-              className="absolute rounded-full bg-black"
-              initial={{ width: 0, height: 0 }}
-              animate={{ width: '120%', height: '120%' }}
-              transition={{ duration: 0.6, ease: 'easeInOut' }}
+            {/* Iris blades closing animation */}
+            {blades.map((blade, index) => {
+              const angle = blade.rotation;
+              const angleRad = (angle * Math.PI) / 180;
+
+              return (
+                <motion.g
+                  key={blade.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {/* Individual blade */}
+                  <motion.path
+                    d={`M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 100} ${50 + Math.sin(angleRad - 0.3) * 100} L ${50 + Math.cos(angleRad + 0.3) * 100} ${50 + Math.sin(angleRad + 0.3) * 100} Z`}
+                    fill="url(#bladeGrad)"
+                    stroke="#000"
+                    strokeWidth="0.2"
+                    initial={{
+                      d: `M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 0} ${50 + Math.sin(angleRad - 0.3) * 0} L ${50 + Math.cos(angleRad + 0.3) * 0} ${50 + Math.sin(angleRad + 0.3) * 0} Z`,
+                    }}
+                    animate={{
+                      d: [
+                        `M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 0} ${50 + Math.sin(angleRad - 0.3) * 0} L ${50 + Math.cos(angleRad + 0.3) * 0} ${50 + Math.sin(angleRad + 0.3) * 0} Z`,
+                        `M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 50} ${50 + Math.sin(angleRad - 0.3) * 50} L ${50 + Math.cos(angleRad + 0.3) * 50} ${50 + Math.sin(angleRad + 0.3) * 50} Z`,
+                        `M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 100} ${50 + Math.sin(angleRad - 0.3) * 100} L ${50 + Math.cos(angleRad + 0.3) * 100} ${50 + Math.sin(angleRad + 0.3) * 100} Z`,
+                        `M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 50} ${50 + Math.sin(angleRad - 0.3) * 50} L ${50 + Math.cos(angleRad + 0.3) * 50} ${50 + Math.sin(angleRad + 0.3) * 50} Z`,
+                        `M 50 50 L ${50 + Math.cos(angleRad - 0.3) * 0} ${50 + Math.sin(angleRad - 0.3) * 0} L ${50 + Math.cos(angleRad + 0.3) * 0} ${50 + Math.sin(angleRad + 0.3) * 0} Z`,
+                      ],
+                    }}
+                    transition={{
+                      duration: 1.2,
+                      times: [0, 0.4, 0.5, 0.9, 1],
+                      ease: 'easeInOut',
+                      delay: index * 0.02,
+                    }}
+                  />
+                </motion.g>
+              );
+            })}
+
+            {/* Center circle for complete closure */}
+            <motion.circle
+              cx="50"
+              cy="50"
+              fill="#000"
+              initial={{ r: 0 }}
+              animate={{ r: [0, 5, 50, 5, 0] }}
+              transition={{ duration: 1.2, times: [0, 0.4, 0.5, 0.9, 1], ease: 'easeInOut' }}
             />
-          </div>
+          </svg>
         </motion.div>
       )}
     </AnimatePresence>

@@ -25,9 +25,9 @@ export default function PowerButton({ onClick }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 text-gray-400 mono text-sm tracking-wider"
+        className="mt-8 text-green-400 mono text-lg tracking-wider font-bold"
       >
-        PRESS TO POWER ON
+        PRESS POWER TO START
       </motion.div>
 
       {/* Social media icons when powered off */}

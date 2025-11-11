@@ -1,5 +1,6 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { ChevronDown, Aperture, Camera, Wrench } from 'lucide-react';
 import ExposureControls from './ExposureControls';
 import LensSelector from './LensSelector';
@@ -7,6 +8,14 @@ import AssistTools from './AssistTools';
 
 export default function ControlBoxes() {
   const { openBoxes, toggleBox } = useCameraContext();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const boxes = [
     {
@@ -29,9 +38,25 @@ export default function ControlBoxes() {
     },
   ];
 
+  // On mobile, close all other boxes when opening one
+  const handleToggle = (boxId) => {
+    if (isMobile) {
+      // Only allow one box open at a time on mobile
+      if (openBoxes.includes(boxId)) {
+        toggleBox(boxId); // Close it
+      } else {
+        // Close all others and open this one
+        openBoxes.forEach(id => toggleBox(id));
+        toggleBox(boxId);
+      }
+    } else {
+      toggleBox(boxId);
+    }
+  };
+
   return (
     <div className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
-      <div className="flex gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide pr-40 md:pr-4">
         {boxes.map((box) => {
           const isOpen = openBoxes.includes(box.id);
           const Icon = box.icon;
@@ -40,15 +65,15 @@ export default function ControlBoxes() {
           return (
             <motion.div
               key={box.id}
-              className="pointer-events-auto"
+              className="pointer-events-auto flex-shrink-0"
               layout
               initial={false}
             >
-              <div className="camera-hud rounded-lg overflow-hidden">
+              <div className="camera-hud rounded-lg overflow-hidden max-w-xs">
                 {/* Header - Always visible */}
                 <button
-                  onClick={() => toggleBox(box.id)}
-                  className="w-full px-4 py-2 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs"
+                  onClick={() => handleToggle(box.id)}
+                  className="w-full px-4 py-2 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs whitespace-nowrap"
                 >
                   <div className="flex items-center gap-2">
                     <Icon className="w-4 h-4" />
