@@ -46,7 +46,7 @@ export default function IntroductionSection() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32 overflow-auto">
+    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32">
       <div className="max-w-6xl w-full grid md:grid-cols-2 gap-12 items-center">
         {/* Left - Rotating Icon */}
         <motion.div
@@ -56,14 +56,14 @@ export default function IntroductionSection() {
           className="relative"
         >
           <div className="aspect-square rounded-2xl overflow-hidden border-2 border-green-500/30 shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center p-12">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
               <motion.div
                 key={currentIndex}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="w-full h-full absolute"
               >
                 <IconBox
                   icon={rotatingContent[currentIndex].icon}
@@ -87,18 +87,20 @@ export default function IntroductionSection() {
             <div className="mb-2">
               Worldbuilder, AI Supernerd and
             </div>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentIndex}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="text-green-400"
-              >
-                {rotatingContent[currentIndex].word}
-              </motion.div>
-            </AnimatePresence>
+            <div className="relative h-[1.2em]">
+              <AnimatePresence mode="popLayout">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="text-green-400 absolute"
+                >
+                  {rotatingContent[currentIndex].word}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </h1>
 
           <div className="space-y-4 text-lg text-gray-300">
