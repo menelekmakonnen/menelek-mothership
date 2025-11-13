@@ -17,7 +17,7 @@ import BottomMenu from '@/components/camera/BottomMenu';
 // UI components
 import RuleOfThirds from '@/components/ui/RuleOfThirds';
 import Histogram from '@/components/ui/Histogram';
-import HomeButton from '@/components/ui/HomeButton';
+import SectionNavButtons from '@/components/ui/SectionNavButtons';
 
 // Section components
 import SectionNavigation from '@/components/SectionNavigation';
@@ -113,10 +113,11 @@ export default function Home() {
       {/* Histogram */}
       <Histogram />
 
-      {/* Home button (only show if not on cover page) */}
-      {currentSection !== 0 && (
-        <HomeButton onClick={() => setCurrentSection(0)} />
-      )}
+      {/* Section navigation buttons (show all except current section) */}
+      <SectionNavButtons
+        currentSection={currentSection}
+        onNavigate={setCurrentSection}
+      />
 
       {/* Flash toggle */}
       <FlashToggle />
