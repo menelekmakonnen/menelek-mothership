@@ -10,48 +10,48 @@ const slides = [
     title: 'Introduction',
     description: 'Worldbuilder, AI Supernerd, and Creative Visionary',
     gradient: 'from-purple-900 via-blue-900 to-indigo-900',
-    targetSection: 1,
+    targetSection: 0,
   },
   {
     id: 'films',
     title: 'Films & Music Videos',
     description: 'Cinematic storytelling and visual artistry',
     gradient: 'from-red-900 via-orange-900 to-yellow-900',
-    targetSection: 2,
+    targetSection: 1,
   },
   {
     id: 'loremaker',
     title: 'Loremaker Universe',
     description: 'Epic character-driven narratives',
     gradient: 'from-green-900 via-emerald-900 to-teal-900',
-    targetSection: 3,
+    targetSection: 2,
   },
   {
     id: 'photography',
     title: 'Photography',
     description: 'Capturing moments through the lens',
     gradient: 'from-blue-900 via-cyan-900 to-sky-900',
-    targetSection: 6,
+    targetSection: 5,
   },
   {
     id: 'ai',
     title: 'AI Projects',
     description: 'Innovation in artificial intelligence',
     gradient: 'from-pink-900 via-fuchsia-900 to-purple-900',
-    targetSection: 4,
+    targetSection: 3,
   },
 ];
 
 const quickNavLinks = [
-  { name: 'Intro', icon: User, section: 1, gradient: 'from-purple-600 to-blue-600' },
-  { name: 'Films', icon: Film, section: 2, gradient: 'from-red-600 to-orange-600' },
-  { name: 'Loremaker', icon: BookOpen, section: 3, gradient: 'from-green-600 to-emerald-600' },
-  { name: 'AI', icon: Brain, section: 4, gradient: 'from-fuchsia-600 to-pink-600' },
-  { name: 'Edits', icon: Video, section: 5, gradient: 'from-yellow-600 to-orange-600' },
-  { name: 'Photos', icon: Camera, section: 6, gradient: 'from-cyan-600 to-blue-600' },
-  { name: 'AI Art', icon: Sparkles, section: 7, gradient: 'from-violet-600 to-purple-600' },
-  { name: 'Blog', icon: Image, section: 8, gradient: 'from-teal-600 to-green-600' },
-  { name: 'Connect', icon: Link2, section: 9, gradient: 'from-pink-600 to-purple-600' },
+  { name: 'Intro', icon: User, section: 0, gradient: 'from-purple-600 to-blue-600' },
+  { name: 'Films', icon: Film, section: 1, gradient: 'from-red-600 to-orange-600' },
+  { name: 'Loremaker', icon: BookOpen, section: 2, gradient: 'from-green-600 to-emerald-600' },
+  { name: 'AI', icon: Brain, section: 3, gradient: 'from-fuchsia-600 to-pink-600' },
+  { name: 'Edits', icon: Video, section: 4, gradient: 'from-yellow-600 to-orange-600' },
+  { name: 'Photos', icon: Camera, section: 5, gradient: 'from-cyan-600 to-blue-600' },
+  { name: 'AI Art', icon: Sparkles, section: 6, gradient: 'from-violet-600 to-purple-600' },
+  { name: 'Blog', icon: Image, section: 7, gradient: 'from-teal-600 to-green-600' },
+  { name: 'Connect', icon: Link2, section: 8, gradient: 'from-pink-600 to-purple-600' },
 ];
 
 export default function CoverSection({ onSectionSelect }) {
@@ -64,7 +64,7 @@ export default function CoverSection({ onSectionSelect }) {
 
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 4000);
+    }, 7000); // Slower transitions: 7 seconds
 
     return () => clearInterval(interval);
   }, [autoPlay]);
@@ -80,21 +80,23 @@ export default function CoverSection({ onSectionSelect }) {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center relative overflow-hidden p-4 md:p-8 pt-32 pb-32">
-      {/* Background gradient */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentSlide}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1 }}
-          className={`absolute inset-0 bg-gradient-to-br ${slides[currentSlide].gradient}`}
-        />
-      </AnimatePresence>
+    <div className="w-full min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Background gradient - Always fills screen, crossfade transitions */}
+      <div className="fixed inset-0 -z-10">
+        <AnimatePresence>
+          <motion.div
+            key={currentSlide}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.5, ease: 'easeInOut' }}
+            className={`absolute inset-0 bg-gradient-to-br ${slides[currentSlide].gradient}`}
+          />
+        </AnimatePresence>
+      </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center max-w-5xl px-4 md:px-8 w-full">
+      <div className="relative z-10 text-center max-w-5xl px-4 md:px-8 w-full pt-32 pb-32">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}

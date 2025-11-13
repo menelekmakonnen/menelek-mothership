@@ -25,20 +25,12 @@ export default function IntroductionSection() {
   const [wordIndex, setWordIndex] = useState(0);
   const [iconIndex, setIconIndex] = useState(0);
 
-  // Rotate words every 2.5 seconds
+  // Rotate words and icons together every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setWordIndex((prev) => (prev + 1) % rotatingWords.length);
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Rotate icons every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
       setIconIndex((prev) => (prev + 1) % rotatingIcons.length);
-    }, 30000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);

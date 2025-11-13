@@ -53,9 +53,8 @@ export default function Home() {
   const isoNoise = getIsoNoise();
   const wbFilter = getWhiteBalanceFilter();
 
-  // Define all sections
+  // Define all sections - Introduction first, Cover/slider last
   const sections = [
-    <CoverSection key="cover" onSectionSelect={(index) => setCurrentSection(index)} />,
     <IntroductionSection key="intro" />,
     <FilmsSection key="films" />,
     <LoremakerSection key="loremaker" />,
@@ -65,6 +64,7 @@ export default function Home() {
     <AIAlbumsSection key="ai-albums" />,
     <BlogSection key="blog" />,
     <LinksSection key="links" />,
+    <CoverSection key="cover" onSectionSelect={(index) => setCurrentSection(index)} />,
   ];
 
   // Power off state
