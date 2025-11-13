@@ -68,9 +68,12 @@ export default function SectionNavigation({ sections }) {
     return 0;
   };
 
+  // Enable scrolling when zoomed in significantly
+  const isZoomedIn = currentLens.zoom > 1;
+
   return (
     <div
-      className="w-full h-full overflow-hidden relative"
+      className={`w-full h-full relative ${isZoomedIn ? 'overflow-auto' : 'overflow-hidden'}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}

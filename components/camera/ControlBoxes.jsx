@@ -1,13 +1,13 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { ChevronDown, Aperture, Camera, Wrench, Zap, ZapOff, Sparkles } from 'lucide-react';
+import { ChevronDown, Aperture, Camera, Wrench, Zap, ZapOff, Sparkles, RotateCcw, Power, Moon } from 'lucide-react';
 import ExposureControls from './ExposureControls';
 import LensSelector from './LensSelector';
 import AssistTools from './AssistTools';
 
 export default function ControlBoxes() {
-  const { openBoxes, toggleBox, flashMode, setFlashMode, cameraMode, setCameraMode } = useCameraContext();
+  const { openBoxes, toggleBox, flashMode, setFlashMode, cameraMode, setCameraMode, resetCamera, powerOff, setStandby } = useCameraContext();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function ControlBoxes() {
             return (
               <motion.div
                 key={box.id}
-                className="pointer-events-auto flex-shrink-0"
+                className={`pointer-events-auto flex-shrink-0 ${isOpen ? 'ring-2 ring-green-400/50 rounded-lg' : ''}`}
                 layout
                 initial={false}
               >
@@ -105,17 +105,17 @@ export default function ControlBoxes() {
                   {/* Header - Always visible */}
                   <button
                     onClick={() => handleToggle(box.id)}
-                    className="w-full px-4 py-2 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs whitespace-nowrap"
+                    className={`w-full px-4 py-2 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs whitespace-nowrap ${isOpen ? 'bg-green-500/10' : ''}`}
                   >
                     <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4" />
-                      <span className="font-bold tracking-wider">{box.title}</span>
+                      <Icon className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
+                      <span className={`font-bold tracking-wider ${isOpen ? 'text-green-400' : ''}`}>{box.title}</span>
                     </div>
                     <motion.div
                       animate={{ rotate: isOpen ? 180 : 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
                     </motion.div>
                   </button>
 
@@ -139,6 +139,39 @@ export default function ControlBoxes() {
               </motion.div>
             );
           })}
+
+          {/* Reset, Power, Standby buttons - Desktop */}
+          <div className="flex gap-2 pointer-events-auto">
+            <motion.button
+              onClick={resetCamera}
+              className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
+              whileTap={{ scale: 0.95 }}
+              title="Reset camera settings"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="tracking-wider">RESET</span>
+            </motion.button>
+
+            <motion.button
+              onClick={setStandby}
+              className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-yellow-500/10 transition-colors"
+              whileTap={{ scale: 0.95 }}
+              title="Standby mode"
+            >
+              <Moon className="w-4 h-4" />
+              <span className="tracking-wider">STANDBY</span>
+            </motion.button>
+
+            <motion.button
+              onClick={powerOff}
+              className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-red-500/10 transition-colors"
+              whileTap={{ scale: 0.95 }}
+              title="Power off"
+            >
+              <Power className="w-4 h-4" />
+              <span className="tracking-wider">POWER OFF</span>
+            </motion.button>
+          </div>
         </div>
       </div>
     );
@@ -189,6 +222,39 @@ export default function ControlBoxes() {
               <span className="tracking-wider">
                 {cameraMode === 'dslr' ? 'DSLR' : 'MIRRORLESS'}
               </span>
+            </motion.button>
+
+            {/* Reset button */}
+            <motion.button
+              onClick={resetCamera}
+              className="camera-hud px-3 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold"
+              layout
+              whileTap={{ scale: 0.95 }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="tracking-wider">RESET</span>
+            </motion.button>
+
+            {/* Standby button */}
+            <motion.button
+              onClick={setStandby}
+              className="camera-hud px-3 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold"
+              layout
+              whileTap={{ scale: 0.95 }}
+            >
+              <Moon className="w-4 h-4" />
+              <span className="tracking-wider">STANDBY</span>
+            </motion.button>
+
+            {/* Power Off button */}
+            <motion.button
+              onClick={powerOff}
+              className="camera-hud px-3 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold"
+              layout
+              whileTap={{ scale: 0.95 }}
+            >
+              <Power className="w-4 h-4" />
+              <span className="tracking-wider">POWER</span>
             </motion.button>
           </div>
         ) : (

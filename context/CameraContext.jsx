@@ -71,6 +71,9 @@ export const CameraProvider = ({ children }) => {
   // Section navigation
   const [currentSection, setCurrentSection] = useState(0);
 
+  // Bottom menu visibility
+  const [isBottomMenuOpen, setIsBottomMenuOpen] = useState(false);
+
   // Calculate battery based on time of day
   useEffect(() => {
     const updateBattery = () => {
@@ -134,6 +137,23 @@ export const CameraProvider = ({ children }) => {
 
   const setStandby = useCallback(() => {
     setPowerState('standby');
+  }, []);
+
+  // Reset all camera settings to defaults
+  const resetCamera = useCallback(() => {
+    setIso(400);
+    setAperture(2.8);
+    setShutterSpeed(125);
+    setExposureComp(0);
+    setWhiteBalance('daylight');
+    setCurrentLens(LENSES[2]); // 35mm default
+    setFlashMode('auto');
+    setHudVisibility('standard');
+    setRuleOfThirds(false);
+    setShowHistogram(false);
+    setFocusMode('single');
+    setOpenBoxes([]);
+    setCameraMode('dslr');
   }, []);
 
   // Control boxes management (max 2 open)
@@ -222,6 +242,7 @@ export const CameraProvider = ({ children }) => {
     powerOn,
     powerOff,
     setStandby,
+    resetCamera,
     hasBooted,
 
     // Camera mode
@@ -279,6 +300,10 @@ export const CameraProvider = ({ children }) => {
     // Section navigation
     currentSection,
     setCurrentSection,
+
+    // Bottom menu
+    isBottomMenuOpen,
+    setIsBottomMenuOpen,
 
     // Helpers
     calculateBlur,

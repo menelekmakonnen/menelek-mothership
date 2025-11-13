@@ -1,8 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Film, User, Link2, Camera, Brain, Video, Image, Sparkles, BookOpen } from 'lucide-react';
-import IconBox from '@/components/ui/IconBox';
-import { useCameraContext } from '@/context/CameraContext';
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
 const slides = [
   {
@@ -42,22 +40,9 @@ const slides = [
   },
 ];
 
-const quickNavLinks = [
-  { name: 'Intro', icon: User, section: 0, gradient: 'from-purple-600 to-blue-600' },
-  { name: 'Films', icon: Film, section: 1, gradient: 'from-red-600 to-orange-600' },
-  { name: 'Loremaker', icon: BookOpen, section: 2, gradient: 'from-green-600 to-emerald-600' },
-  { name: 'AI', icon: Brain, section: 3, gradient: 'from-fuchsia-600 to-pink-600' },
-  { name: 'Edits', icon: Video, section: 4, gradient: 'from-yellow-600 to-orange-600' },
-  { name: 'Photos', icon: Camera, section: 5, gradient: 'from-cyan-600 to-blue-600' },
-  { name: 'AI Art', icon: Sparkles, section: 6, gradient: 'from-violet-600 to-purple-600' },
-  { name: 'Blog', icon: Image, section: 7, gradient: 'from-teal-600 to-green-600' },
-  { name: 'Connect', icon: Link2, section: 8, gradient: 'from-pink-600 to-purple-600' },
-];
-
 export default function CoverSection({ onSectionSelect }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const { currentLens } = useCameraContext();
 
   useEffect(() => {
     if (!autoPlay) return;
@@ -113,7 +98,7 @@ export default function CoverSection({ onSectionSelect }) {
             </p>
             <motion.button
               onClick={() => onSectionSelect && onSectionSelect(slides[currentSlide].targetSection)}
-              className="btn-luxury text-base md:text-lg mb-8"
+              className="btn-luxury text-base md:text-lg"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -122,45 +107,6 @@ export default function CoverSection({ onSectionSelect }) {
                 Explore
               </span>
             </motion.button>
-
-            {/* Quick Nav - Under Explore button, full width, lens-responsive */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{
-                opacity: 1,
-                y: 0,
-                scale: currentLens.zoom // Scale with lens zoom
-              }}
-              transition={{
-                opacity: { delay: 0.6 },
-                scale: { duration: 0.7, ease: 'easeOut' }
-              }}
-              className="w-full max-w-6xl mx-auto"
-            >
-              <div className="camera-hud rounded-2xl px-4 md:px-8 py-4 md:py-6">
-                <div className="grid grid-cols-3 md:grid-cols-9 gap-3 md:gap-4">
-                  {quickNavLinks.map((link) => {
-                    return (
-                      <button
-                        key={link.section}
-                        onClick={() => onSectionSelect && onSectionSelect(link.section)}
-                        className="group relative flex flex-col items-center gap-2 hover:scale-110 transition-all"
-                        title={link.name}
-                      >
-                        <IconBox icon={link.icon} gradient={link.gradient} size="sm" className="md:w-12 md:h-12" />
-                        <span className="text-[9px] md:text-xs font-mono font-bold opacity-90 group-hover:opacity-100 transition-opacity group-hover:text-green-400 text-center leading-tight">
-                          {link.name}
-                        </span>
-                        {/* Hover tooltip for desktop */}
-                        <span className="hidden md:block absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-green-500/30 z-50">
-                          Go to {link.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
           </motion.div>
         </AnimatePresence>
       </div>

@@ -12,6 +12,7 @@ import FlashToggle from '@/components/camera/FlashToggle';
 import CameraModeToggle from '@/components/camera/CameraModeToggle';
 import IrisTransition from '@/components/camera/IrisTransition';
 import FocusIndicator from '@/components/camera/FocusIndicator';
+import BottomMenu from '@/components/camera/BottomMenu';
 
 // UI components
 import RuleOfThirds from '@/components/ui/RuleOfThirds';
@@ -140,6 +141,9 @@ export default function Home() {
 
       {/* Camera HUD */}
       <CameraHUD />
+
+      {/* Bottom navigation menu */}
+      <BottomMenu />
     </div>
   );
 }
