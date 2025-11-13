@@ -30,10 +30,16 @@ const socialLinks = [
 export default function IntroductionSection() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Rotate content every 2.5 seconds
+  // Randomize content every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % rotatingContent.length);
+      setCurrentIndex((prev) => {
+        let newIndex;
+        do {
+          newIndex = Math.floor(Math.random() * rotatingContent.length);
+        } while (newIndex === prev && rotatingContent.length > 1);
+        return newIndex;
+      });
     }, 2500);
 
     return () => clearInterval(interval);

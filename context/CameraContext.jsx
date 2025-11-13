@@ -74,6 +74,9 @@ export const CameraProvider = ({ children }) => {
   // Bottom menu visibility
   const [isBottomMenuOpen, setIsBottomMenuOpen] = useState(false);
 
+  // Track if any settings have been changed (for showing reset button)
+  const [hasModifiedSettings, setHasModifiedSettings] = useState(false);
+
   // Calculate battery based on time of day
   useEffect(() => {
     const updateBattery = () => {
@@ -154,10 +157,12 @@ export const CameraProvider = ({ children }) => {
     setFocusMode('single');
     setOpenBoxes([]);
     setCameraMode('dslr');
+    setHasModifiedSettings(false);
   }, []);
 
   // Control boxes management (max 2 open)
   const toggleBox = useCallback((boxId) => {
+    setHasModifiedSettings(true);
     setOpenBoxes(prev => {
       if (prev.includes(boxId)) {
         return prev.filter(id => id !== boxId);
@@ -185,6 +190,7 @@ export const CameraProvider = ({ children }) => {
 
   // Cycle through lenses
   const cycleLens = useCallback(() => {
+    setHasModifiedSettings(true);
     const currentIndex = LENSES.findIndex(l => l.id === currentLens.id);
     const nextIndex = (currentIndex + 1) % LENSES.length;
     changeLens(LENSES[nextIndex]);
@@ -312,6 +318,10 @@ export const CameraProvider = ({ children }) => {
     // Bottom menu
     isBottomMenuOpen,
     setIsBottomMenuOpen,
+
+    // Settings state
+    hasModifiedSettings,
+    setHasModifiedSettings,
 
     // Helpers
     calculateBlur,

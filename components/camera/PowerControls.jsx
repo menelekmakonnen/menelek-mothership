@@ -6,7 +6,7 @@ export default function PowerControls() {
   const { powerOff, setStandby } = useCameraContext();
 
   return (
-    <div className="fixed bottom-4 left-4 z-[1600] flex gap-2 pointer-events-auto">
+    <div className="fixed top-4 left-4 z-[1600] flex gap-2 pointer-events-auto">
       <motion.button
         onClick={setStandby}
         className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"

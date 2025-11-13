@@ -7,7 +7,7 @@ import LensSelector from './LensSelector';
 import AssistTools from './AssistTools';
 
 export default function ControlBoxes() {
-  const { openBoxes, toggleBox, flashMode, setFlashMode, cameraMode, setCameraMode, resetCamera, powerOff, setStandby, currentLens, cycleLens } = useCameraContext();
+  const { openBoxes, toggleBox, flashMode, setFlashMode, cameraMode, setCameraMode, resetCamera, powerOff, setStandby, currentLens, cycleLens, hasModifiedSettings, setHasModifiedSettings } = useCameraContext();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -136,15 +136,37 @@ export default function ControlBoxes() {
 
         {/* Reset, Power, Standby buttons - Separate fixed container */}
         <div className="fixed top-4 right-4 flex gap-2 pointer-events-auto">
-          <motion.button
-            onClick={resetCamera}
-            className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
-            whileTap={{ scale: 0.95 }}
-            title="Reset camera settings"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span className="tracking-wider">RESET</span>
-          </motion.button>
+          <AnimatePresence>
+            {hasModifiedSettings && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                  boxShadow: [
+                    '0 0 10px rgba(34, 197, 94, 0.3)',
+                    '0 0 20px rgba(34, 197, 94, 0.6)',
+                    '0 0 10px rgba(34, 197, 94, 0.3)'
+                  ]
+                }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{
+                  boxShadow: {
+                    repeat: Infinity,
+                    duration: 2,
+                    ease: 'easeInOut'
+                  }
+                }}
+                onClick={resetCamera}
+                className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
+                whileTap={{ scale: 0.95 }}
+                title="Reset camera settings"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span className="tracking-wider">RESET</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           <motion.button
             onClick={setStandby}
@@ -218,15 +240,37 @@ export default function ControlBoxes() {
             </motion.button>
 
             {/* Reset button */}
-            <motion.button
-              onClick={resetCamera}
-              className="camera-hud px-3 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold"
-              layout
-              whileTap={{ scale: 0.95 }}
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="tracking-wider">RESET</span>
-            </motion.button>
+            <AnimatePresence>
+              {hasModifiedSettings && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    boxShadow: [
+                      '0 0 10px rgba(34, 197, 94, 0.3)',
+                      '0 0 20px rgba(34, 197, 94, 0.6)',
+                      '0 0 10px rgba(34, 197, 94, 0.3)'
+                    ]
+                  }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{
+                    boxShadow: {
+                      repeat: Infinity,
+                      duration: 2,
+                      ease: 'easeInOut'
+                    }
+                  }}
+                  onClick={resetCamera}
+                  className="camera-hud px-3 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold"
+                  layout
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="tracking-wider">RESET</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
 
             {/* Standby button */}
             <motion.button

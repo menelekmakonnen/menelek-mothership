@@ -3,6 +3,15 @@ import { useEffect, useState } from 'react';
 
 export default function BootSequence({ onComplete }) {
   const [stage, setStage] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
 
   useEffect(() => {
     const stages = [
@@ -40,6 +49,19 @@ export default function BootSequence({ onComplete }) {
           </h1>
           <div className="text-sm text-gray-400 tracking-widest">
             DIGITAL CAMERA SYSTEM
+          </div>
+          <div className="text-xs text-green-400 mt-4 tracking-wider">
+            {currentTime.toLocaleDateString('en-US', {
+              weekday: 'short',
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })} • {currentTime.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            })}
           </div>
         </motion.div>
 

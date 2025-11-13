@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { Camera } from 'lucide-react';
 
 export default function CameraModeToggle() {
-  const { cameraMode, setCameraMode } = useCameraContext();
+  const { cameraMode, setCameraMode, setHasModifiedSettings } = useCameraContext();
 
   const toggleMode = () => {
+    setHasModifiedSettings(true);
     setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr');
   };
 

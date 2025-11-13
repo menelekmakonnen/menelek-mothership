@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { Zap, ZapOff, Sparkles } from 'lucide-react';
 
 export default function FlashToggle() {
-  const { flashMode, setFlashMode } = useCameraContext();
+  const { flashMode, setFlashMode, setHasModifiedSettings } = useCameraContext();
 
   const cycleFlashMode = () => {
+    setHasModifiedSettings(true);
     const modes = ['auto', 'on', 'off'];
     const currentIndex = modes.indexOf(flashMode);
     const nextIndex = (currentIndex + 1) % modes.length;
