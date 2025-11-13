@@ -135,7 +135,7 @@ export default function ControlBoxes() {
         </div>
 
         {/* Reset, Power, Standby buttons - Separate fixed container */}
-        <div className="fixed top-4 right-4 flex gap-2 pointer-events-auto">
+        <div className="fixed top-52 right-4 flex gap-2 pointer-events-auto">
           <AnimatePresence>
             {hasModifiedSettings && (
               <motion.button

@@ -5,7 +5,6 @@ import { AnimatePresence } from 'framer-motion';
 // Camera components
 import BootSequence from '@/components/camera/BootSequence';
 import PowerButton from '@/components/camera/PowerButton';
-import PowerControls from '@/components/camera/PowerControls';
 import CameraHUD from '@/components/camera/CameraHUD';
 import ControlBoxes from '@/components/camera/ControlBoxes';
 import FlashToggle from '@/components/camera/FlashToggle';
@@ -118,9 +117,6 @@ export default function Home() {
       {currentSection !== 0 && (
         <HomeButton onClick={() => setCurrentSection(0)} />
       )}
-
-      {/* Power controls */}
-      <PowerControls />
 
       {/* Flash toggle */}
       <FlashToggle />
