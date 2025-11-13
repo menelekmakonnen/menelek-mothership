@@ -9,6 +9,7 @@ export default function SectionNavigation({ sections }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [swipeDirection, setSwipeDirection] = useState(1); // 1 for next, -1 for prev
+  const [scrollOpacity, setScrollOpacity] = useState(1);
 
   const minSwipeDistance = 50;
 
@@ -60,6 +61,22 @@ export default function SectionNavigation({ sections }) {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
+  // Scroll-based arrow fade
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const scrollTop = e.target.scrollTop || 0;
+      // Fade out arrows as user scrolls down (fully faded at 300px scroll)
+      const opacity = Math.max(0.2, 1 - scrollTop / 300);
+      setScrollOpacity(opacity);
+    };
+
+    const container = document.querySelector('.section-scroll-container');
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [currentSection]);
+
   // Motion blur effect based on shutter speed
   const getMotionBlur = () => {
     if (shutterSpeed < 30) {
@@ -73,7 +90,7 @@ export default function SectionNavigation({ sections }) {
 
   return (
     <div
-      className={`w-full h-full relative ${isZoomedIn ? 'overflow-x-auto overflow-y-auto' : 'overflow-hidden'}`}
+      className={`section-scroll-container w-full h-full relative ${isZoomedIn ? 'overflow-x-auto overflow-y-auto' : 'overflow-hidden'}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -82,19 +99,29 @@ export default function SectionNavigation({ sections }) {
         paddingBottom: '120px',
       } : {}}
     >
-      {/* Navigation arrows - Fixed desktop position */}
+      {/* Navigation arrows - Fixed desktop position, fade with scroll */}
       <button
         onClick={prevSection}
-        className="hidden md:flex fixed left-8 top-1/2 -translate-y-1/2 z-[1500] camera-hud p-4 rounded-full hover:scale-110 transition-all pointer-events-auto items-center justify-center shadow-lg"
-        style={{ width: '56px', height: '56px' }}
+        className="hidden md:flex fixed left-8 top-1/2 -translate-y-1/2 z-[1500] camera-hud p-4 rounded-full hover:scale-110 pointer-events-auto items-center justify-center shadow-lg"
+        style={{
+          width: '56px',
+          height: '56px',
+          opacity: scrollOpacity,
+          transition: 'opacity 0.2s ease-out'
+        }}
       >
         <ChevronLeft className="w-8 h-8" />
       </button>
 
       <button
         onClick={nextSection}
-        className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 z-[1500] camera-hud p-4 rounded-full hover:scale-110 transition-all pointer-events-auto items-center justify-center shadow-lg"
-        style={{ width: '56px', height: '56px' }}
+        className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 z-[1500] camera-hud p-4 rounded-full hover:scale-110 pointer-events-auto items-center justify-center shadow-lg"
+        style={{
+          width: '56px',
+          height: '56px',
+          opacity: scrollOpacity,
+          transition: 'opacity 0.2s ease-out'
+        }}
       >
         <ChevronRight className="w-8 h-8" />
       </button>

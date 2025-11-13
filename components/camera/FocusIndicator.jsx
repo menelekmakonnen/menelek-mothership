@@ -66,7 +66,7 @@ export default function FocusIndicator() {
           top: position.y - 30,
           opacity: isVisible ? 1 : 0,
         }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 1200, damping: 40, mass: 0.5 }}
       >
         {/* Focus frame corners */}
         <div className="absolute inset-0">

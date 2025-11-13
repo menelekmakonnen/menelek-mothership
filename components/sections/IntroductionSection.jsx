@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import IconBox from '@/components/ui/IconBox';
-import { Camera, Film, Brain, Code, Sparkles, Heart, Video, Pen } from 'lucide-react';
+import { Camera, Film, Brain, Code, Sparkles, Heart, Video, Pen, Linkedin, Instagram, Youtube, Music, Mail, Globe } from 'lucide-react';
 
 // Matched word-icon pairs for consistent theming
 const rotatingContent = [
@@ -17,6 +17,14 @@ const rotatingContent = [
   { word: 'Vibe Coder', icon: Code, gradient: 'from-green-600 to-emerald-600' },
   { word: 'Prompt Engineer', icon: Brain, gradient: 'from-purple-600 to-pink-600' },
   { word: 'Instructor', icon: Sparkles, gradient: 'from-yellow-600 to-orange-600' },
+];
+
+const socialLinks = [
+  { name: 'LinkedIn', icon: Linkedin, url: 'https://linkedin.com/in/menelekmakonnen', gradient: 'from-blue-600 to-blue-700' },
+  { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/menelekmakonnen', gradient: 'from-pink-600 to-purple-600' },
+  { name: 'YouTube', icon: Youtube, url: 'https://youtube.com/@menelekmakonnen', gradient: 'from-red-600 to-red-700' },
+  { name: 'TikTok', icon: Music, url: 'https://tiktok.com/@menelekmakonnen', gradient: 'from-cyan-600 to-pink-600' },
+  { name: 'Email', icon: Mail, url: 'mailto:contact@menelekmakonnen.com', gradient: 'from-orange-600 to-yellow-600' },
 ];
 
 export default function IntroductionSection() {
@@ -103,18 +111,44 @@ export default function IntroductionSection() {
             </p>
           </div>
 
+          {/* Social Links */}
+          <div className="flex flex-wrap gap-3 pt-6 justify-center md:justify-start">
+            {socialLinks.map((link, i) => {
+              const Icon = link.icon;
+              return (
+                <motion.a
+                  key={link.name}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4 + i * 0.05 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="group relative"
+                  title={link.name}
+                >
+                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${link.gradient} flex items-center justify-center hover:shadow-lg transition-shadow`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                </motion.a>
+              );
+            })}
+          </div>
+
           {/* Key achievements */}
           <div className="grid grid-cols-3 gap-4 pt-6">
             {[
-              { label: 'Projects', value: '50+' },
+              { label: 'Projects', value: '100+' },
+              { label: 'Partners', value: '50+' },
               { label: 'Experience', value: '10+ yrs' },
-              { label: 'Clients', value: '100+' },
             ].map((stat, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 + i * 0.1 }}
+                transition={{ delay: 0.7 + i * 0.1 }}
                 className="luxury-card text-center"
               >
                 <div className="text-3xl font-bold text-green-400 mb-1">
