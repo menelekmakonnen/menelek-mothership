@@ -73,10 +73,14 @@ export default function SectionNavigation({ sections }) {
 
   return (
     <div
-      className={`w-full h-full relative ${isZoomedIn ? 'overflow-auto' : 'overflow-hidden'}`}
+      className={`w-full h-full relative ${isZoomedIn ? 'overflow-x-auto overflow-y-auto' : 'overflow-hidden'}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      style={isZoomedIn ? {
+        paddingTop: '120px',
+        paddingBottom: '120px',
+      } : {}}
     >
       {/* Navigation arrows - Fixed desktop position */}
       <button
@@ -115,7 +119,9 @@ export default function SectionNavigation({ sections }) {
         className="w-full h-full transition-transform duration-700 ease-out"
         style={{
           transform: `scale(${currentLens.zoom})`,
-          transformOrigin: 'center center'
+          transformOrigin: 'center center',
+          minHeight: isZoomedIn ? 'max-content' : '100%',
+          minWidth: isZoomedIn ? 'max-content' : '100%',
         }}
       >
         <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>

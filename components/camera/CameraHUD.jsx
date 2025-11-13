@@ -137,11 +137,9 @@ export default function CameraHUD() {
         {/* Right section - Battery and status indicators */}
         <div className="flex items-center gap-4">
           {(hudVisibility === 'standard' || hudVisibility === 'full') && (
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className={`w-2 h-2 rounded-full ${
-                batteryLevel > 20 ? 'bg-green-400 animate-pulse' : 'bg-red-400 animate-pulse'
-              }`} />
-              <span>REC</span>
+            <div className="flex flex-col items-center">
+              <div className="text-[9px] opacity-60">BATTERY</div>
+              <div className="font-bold">{batteryLevel}%</div>
             </div>
           )}
 

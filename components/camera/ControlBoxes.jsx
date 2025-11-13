@@ -7,7 +7,7 @@ import LensSelector from './LensSelector';
 import AssistTools from './AssistTools';
 
 export default function ControlBoxes() {
-  const { openBoxes, toggleBox, flashMode, setFlashMode, cameraMode, setCameraMode, resetCamera, powerOff, setStandby } = useCameraContext();
+  const { openBoxes, toggleBox, flashMode, setFlashMode, cameraMode, setCameraMode, resetCamera, powerOff, setStandby, currentLens, cycleLens } = useCameraContext();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -23,13 +23,6 @@ export default function ControlBoxes() {
       title: 'EXPOSURE',
       icon: Aperture,
       component: ExposureControls,
-      type: 'expandable',
-    },
-    {
-      id: 'lenses',
-      title: 'LENSES',
-      icon: Camera,
-      component: LensSelector,
       type: 'expandable',
     },
     {
@@ -89,6 +82,7 @@ export default function ControlBoxes() {
     return (
       <div className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
         <div className="flex gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide">
+          {/* Expandable control boxes */}
           {boxes.map((box) => {
             const isOpen = openBoxes.includes(box.id);
             const Icon = box.icon;
@@ -98,7 +92,6 @@ export default function ControlBoxes() {
               <motion.div
                 key={box.id}
                 className={`pointer-events-auto flex-shrink-0 ${isOpen ? 'ring-2 ring-green-400/50 rounded-lg' : ''}`}
-                layout
                 initial={false}
               >
                 <div className="camera-hud rounded-lg overflow-hidden max-w-xs">
@@ -139,39 +132,39 @@ export default function ControlBoxes() {
               </motion.div>
             );
           })}
+        </div>
 
-          {/* Reset, Power, Standby buttons - Desktop */}
-          <div className="flex gap-2 pointer-events-auto">
-            <motion.button
-              onClick={resetCamera}
-              className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
-              whileTap={{ scale: 0.95 }}
-              title="Reset camera settings"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="tracking-wider">RESET</span>
-            </motion.button>
+        {/* Reset, Power, Standby buttons - Separate fixed container */}
+        <div className="fixed top-4 right-4 flex gap-2 pointer-events-auto">
+          <motion.button
+            onClick={resetCamera}
+            className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
+            whileTap={{ scale: 0.95 }}
+            title="Reset camera settings"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span className="tracking-wider">RESET</span>
+          </motion.button>
 
-            <motion.button
-              onClick={setStandby}
-              className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-yellow-500/10 transition-colors"
-              whileTap={{ scale: 0.95 }}
-              title="Standby mode"
-            >
-              <Moon className="w-4 h-4" />
-              <span className="tracking-wider">STANDBY</span>
-            </motion.button>
+          <motion.button
+            onClick={setStandby}
+            className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-yellow-500/10 transition-colors"
+            whileTap={{ scale: 0.95 }}
+            title="Standby mode"
+          >
+            <Moon className="w-4 h-4" />
+            <span className="tracking-wider">STANDBY</span>
+          </motion.button>
 
-            <motion.button
-              onClick={powerOff}
-              className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-red-500/10 transition-colors"
-              whileTap={{ scale: 0.95 }}
-              title="Power off"
-            >
-              <Power className="w-4 h-4" />
-              <span className="tracking-wider">POWER OFF</span>
-            </motion.button>
-          </div>
+          <motion.button
+            onClick={powerOff}
+            className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-red-500/10 transition-colors"
+            whileTap={{ scale: 0.95 }}
+            title="Power off"
+          >
+            <Power className="w-4 h-4" />
+            <span className="tracking-wider">POWER OFF</span>
+          </motion.button>
         </div>
       </div>
     );

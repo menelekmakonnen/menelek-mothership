@@ -3,33 +3,29 @@ import { useState, useEffect } from 'react';
 import IconBox from '@/components/ui/IconBox';
 import { Camera, Film, Brain, Code, Sparkles, Heart, Video, Pen } from 'lucide-react';
 
-const rotatingWords = [
-  'Friend', 'Brother', 'Boyfriend', 'Bro', 'Son',
-  'Photographer', 'Filmmaker', 'Author', 'Screenwriter',
-  'Director', 'Producer', 'Video Editor', 'Videographer',
-  'Vibe Coder', 'Prompt Engineer', 'Instructor'
-];
-
-const rotatingIcons = [
-  { icon: Camera, gradient: 'from-blue-600 to-cyan-600' },
-  { icon: Film, gradient: 'from-red-600 to-orange-600' },
-  { icon: Brain, gradient: 'from-purple-600 to-pink-600' },
-  { icon: Code, gradient: 'from-green-600 to-emerald-600' },
-  { icon: Sparkles, gradient: 'from-yellow-600 to-orange-600' },
-  { icon: Heart, gradient: 'from-pink-600 to-rose-600' },
-  { icon: Video, gradient: 'from-indigo-600 to-purple-600' },
-  { icon: Pen, gradient: 'from-teal-600 to-cyan-600' },
+// Matched word-icon pairs for consistent theming
+const rotatingContent = [
+  { word: 'Friend', icon: Heart, gradient: 'from-pink-600 to-rose-600' },
+  { word: 'Brother', icon: Heart, gradient: 'from-pink-600 to-rose-600' },
+  { word: 'Photographer', icon: Camera, gradient: 'from-blue-600 to-cyan-600' },
+  { word: 'Filmmaker', icon: Film, gradient: 'from-red-600 to-orange-600' },
+  { word: 'Director', icon: Film, gradient: 'from-red-600 to-orange-600' },
+  { word: 'Producer', icon: Video, gradient: 'from-indigo-600 to-purple-600' },
+  { word: 'Video Editor', icon: Video, gradient: 'from-indigo-600 to-purple-600' },
+  { word: 'Author', icon: Pen, gradient: 'from-teal-600 to-cyan-600' },
+  { word: 'Screenwriter', icon: Pen, gradient: 'from-teal-600 to-cyan-600' },
+  { word: 'Vibe Coder', icon: Code, gradient: 'from-green-600 to-emerald-600' },
+  { word: 'Prompt Engineer', icon: Brain, gradient: 'from-purple-600 to-pink-600' },
+  { word: 'Instructor', icon: Sparkles, gradient: 'from-yellow-600 to-orange-600' },
 ];
 
 export default function IntroductionSection() {
-  const [wordIndex, setWordIndex] = useState(0);
-  const [iconIndex, setIconIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Rotate words and icons together every 2.5 seconds
+  // Rotate content every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setWordIndex((prev) => (prev + 1) % rotatingWords.length);
-      setIconIndex((prev) => (prev + 1) % rotatingIcons.length);
+      setCurrentIndex((prev) => (prev + 1) % rotatingContent.length);
     }, 2500);
 
     return () => clearInterval(interval);
@@ -48,16 +44,16 @@ export default function IntroductionSection() {
           <div className="aspect-square rounded-2xl overflow-hidden border-2 border-green-500/30 shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center p-12">
             <AnimatePresence mode="wait">
               <motion.div
-                key={iconIndex}
-                initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
-                transition={{ duration: 0.5 }}
+                key={currentIndex}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
                 className="w-full h-full"
               >
                 <IconBox
-                  icon={rotatingIcons[iconIndex].icon}
-                  gradient={rotatingIcons[iconIndex].gradient}
+                  icon={rotatingContent[currentIndex].icon}
+                  gradient={rotatingContent[currentIndex].gradient}
                   size="xl"
                   className="w-full h-full !rounded-3xl"
                 />
@@ -79,14 +75,14 @@ export default function IntroductionSection() {
             </div>
             <AnimatePresence mode="wait">
               <motion.div
-                key={wordIndex}
+                key={currentIndex}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
                 className="text-green-400"
               >
-                {rotatingWords[wordIndex]}
+                {rotatingContent[currentIndex].word}
               </motion.div>
             </AnimatePresence>
           </h1>

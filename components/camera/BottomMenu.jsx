@@ -29,21 +29,34 @@ export default function BottomMenu() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[1400] pointer-events-none">
-      {/* Toggle Button - Always visible */}
-      <div className="flex justify-center pb-2 pointer-events-auto">
+      {/* Toggle Button - Always visible, more prominent */}
+      <div className="flex justify-center pb-3 pointer-events-auto">
         <motion.button
           onClick={toggleMenu}
-          className="camera-hud px-4 py-2 rounded-t-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
+          className="camera-hud px-6 py-3 rounded-t-xl flex items-center gap-3 mono text-sm font-bold hover:bg-green-500/10 transition-colors shadow-lg border-t-2 border-green-500/30"
           whileTap={{ scale: 0.95 }}
+          whileHover={{ y: -2 }}
+          animate={{
+            boxShadow: isBottomMenuOpen
+              ? '0 0 0 rgba(34, 197, 94, 0)'
+              : ['0 0 10px rgba(34, 197, 94, 0.3)', '0 0 20px rgba(34, 197, 94, 0.5)', '0 0 10px rgba(34, 197, 94, 0.3)']
+          }}
+          transition={{
+            boxShadow: {
+              repeat: Infinity,
+              duration: 2,
+              ease: 'easeInOut'
+            }
+          }}
           title={isBottomMenuOpen ? 'Hide menu' : 'Show menu'}
         >
           <motion.div
             animate={{ rotate: isBottomMenuOpen ? 0 : 180 }}
             transition={{ duration: 0.3 }}
           >
-            <ChevronUp className="w-4 h-4" />
+            <ChevronUp className="w-5 h-5 text-green-400" />
           </motion.div>
-          <span className="tracking-wider">MENU</span>
+          <span className="tracking-wider text-green-400">NAVIGATION</span>
         </motion.button>
       </div>
 

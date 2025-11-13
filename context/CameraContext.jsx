@@ -183,6 +183,13 @@ export const CameraProvider = ({ children }) => {
     }, 600); // Half of transition
   }, [currentLens]);
 
+  // Cycle through lenses
+  const cycleLens = useCallback(() => {
+    const currentIndex = LENSES.findIndex(l => l.id === currentLens.id);
+    const nextIndex = (currentIndex + 1) % LENSES.length;
+    changeLens(LENSES[nextIndex]);
+  }, [currentLens, changeLens]);
+
   // Theme based on flash mode
   const getTheme = useCallback(() => {
     if (flashMode === 'on') return 'light';
@@ -267,6 +274,7 @@ export const CameraProvider = ({ children }) => {
     // Lens
     currentLens,
     changeLens,
+    cycleLens,
     isChangingLens,
     availableLenses: LENSES,
 

@@ -10,6 +10,7 @@ import CameraHUD from '@/components/camera/CameraHUD';
 import ControlBoxes from '@/components/camera/ControlBoxes';
 import FlashToggle from '@/components/camera/FlashToggle';
 import CameraModeToggle from '@/components/camera/CameraModeToggle';
+import LensToggle from '@/components/camera/LensToggle';
 import IrisTransition from '@/components/camera/IrisTransition';
 import FocusIndicator from '@/components/camera/FocusIndicator';
 import BottomMenu from '@/components/camera/BottomMenu';
@@ -21,7 +22,6 @@ import HomeButton from '@/components/ui/HomeButton';
 
 // Section components
 import SectionNavigation from '@/components/SectionNavigation';
-import CoverSection from '@/components/sections/CoverSection';
 import IntroductionSection from '@/components/sections/IntroductionSection';
 import LinksSection from '@/components/sections/LinksSection';
 import FilmsSection from '@/components/sections/FilmsSection';
@@ -54,7 +54,7 @@ export default function Home() {
   const isoNoise = getIsoNoise();
   const wbFilter = getWhiteBalanceFilter();
 
-  // Define all sections - Introduction first, Cover/slider last
+  // Define all sections - Introduction first
   const sections = [
     <IntroductionSection key="intro" />,
     <FilmsSection key="films" />,
@@ -65,7 +65,6 @@ export default function Home() {
     <AIAlbumsSection key="ai-albums" />,
     <BlogSection key="blog" />,
     <LinksSection key="links" />,
-    <CoverSection key="cover" onSectionSelect={(index) => setCurrentSection(index)} />,
   ];
 
   // Power off state
@@ -130,6 +129,9 @@ export default function Home() {
       <div className="fixed top-20 right-4 z-[1600] pointer-events-auto">
         <CameraModeToggle />
       </div>
+
+      {/* Lens toggle */}
+      <LensToggle />
 
       {/* Control boxes */}
       <ControlBoxes />
