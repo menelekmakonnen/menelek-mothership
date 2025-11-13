@@ -92,12 +92,7 @@ export default function Home() {
 
   // Main camera interface
   return (
-    <div
-      className="w-full h-full relative overflow-hidden"
-      style={{
-        filter: wbFilter.filter || '',
-      }}
-    >
+    <div className="relative h-full w-full overflow-hidden bg-[var(--bg-primary)]">
       {/* ISO Noise overlay */}
       <div className="iso-noise" style={{ opacity: isoNoise }} />
 
@@ -134,8 +129,11 @@ export default function Home() {
       <ControlBoxes />
 
       {/* Main content - Section navigation */}
-      <div className="w-full h-full">
-        <SectionNavigation sections={sections} />
+      <div className="relative z-[1] h-full w-full overflow-hidden">
+        <SectionNavigation
+          sections={sections}
+          contentStyle={wbFilter.filter ? { filter: wbFilter.filter } : undefined}
+        />
       </div>
 
       {/* Camera HUD */}

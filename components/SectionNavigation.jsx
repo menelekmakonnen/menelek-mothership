@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import BlurLayer from './ui/BlurLayer';
 
-export default function SectionNavigation({ sections }) {
+export default function SectionNavigation({ sections, contentStyle = {} }) {
   const { currentSection, setCurrentSection, currentLens, shutterSpeed, setFocusedLayer } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -88,9 +88,13 @@ export default function SectionNavigation({ sections }) {
   // Enable scrolling when zoomed in significantly
   const isZoomedIn = currentLens.zoom > 1;
 
+  const scrollClasses = isZoomedIn
+    ? 'overflow-x-auto overflow-y-auto'
+    : 'overflow-y-auto overflow-x-hidden';
+
   return (
     <div
-      className={`section-scroll-container w-full h-full relative ${isZoomedIn ? 'overflow-x-auto overflow-y-auto' : 'overflow-hidden'}`}
+      className={`section-scroll-container w-full h-full relative ${scrollClasses}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -163,6 +167,7 @@ export default function SectionNavigation({ sections }) {
               ease: [0.4, 0, 0.2, 1],
             }}
             className="w-full h-full"
+            style={contentStyle}
           >
             <BlurLayer depth={100}>
               {sections[currentSection]}
