@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Power } from 'lucide-react';
+import { Power, Linkedin, Instagram, Youtube, Music } from 'lucide-react';
 
 export default function PowerButton({ onClick }) {
   return (
@@ -37,29 +37,26 @@ export default function PowerButton({ onClick }) {
         transition={{ delay: 0.5 }}
         className="absolute bottom-12 flex gap-6"
       >
-        <SocialIcon href="https://linkedin.com/in/menelekmakonnen" icon="in" label="LinkedIn" />
-        <SocialIcon href="https://instagram.com/menelekmakonnen" icon="ig" label="Instagram" />
-        <SocialIcon href="https://youtube.com/@menelekmakonnen" icon="yt" label="YouTube" />
-        <SocialIcon href="https://tiktok.com/@menelekmakonnen" icon="tk" label="TikTok" />
+        <SocialIcon href="https://linkedin.com/in/menelekmakonnen" Icon={Linkedin} />
+        <SocialIcon href="https://instagram.com/menelekmakonnen" Icon={Instagram} />
+        <SocialIcon href="https://youtube.com/@menelekmakonnen" Icon={Youtube} />
+        <SocialIcon href="https://tiktok.com/@menelekmakonnen" Icon={Music} />
       </motion.div>
     </motion.div>
   );
 }
 
-function SocialIcon({ href, icon, label }) {
+function SocialIcon({ href, Icon }) {
   return (
-    <a
+    <motion.a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col items-center gap-2"
+      className="w-12 h-12 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-400 transition-all"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.95 }}
     >
-      <div className="w-12 h-12 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 group-hover:border-green-500 group-hover:text-green-400 transition-all mono font-bold">
-        {icon}
-      </div>
-      <span className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
-        {label}
-      </span>
-    </a>
+      <Icon className="w-5 h-5" />
+    </motion.a>
   );
 }

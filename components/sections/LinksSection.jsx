@@ -49,7 +49,7 @@ const socialLinks = [
 
 export default function LinksSection() {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 overflow-auto">
+    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32 overflow-auto">
       <div className="max-w-6xl w-full">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
