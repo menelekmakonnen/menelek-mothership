@@ -1,7 +1,7 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpToLine } from 'lucide-react';
 import BlurLayer from './ui/BlurLayer';
 
 export default function SectionNavigation({ sections, contentStyle = {} }) {
@@ -11,6 +11,8 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     currentLens,
     shutterSpeed,
     gestureLock,
+    closeTopLayer,
+    hasInteractiveLayer,
   } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -66,19 +68,40 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (gestureLock) return;
       const tagName = e.target?.tagName;
       if (tagName && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return;
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+
+      if (hasInteractiveLayer) {
+        if (['Escape', 'Esc', 'Backspace', 'BrowserBack', 'GoBack'].includes(e.key)) {
+          const closed = closeTopLayer();
+          if (closed) {
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+
+      if (gestureLock) return;
+
+      if (['ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
         e.preventDefault();
       }
-      if (e.key === 'ArrowLeft') prevSection();
-      if (e.key === 'ArrowRight') nextSection();
+
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevSection();
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') nextSection();
+      if (e.key === 'Home') {
+        setSwipeDirection(1);
+        setCurrentSection(0);
+      }
+      if (e.key === 'End') {
+        setSwipeDirection(-1);
+        setCurrentSection(totalSections - 1);
+      }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [prevSection, nextSection, gestureLock]);
+  }, [prevSection, nextSection, gestureLock, hasInteractiveLayer, closeTopLayer, totalSections, setCurrentSection, setSwipeDirection]);
 
   // Scroll-based arrow fade
   useEffect(() => {
@@ -250,7 +273,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
 
       {/* Sections with lens zoom effect */}
       <div
-        className="w-full h-full transition-transform duration-700 ease-out"
+        className="relative w-full h-full transition-transform duration-700 ease-out"
         style={{
           transform: `scale(${currentLens.zoom})`,
           transformOrigin: 'center center',
@@ -258,6 +281,10 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
           minWidth: isZoomedIn ? 'max-content' : '100%',
         }}
       >
+        <div
+          className="absolute inset-0 -z-10 bg-[var(--bg-secondary)] pointer-events-none"
+          style={contentStyle && contentStyle.filter ? { filter: contentStyle.filter } : undefined}
+        />
         <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
           <motion.div
             key={currentSection}
@@ -293,9 +320,10 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.2 }}
             onClick={scrollToTop}
-            className="fixed bottom-28 right-6 z-[1450] camera-hud px-4 py-2 rounded-full flex items-center gap-2 text-xs uppercase tracking-[0.3em]"
+            className="fixed bottom-28 right-6 z-[1450] camera-hud w-12 h-12 rounded-full flex items-center justify-center"
+            aria-label="Back to top"
           >
-            Back to Top
+            <ArrowUpToLine className="w-5 h-5" />
           </motion.button>
         )}
       </AnimatePresence>

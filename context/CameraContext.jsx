@@ -306,6 +306,11 @@ export const CameraProvider = ({ children }) => {
     return Object.values(layerRegistry).sort((a, b) => a.depth - b.depth);
   }, [layerRegistry]);
 
+  const hasInteractiveLayer = useMemo(
+    () => orderedLayers.some((layer) => layer.type === 'interactive'),
+    [orderedLayers]
+  );
+
   const registerLayer = useCallback(({ id, depth, type = 'content', ref, onClose }) => {
     if (!id || typeof depth !== 'number') return;
     layerRegistryRef.current = {
@@ -358,7 +363,9 @@ export const CameraProvider = ({ children }) => {
     const topLayer = interactiveLayers[interactiveLayers.length - 1];
     if (topLayer && typeof topLayer.onClose === 'function') {
       topLayer.onClose();
+      return true;
     }
+    return false;
   }, []);
 
   // Lens change with iris transition
@@ -401,7 +408,6 @@ export const CameraProvider = ({ children }) => {
       setHudVisibility('minimal');
       setFocusMode('continuous');
       setShowHistogram(true);
-      setRuleOfThirds((prev) => (prev === 'off' ? 'precision' : prev));
       applyInterfaceProfile(baseInterfaceProfiles.mirrorless);
     } else {
       mirrorlessSettingsRef.current = {
@@ -418,17 +424,15 @@ export const CameraProvider = ({ children }) => {
         setHudVisibility(dslrSettingsRef.current.hudVisibility);
         setFocusMode(dslrSettingsRef.current.focusMode);
         setShowHistogram(dslrSettingsRef.current.showHistogram);
-        setRuleOfThirds(dslrSettingsRef.current.ruleOfThirds);
         applyInterfaceProfile(dslrSettingsRef.current.interfaceModules || baseInterfaceProfiles.dslr);
       } else {
         setHudVisibility('standard');
         setFocusMode('single');
         setShowHistogram(false);
-        setRuleOfThirds('off');
         applyInterfaceProfile(baseInterfaceProfiles.dslr);
       }
     }
-  }, [applyInterfaceProfile, baseInterfaceProfiles, cameraMode, focusMode, hudVisibility, interfaceModules, ruleOfThirds, setFocusMode, setHasModifiedSettings, setHudVisibility, setRuleOfThirds, setShowHistogram, showHistogram]);
+  }, [applyInterfaceProfile, baseInterfaceProfiles, cameraMode, focusMode, hudVisibility, interfaceModules, setFocusMode, setHasModifiedSettings, setHudVisibility, setShowHistogram, showHistogram]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -501,7 +505,6 @@ export const CameraProvider = ({ children }) => {
         setHudVisibility(settings.hudVisibility);
         setFocusMode(settings.focusMode);
         setShowHistogram(settings.showHistogram);
-        setRuleOfThirds(settings.ruleOfThirds);
         setFlashMode(settings.flashMode);
         applyInterfaceProfile(settings.interfaceModules || baseInterfaceProfiles[cameraMode]);
       } else {
@@ -522,7 +525,6 @@ export const CameraProvider = ({ children }) => {
         hudVisibility,
         focusMode,
         showHistogram,
-        ruleOfThirds,
         flashMode,
         cameraMode,
         interfaceModules: { ...interfaceModules },
@@ -543,7 +545,6 @@ export const CameraProvider = ({ children }) => {
         setShutterSpeed(250);
         setAperture(2.8);
         setShowHistogram(true);
-        setRuleOfThirds('precision');
         applyInterfaceProfile(presetInterfaceProfiles.modern);
         break;
       case 'retro':
@@ -557,7 +558,6 @@ export const CameraProvider = ({ children }) => {
         setShutterSpeed(60);
         setAperture(1.8);
         setShowHistogram(false);
-        setRuleOfThirds('classic');
         applyInterfaceProfile(presetInterfaceProfiles.retro);
         break;
       case 'cinema':
@@ -571,14 +571,13 @@ export const CameraProvider = ({ children }) => {
         setShutterSpeed(50);
         setAperture(4);
         setShowHistogram(true);
-        setRuleOfThirds('golden');
         applyInterfaceProfile(presetInterfaceProfiles.cinema);
         break;
       default:
         setActivePreset(null);
         break;
     }
-  }, [activePreset, applyInterfaceProfile, aperture, baseInterfaceProfiles, cameraMode, exposureComp, flashMode, focusMode, hudVisibility, interfaceModules, iso, presetInterfaceProfiles, ruleOfThirds, setAperture, setCameraMode, setExposureComp, setFlashMode, setFocusMode, setHudVisibility, setIso, setRuleOfThirds, setShutterSpeed, setShowHistogram, setWhiteBalance, shutterSpeed, whiteBalance]);
+  }, [activePreset, applyInterfaceProfile, aperture, baseInterfaceProfiles, cameraMode, exposureComp, flashMode, focusMode, hudVisibility, interfaceModules, iso, presetInterfaceProfiles, setAperture, setCameraMode, setExposureComp, setFlashMode, setFocusMode, setHudVisibility, setIso, setShutterSpeed, setShowHistogram, setWhiteBalance, shutterSpeed, whiteBalance]);
 
   // Theme based on flash mode
   const getTheme = useCallback(() => {
@@ -728,6 +727,7 @@ export const CameraProvider = ({ children }) => {
     activePreset,
     applyCameraPreset,
     interfaceModules,
+    hasInteractiveLayer,
   };
 
   return (

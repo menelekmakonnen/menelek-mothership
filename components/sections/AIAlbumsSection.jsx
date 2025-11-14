@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { Sparkles, Wand2, Cpu, Zap } from 'lucide-react';
+import { Sparkles, Wand2, Cpu, Zap, X } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
 
 // Placeholder AI-generated content albums
@@ -98,7 +98,7 @@ export default function AIAlbumsSection() {
             focusOnMount
             lockGestures
             onClose={() => setSelectedAlbum(null)}
-            className="fixed inset-0 z-[1850] flex items-center justify-center"
+            className="fixed inset-0 z-[1850] flex items-center justify-center p-6"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -107,7 +107,7 @@ export default function AIAlbumsSection() {
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               className="relative w-full h-full max-w-6xl mx-auto px-6 py-10"
             >
-              <div className="absolute inset-0 rounded-3xl bg-black/88 border border-white/10 shadow-2xl" />
+              <div className="absolute inset-0 rounded-3xl bg-[rgba(8,10,18,0.94)] border border-white/10 shadow-2xl" />
               <div className="relative z-10 h-full overflow-hidden flex flex-col gap-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -120,6 +120,13 @@ export default function AIAlbumsSection() {
                     <h2 className="text-4xl font-bold mt-2">{selectedAlbum.name}</h2>
                     <p className="text-[color:var(--text-secondary)]">{selectedAlbum.count} AI-generated images</p>
                   </div>
+                  <button
+                    onClick={() => setSelectedAlbum(null)}
+                    className="camera-hud rounded-full w-11 h-11 flex items-center justify-center text-sm"
+                    aria-label="Close album"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto pr-2">

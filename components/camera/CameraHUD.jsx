@@ -1,7 +1,7 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { useEffect, useState } from 'react';
 import BatteryIndicator from './BatteryIndicator';
-import { Grid3x3, BarChart3, Focus, Camera } from 'lucide-react';
+import { Camera } from 'lucide-react';
 
 export default function CameraHUD() {
   const {
@@ -21,23 +21,117 @@ export default function CameraHUD() {
   const [realTimeData, setRealTimeData] = useState({
     avgBrightness: 50,
     avgColor: 'rgb(128, 128, 128)',
+    highlightWarning: false,
+    shadowWarning: false,
   });
   const [audioLevels, setAudioLevels] = useState([30, 55, 40]);
 
   // Analyze page content for real-time readings
   useEffect(() => {
-    const analyzeContent = () => {
-      if (typeof document === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
+    const parseColor = (value) => {
+      if (!value) return null;
+      if (value.startsWith('#')) {
+        const hex = value.replace('#', '');
+        const bigint = parseInt(hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b, a: 1 };
+      }
+      const match = value.match(/rgba?\(([^)]+)\)/i);
+      if (!match) return null;
+      const parts = match[1].split(',').map((part) => part.trim());
+      const [r, g, b, a = '1'] = parts;
+      return { r: Number(r), g: Number(g), b: Number(b), a: Number(a) };
+    };
+
+    const getEffectiveBackground = (node) => {
+      let current = node;
+      while (current && current !== document.documentElement) {
+        const style = window.getComputedStyle(current);
+        const bg = parseColor(style.backgroundColor);
+        if (bg && bg.a > 0) {
+          return bg;
+        }
+        current = current.parentElement;
+      }
+      const fallback = parseColor(window.getComputedStyle(document.body).backgroundColor);
+      return fallback || { r: 10, g: 10, b: 10, a: 1 };
+    };
+
+    const computeBrightness = (color) => {
+      if (!color) return 0;
+      const { r, g, b } = color;
+      const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      return Math.max(0, Math.min(100, (luminance / 255) * 100));
+    };
+
+    const analyzeContent = () => {
       try {
-        // Get average brightness from page content
-        const images = document.querySelectorAll('img');
-        // Simplified brightness calculation
-        const brightness = Math.min(100, Math.max(0, 40 + iso / 100));
+        const points = [
+          [0.25, 0.25],
+          [0.5, 0.25],
+          [0.75, 0.25],
+          [0.25, 0.5],
+          [0.5, 0.5],
+          [0.75, 0.5],
+          [0.25, 0.75],
+          [0.5, 0.75],
+          [0.75, 0.75],
+        ];
+
+        const totals = { r: 0, g: 0, b: 0 };
+        let brightnessSum = 0;
+        let samples = 0;
+        let highlightCount = 0;
+        let shadowCount = 0;
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        points.forEach(([px, py]) => {
+          const x = Math.round(width * px);
+          const y = Math.round(height * py);
+          let element = document.elementFromPoint(x, y);
+
+          if (!element) return;
+
+          const hudAncestor = element.closest?.('.camera-hud');
+          if (hudAncestor) {
+            element = hudAncestor.parentElement || element.parentElement;
+          }
+
+          if (!element) return;
+
+          const color = getEffectiveBackground(element);
+          const brightness = computeBrightness(color);
+
+          totals.r += color.r;
+          totals.g += color.g;
+          totals.b += color.b;
+          brightnessSum += brightness;
+          samples += 1;
+
+          if (brightness > 78) highlightCount += 1;
+          if (brightness < 22) shadowCount += 1;
+        });
+
+        if (samples === 0) return;
+
+        const avgBrightness = brightnessSum / samples;
+        const avgColor = {
+          r: totals.r / samples,
+          g: totals.g / samples,
+          b: totals.b / samples,
+        };
 
         setRealTimeData({
-          avgBrightness: Math.round(brightness),
-          avgColor: `rgb(${128 + iso / 50}, 128, ${128 - iso / 50})`,
+          avgBrightness: Math.round(avgBrightness),
+          avgColor: `rgb(${Math.round(avgColor.r)}, ${Math.round(avgColor.g)}, ${Math.round(avgColor.b)})`,
+          highlightWarning: highlightCount >= 3,
+          shadowWarning: shadowCount >= 3,
         });
       } catch (error) {
         console.error('Error analyzing content:', error);
@@ -45,10 +139,14 @@ export default function CameraHUD() {
     };
 
     analyzeContent();
-    const interval = setInterval(analyzeContent, 2000);
+    const interval = setInterval(analyzeContent, 1500);
+    window.addEventListener('resize', analyzeContent);
 
-    return () => clearInterval(interval);
-  }, [iso]);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', analyzeContent);
+    };
+  }, [iso, aperture, shutterSpeed, whiteBalance, currentLens, interfaceModules]);
 
   useEffect(() => {
     if (!interfaceModules.audioMeters) return;
@@ -160,6 +258,25 @@ export default function CameraHUD() {
               <div className="flex flex-col items-center">
                 <div className="text-[9px] opacity-60">LUX</div>
                 <div className="font-bold">{realTimeData.avgBrightness}</div>
+              </div>
+
+              {/* Scene analyser */}
+              <div className="flex flex-col items-center">
+                <div className="text-[9px] opacity-60">SCENE</div>
+                <div className="flex items-center gap-1">
+                  <span
+                    className="w-3 h-3 rounded-full border border-white/40"
+                    style={{ backgroundColor: realTimeData.avgColor }}
+                    aria-label={`Scene color ${realTimeData.avgColor}`}
+                  />
+                  <div className="text-[10px] font-semibold flex gap-1">
+                    {realTimeData.highlightWarning && <span className="text-red-400">HL</span>}
+                    {realTimeData.shadowWarning && <span className="text-sky-300">SH</span>}
+                    {!realTimeData.highlightWarning && !realTimeData.shadowWarning && (
+                      <span className="text-green-300/80">OK</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </>
           )}

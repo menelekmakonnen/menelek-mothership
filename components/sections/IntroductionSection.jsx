@@ -26,6 +26,7 @@ const featuredProjects = [
     action: 'View on Amazon',
     href: 'https://www.amazon.com/s?k=The+Last+Ochiyamie',
     stats: ['Novel', 'Worldbuilding', 'Amazon Release'],
+    gradient: 'from-emerald-600/70 via-teal-500/60 to-slate-900/85',
   },
   {
     id: 'im-alright',
@@ -34,6 +35,7 @@ const featuredProjects = [
     action: 'Watch on YouTube',
     href: 'https://www.youtube.com/results?search_query=I%27m+Alright+short+film',
     stats: ['Narrative Film', 'Director', 'YouTube Premiere'],
+    gradient: 'from-rose-600/70 via-orange-500/60 to-zinc-900/80',
   },
   {
     id: 'loremaker',
@@ -42,6 +44,7 @@ const featuredProjects = [
     action: 'Explore the Universe',
     href: 'https://loremakeruniverse.com',
     stats: ['Worldbuilding', 'Interactive Hub', 'Transmedia'],
+    gradient: 'from-indigo-600/70 via-purple-500/60 to-gray-900/85',
   },
   {
     id: 'starterclass',
@@ -50,6 +53,7 @@ const featuredProjects = [
     action: 'Join the Program',
     href: 'https://starterclass.icuni.org',
     stats: ['Education', 'AI Strategy', 'Mentorship'],
+    gradient: 'from-blue-600/70 via-cyan-500/60 to-slate-900/85',
   },
 ];
 
@@ -95,7 +99,7 @@ export default function IntroductionSection() {
           transition={{ duration: 0.8 }}
           className="flex flex-col gap-6"
         >
-          <div className="camera-hud rounded-3xl border border-white/10 overflow-hidden flex-1 flex flex-col">
+          <div className="camera-hud rounded-3xl border border-white/10 overflow-hidden flex-1 flex flex-col relative">
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
               <div>
                 <p className="mono text-[10px] uppercase tracking-[0.45em] text-green-400/70">Spotlight</p>
@@ -119,6 +123,17 @@ export default function IntroductionSection() {
             </div>
 
             <div className="relative overflow-hidden flex-1">
+              <AnimatePresence initial={false} mode="sync">
+                <motion.div
+                  key={`gradient-${activeProject.id}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                  className={`absolute inset-0 bg-gradient-to-br ${activeProject.gradient}`}
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeProject.id}
@@ -126,7 +141,7 @@ export default function IntroductionSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -24 }}
                   transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-                  className="p-6 md:p-8 h-full flex flex-col"
+                  className="relative z-10 p-6 md:p-8 h-full flex flex-col"
                 >
                   <div className="space-y-4 flex-1">
                     <h4 className="text-3xl font-bold leading-tight">{activeProject.title}</h4>

@@ -53,18 +53,33 @@ export default function BlurLayer({
   }, [focusOnMount, focusLayer, id]);
 
   useEffect(() => {
+    if (type !== 'interactive') return;
+    const node = elementRef.current;
+    if (!node) return;
+    const frame = requestAnimationFrame(() => {
+      try {
+        node.focus({ preventScroll: true });
+      } catch (err) {
+        node.focus();
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [type]);
+
+  useEffect(() => {
     if (!lockGestures) return;
     engageGestureLock(id);
     return () => releaseGestureLock(id);
   }, [lockGestures, engageGestureLock, releaseGestureLock, id]);
 
   const blurAmount = useMemo(() => calculateBlur(depth, focusedLayer), [calculateBlur, depth, focusedLayer]);
+  const resolvedBlur = type === 'interactive' ? 0 : blurAmount;
   const isoNoise = getIsoNoise();
   const wbFilter = getWhiteBalanceFilter();
 
   const baseFilter = wbFilter.filter ? `${wbFilter.filter} ` : '';
-  const restingFilter = `${baseFilter}blur(${blurAmount}px)`;
-  const focusPulseFilter = `${baseFilter}blur(${Math.max(blurAmount, 6)}px)`;
+  const restingFilter = `${baseFilter}blur(${resolvedBlur}px)`;
+  const focusPulseFilter = `${baseFilter}blur(${type === 'interactive' ? 0 : Math.max(resolvedBlur, 6)}px)`;
   const hasFocusedRef = useRef(false);
 
   useEffect(() => {
@@ -91,7 +106,9 @@ export default function BlurLayer({
   }, [controls, focusPulseFilter, focusedLayer, restingFilter, depth]);
 
   const composedClassName = useMemo(() => {
-    const interactiveBackdrop = type === 'interactive' ? 'bg-[rgba(8,8,8,0.85)] backdrop-blur-xl' : '';
+    const interactiveBackdrop = type === 'interactive'
+      ? 'bg-[rgba(6,8,12,0.92)] backdrop-blur-xl outline outline-1 outline-white/10'
+      : '';
     return ['blur-layer', interactiveBackdrop, className].filter(Boolean).join(' ');
   }, [className, type]);
 
@@ -111,6 +128,9 @@ export default function BlurLayer({
       animate={controls}
       initial={{ filter: focusOnMount ? focusPulseFilter : restingFilter }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
+      tabIndex={type === 'interactive' ? -1 : undefined}
+      role={type === 'interactive' ? 'dialog' : undefined}
+      aria-modal={type === 'interactive' ? 'true' : undefined}
     >
       {children}
       {showIsoNoise && (
