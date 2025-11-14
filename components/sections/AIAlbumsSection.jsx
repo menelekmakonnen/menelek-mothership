@@ -98,14 +98,14 @@ export default function AIAlbumsSection() {
             focusOnMount
             lockGestures
             onClose={() => setSelectedAlbum(null)}
-            className="fixed inset-0 z-[1850] flex items-center justify-center p-6"
+            className="fixed left-0 right-0 bottom-0 top-[var(--camera-top-rail-height,112px)] z-[1850] flex items-center justify-center p-6"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="relative w-full h-full max-w-6xl mx-auto px-6 py-10"
+              className="relative w-full h-full max-w-6xl mx-auto px-6 py-10 max-h-[calc(100%-2rem)]"
             >
               <div className="absolute inset-0 rounded-3xl bg-[rgba(8,10,18,0.94)] border border-white/10 shadow-2xl" />
               <div className="relative z-10 h-full overflow-hidden flex flex-col gap-6">

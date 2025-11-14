@@ -460,7 +460,7 @@ export const CameraProvider = ({ children }) => {
       focusLayer(layerId);
     };
 
-    const handleDoubleClick = (event) => {
+    const closeTopInteractiveLayer = (target) => {
       const interactiveLayers = Object.values(layerRegistryRef.current)
         .filter((layer) => layer.type === 'interactive')
         .sort((a, b) => a.depth - b.depth);
@@ -469,7 +469,7 @@ export const CameraProvider = ({ children }) => {
       if (!topLayer) return;
 
       const topElement = topLayer.ref?.current;
-      if (topElement && topElement.contains(event.target)) {
+      if (topElement && target && topElement.contains(target)) {
         return;
       }
 
@@ -478,12 +478,29 @@ export const CameraProvider = ({ children }) => {
       }
     };
 
+    const handleDoubleClick = (event) => {
+      closeTopInteractiveLayer(event.target);
+    };
+
+    let lastTouchTime = 0;
+    const handleTouchEnd = (event) => {
+      const now = Date.now();
+      if (now - lastTouchTime < 350) {
+        closeTopInteractiveLayer(event.target);
+        lastTouchTime = 0;
+        return;
+      }
+      lastTouchTime = now;
+    };
+
     document.addEventListener('click', handleClick);
     document.addEventListener('dblclick', handleDoubleClick);
+    document.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       document.removeEventListener('click', handleClick);
       document.removeEventListener('dblclick', handleDoubleClick);
+      document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [focusLayer]);
 
@@ -600,9 +617,9 @@ export const CameraProvider = ({ children }) => {
     const depthSteps = Math.min(10, Math.abs(layerDepth - focusedDepth) / 100);
     const apertureRange = 22 - 1.4;
     const apertureWeight = (22 - aperture) / apertureRange; // 0 when stopped down, 1 when wide open
-    const blurAmount = apertureWeight * depthSteps * 12;
+    const blurAmount = apertureWeight * depthSteps * 18;
 
-    return Number(Math.min(24, blurAmount).toFixed(2));
+    return Number(Math.min(36, blurAmount).toFixed(2));
   }, [aperture]);
 
   // ISO noise effect
@@ -633,6 +650,37 @@ export const CameraProvider = ({ children }) => {
       };
     }
   }, [whiteBalance]);
+
+  const getContentFilter = useCallback(() => {
+    const wbFilter = getWhiteBalanceFilter();
+    const filters = [];
+
+    if (wbFilter.filter) {
+      filters.push(wbFilter.filter);
+    }
+
+    const normalize = (value, min, max) => {
+      const clamped = Math.max(min, Math.min(max, value));
+      return (clamped - min) / (max - min);
+    };
+
+    const shutterNormalized = normalize(shutterSpeed, 30, 8000);
+    const slowRatio = 1 - Math.pow(shutterNormalized, 0.35);
+    const fastRatio = Math.pow(shutterNormalized, 0.35);
+
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+    const brightness = clamp(1 + exposureComp * 0.25 + slowRatio * 0.32 - fastRatio * 0.2, 0.6, 1.8);
+    const contrast = clamp(1 + fastRatio * 0.24 - slowRatio * 0.18 + exposureComp * 0.1, 0.75, 1.6);
+    const saturation = clamp(1 + exposureComp * 0.14 + (aperture < 3.2 ? 0.16 : aperture > 11 ? -0.12 : 0), 0.6, 1.6);
+    const warmthShift = clamp((exposureComp + (aperture < 2 ? 0.6 : -0.2)) * 6, -12, 12);
+
+    filters.push(
+      `brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) hue-rotate(${warmthShift}deg)`
+    );
+
+    return { filter: filters.join(' ') };
+  }, [aperture, exposureComp, getWhiteBalanceFilter, shutterSpeed]);
 
   const value = {
     // Power
@@ -717,6 +765,7 @@ export const CameraProvider = ({ children }) => {
     calculateBlur,
     getIsoNoise,
     getWhiteBalanceFilter,
+    getContentFilter,
     whiteBalanceModes: WHITE_BALANCE_MODES,
     gestureLock,
     setGestureLock,

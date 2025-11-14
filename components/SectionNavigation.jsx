@@ -199,10 +199,12 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
 
   // Motion blur effect based on shutter speed
   const getMotionBlur = () => {
-    if (shutterSpeed < 30) {
-      return Math.min(shutterSpeed / 100, 0.5);
-    }
-    return 0;
+    const slowThreshold = 30;
+    const fadeOutPoint = 400;
+    if (shutterSpeed > fadeOutPoint) return 0;
+    const clamped = Math.max(slowThreshold, Math.min(shutterSpeed, fadeOutPoint));
+    const normalized = (clamped - slowThreshold) / (fadeOutPoint - slowThreshold);
+    return Number((8 * (1 - normalized)).toFixed(2));
   };
 
   // Enable scrolling when zoomed in significantly
@@ -211,6 +213,20 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   const scrollClasses = isZoomedIn
     ? 'overflow-x-auto overflow-y-auto'
     : 'overflow-y-auto overflow-x-hidden';
+
+  const navOffset = 'var(--camera-top-rail-height, 112px)';
+  const baseBottomPadding = '140px';
+  const containerStyle = {
+    cursor: isDragging ? 'grabbing' : 'grab',
+    paddingTop: isZoomedIn ? `calc(${navOffset} + 96px)` : navOffset,
+    paddingBottom: isZoomedIn ? `calc(${baseBottomPadding} + 96px)` : baseBottomPadding,
+  };
+
+  const stageBackgroundStyle = {
+    background: 'var(--content-stage-gradient)',
+    backgroundSize: '160% 160%',
+    ...(contentStyle && contentStyle.filter ? { filter: contentStyle.filter } : {}),
+  };
 
   return (
     <div
@@ -223,11 +239,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
-      style={isZoomedIn ? {
-        paddingTop: '120px',
-        paddingBottom: '120px',
-        cursor: isDragging ? 'grabbing' : 'grab',
-      } : { cursor: isDragging ? 'grabbing' : 'grab' }}
+      style={containerStyle}
     >
       {/* Navigation arrows - Fixed desktop position, fade with scroll */}
       <button
@@ -281,10 +293,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
           minWidth: isZoomedIn ? 'max-content' : '100%',
         }}
       >
-        <div
-          className="absolute inset-0 -z-10 bg-[var(--bg-secondary)] pointer-events-none"
-          style={contentStyle && contentStyle.filter ? { filter: contentStyle.filter } : undefined}
-        />
+        <div className="absolute inset-0 -z-10 pointer-events-none" style={stageBackgroundStyle} />
         <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
           <motion.div
             key={currentSection}

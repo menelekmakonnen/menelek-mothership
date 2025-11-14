@@ -1,11 +1,16 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function InterfaceOverlays() {
-  const { interfaceModules } = useCameraContext();
+  const { interfaceModules, theme, activePreset, cameraMode } = useCameraContext();
   const [horizonTilt, setHorizonTilt] = useState(0);
   const [waveform, setWaveform] = useState(() => generateWaveform());
+  const [peakingPattern, setPeakingPattern] = useState(
+    'repeating-linear-gradient(45deg, rgba(32, 255, 196, 0.16) 0px, rgba(32, 255, 196, 0.16) 6px, transparent 6px, transparent 16px)'
+  );
+  const [accentRgb, setAccentRgb] = useState('32, 255, 196');
+  const [zebraColor, setZebraColor] = useState('rgba(255,255,255,0.15)');
 
   useEffect(() => {
     if (!interfaceModules.waveformMonitor) return;
@@ -14,6 +19,22 @@ export default function InterfaceOverlays() {
     }, 2000);
     return () => clearInterval(interval);
   }, [interfaceModules.waveformMonitor]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const styles = getComputedStyle(document.documentElement);
+    const accentChannels = styles.getPropertyValue('--accent-rgb').trim() || '32, 255, 196';
+    setAccentRgb(accentChannels);
+
+    const [r, g, b] = accentChannels.split(',').map((part) => Number(part.trim()));
+    const baseOpacity = theme === 'light' ? 0.14 : 0.2;
+    const zebraOpacity = theme === 'light' ? 0.18 : 0.28;
+    const peakingColor = `rgba(${r}, ${g}, ${b}, ${baseOpacity})`;
+    setPeakingPattern(
+      `repeating-linear-gradient(45deg, ${peakingColor} 0px, ${peakingColor} 6px, transparent 6px, transparent 16px)`
+    );
+    setZebraColor(`rgba(${r}, ${g}, ${b}, ${zebraOpacity})`);
+  }, [theme, activePreset, cameraMode, interfaceModules.focusPeaking]);
 
   useEffect(() => {
     if (!interfaceModules.horizonLevel) {
@@ -27,10 +48,6 @@ export default function InterfaceOverlays() {
 
     return () => clearInterval(interval);
   }, [interfaceModules.horizonLevel]);
-
-  const peakingPattern = useMemo(() => {
-    return `repeating-linear-gradient(90deg, rgba(255,0,0,0.15) 0px, rgba(255,0,0,0.15) 6px, transparent 6px, transparent 14px)`;
-  }, []);
 
   return (
     <>
@@ -61,8 +78,9 @@ export default function InterfaceOverlays() {
             className="fixed inset-0 z-[1550] pointer-events-none"
             style={{ backgroundImage: peakingPattern }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6 }}
+            animate={{ opacity: 0.35 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
           />
         )}
       </AnimatePresence>
@@ -72,9 +90,9 @@ export default function InterfaceOverlays() {
           <motion.div
             className="hidden sm:block fixed top-24 right-6 md:right-24 w-40 md:w-48 h-28 md:h-32 z-[1650] pointer-events-none rounded-2xl border border-white/20"
             style={{
-              backgroundImage:
-                'repeating-linear-gradient(-45deg, rgba(255,255,255,0.15) 0, rgba(255,255,255,0.15) 8px, transparent 8px, transparent 16px)',
+              backgroundImage: `repeating-linear-gradient(-45deg, ${zebraColor} 0, ${zebraColor} 8px, transparent 8px, transparent 16px)`,
               backdropFilter: 'blur(6px)',
+              mixBlendMode: 'screen',
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
@@ -95,13 +113,16 @@ export default function InterfaceOverlays() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
           >
-            <div className="mono text-[9px] uppercase tracking-[0.3em] text-white/60 mb-2">Waveform</div>
+            <div className="mono text-[9px] uppercase tracking-[0.3em] opacity-70 text-[color:var(--hud-text)] mb-2">Waveform</div>
             <div className="flex items-end gap-1 h-20">
               {waveform.map((value, index) => (
                 <div
                   key={index}
-                  className="flex-1 bg-gradient-to-t from-green-500/20 via-green-400/40 to-green-200/80 rounded"
-                  style={{ height: `${value}%` }}
+                  className="flex-1 rounded"
+                  style={{
+                    height: `${value}%`,
+                    background: `linear-gradient(to top, rgba(${accentRgb}, 0.2), rgba(${accentRgb}, 0.65))`,
+                  }}
                 />
               ))}
             </div>

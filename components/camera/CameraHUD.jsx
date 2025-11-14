@@ -1,5 +1,5 @@
 import { useCameraContext } from '@/context/CameraContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import BatteryIndicator from './BatteryIndicator';
 import { Camera } from 'lucide-react';
 
@@ -16,8 +16,13 @@ export default function CameraHUD() {
     batteryLevel,
     cameraMode,
     interfaceModules,
+    theme,
+    currentSection,
+    activePreset,
   } = useCameraContext();
 
+  const [accentColor, setAccentColor] = useState('#00ff88');
+  const [accentRgb, setAccentRgb] = useState('0, 255, 136');
   const [realTimeData, setRealTimeData] = useState({
     avgBrightness: 50,
     avgColor: 'rgb(128, 128, 128)',
@@ -25,6 +30,15 @@ export default function CameraHUD() {
     shadowWarning: false,
   });
   const [audioLevels, setAudioLevels] = useState([30, 55, 40]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const styles = getComputedStyle(document.documentElement);
+    const accent = styles.getPropertyValue('--accent').trim() || '#00ff88';
+    const accentChannel = styles.getPropertyValue('--accent-rgb').trim() || '0, 255, 136';
+    setAccentColor(accent);
+    setAccentRgb(accentChannel);
+  }, [theme, cameraMode, activePreset]);
 
   // Analyze page content for real-time readings
   useEffect(() => {
@@ -47,6 +61,19 @@ export default function CameraHUD() {
       return { r: Number(r), g: Number(g), b: Number(b), a: Number(a) };
     };
 
+    const parseGradientColor = (value) => {
+      if (!value || value === 'none') return null;
+      const matches = value.match(/(rgba?\([^\)]+\)|#[0-9a-fA-F]{3,8})/gi);
+      if (!matches || matches.length === 0) return null;
+      for (const match of matches) {
+        const parsed = parseColor(match.trim());
+        if (parsed) {
+          return parsed;
+        }
+      }
+      return null;
+    };
+
     const getEffectiveBackground = (node) => {
       let current = node;
       while (current && current !== document.documentElement) {
@@ -54,6 +81,14 @@ export default function CameraHUD() {
         const bg = parseColor(style.backgroundColor);
         if (bg && bg.a > 0) {
           return bg;
+        }
+        const gradientColor = parseGradientColor(style.backgroundImage);
+        if (gradientColor) {
+          return gradientColor;
+        }
+        const textColor = parseColor(style.color);
+        if (textColor && textColor.a > 0.6) {
+          return textColor;
         }
         current = current.parentElement;
       }
@@ -121,10 +156,11 @@ export default function CameraHUD() {
         if (samples === 0) return;
 
         const avgBrightness = brightnessSum / samples;
+        const clampChannel = (value) => Math.max(0, Math.min(255, value));
         const avgColor = {
-          r: totals.r / samples,
-          g: totals.g / samples,
-          b: totals.b / samples,
+          r: clampChannel(totals.r / samples),
+          g: clampChannel(totals.g / samples),
+          b: clampChannel(totals.b / samples),
         };
 
         setRealTimeData({
@@ -142,11 +178,20 @@ export default function CameraHUD() {
     const interval = setInterval(analyzeContent, 1500);
     window.addEventListener('resize', analyzeContent);
 
+    const attributeObserver = typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(() => analyzeContent())
+      : null;
+    attributeObserver?.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-camera-skin', 'data-camera-preset'],
+    });
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('resize', analyzeContent);
+      attributeObserver?.disconnect();
     };
-  }, [iso, aperture, shutterSpeed, whiteBalance, currentLens, interfaceModules]);
+  }, [iso, aperture, shutterSpeed, whiteBalance, currentLens, interfaceModules, theme, currentSection, activePreset]);
 
   useEffect(() => {
     if (!interfaceModules.audioMeters) return;
@@ -157,6 +202,31 @@ export default function CameraHUD() {
   }, [interfaceModules.audioMeters]);
 
   if (hudVisibility === 'none') return null;
+
+  const accentNeedle = useMemo(() => {
+    const parseAccent = (value) => {
+      if (!value) return { r: 0, g: 255, b: 136 };
+      if (value.startsWith('#')) {
+        const hex = value.replace('#', '');
+        const fullHex = hex.length === 3 ? hex.split('').map((char) => char + char).join('') : hex;
+        const int = parseInt(fullHex, 16);
+        return {
+          r: (int >> 16) & 255,
+          g: (int >> 8) & 255,
+          b: int & 255,
+        };
+      }
+      const rgbMatch = value.match(/rgba?\(([^)]+)\)/i);
+      if (rgbMatch) {
+        const [r, g, b] = rgbMatch[1].split(',').slice(0, 3).map((part) => Number(part.trim()));
+        return { r, g, b };
+      }
+      return { r: 0, g: 255, b: 136 };
+    };
+
+    const { r, g, b } = parseAccent(accentColor);
+    return `rgba(${r}, ${g}, ${b}, 0.85)`;
+  }, [accentColor]);
 
   const formatShutterSpeed = (speed) => {
     if (speed >= 1) return `${speed}"`;
@@ -196,48 +266,51 @@ export default function CameraHUD() {
         <div className="flex items-center gap-6">
           {interfaceModules.analogMeter && (
             <div className="hidden md:flex flex-col items-center mr-4">
-              <div className="mono text-[9px] uppercase tracking-[0.3em] text-white/60 mb-1">Meter</div>
-              <div className="relative w-24 h-12 rounded-b-full border border-green-400/40 bg-black/40 overflow-hidden">
-                <div className="absolute inset-x-4 bottom-2 h-1 bg-gradient-to-r from-green-500 via-green-200 to-green-500/80 opacity-60" />
+              <div className="mono text-[9px] uppercase tracking-[0.3em] opacity-70 text-[color:var(--hud-text)] mb-1">Meter</div>
+              <div
+                className="relative w-24 h-12 rounded-b-full border overflow-hidden"
+                style={{ borderColor: `rgba(${accentRgb}, 0.45)`, backgroundColor: `rgba(${accentRgb}, 0.1)` }}
+              >
+                <div className="absolute inset-x-4 bottom-2 h-1 hud-accent-gradient opacity-80" />
                 <div
-                  className="absolute left-1/2 bottom-0 w-0.5 h-10 bg-green-300 origin-bottom"
-                  style={{ transform: `translateX(-50%) rotate(${analogNeedle}deg)` }}
+                  className="absolute left-1/2 bottom-0 w-0.5 h-10 origin-bottom"
+                  style={{ transform: `translateX(-50%) rotate(${analogNeedle}deg)`, backgroundColor: accentNeedle }}
                 />
               </div>
             </div>
           )}
           {/* ISO */}
           <div className="flex flex-col items-center">
-            <div className="text-[9px] opacity-60">ISO</div>
-            <div className="font-bold">{iso}</div>
+            <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">ISO</div>
+            <div className="font-bold text-[color:var(--hud-text)]">{iso}</div>
           </div>
 
           {/* Aperture */}
           <div className="flex flex-col items-center">
-            <div className="text-[9px] opacity-60">APERTURE</div>
-            <div className="font-bold">{formatAperture(aperture)}</div>
+            <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">APERTURE</div>
+            <div className="font-bold text-[color:var(--hud-text)]">{formatAperture(aperture)}</div>
           </div>
 
           {/* Shutter Speed */}
           <div className="flex flex-col items-center">
-            <div className="text-[9px] opacity-60">SHUTTER</div>
-            <div className="font-bold">{formatShutterSpeed(shutterSpeed)}</div>
+            <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">SHUTTER</div>
+            <div className="font-bold text-[color:var(--hud-text)]">{formatShutterSpeed(shutterSpeed)}</div>
           </div>
 
           {(hudVisibility === 'standard' || hudVisibility === 'full') && (
             <>
               {/* Exposure Compensation */}
               <div className="flex flex-col items-center">
-                <div className="text-[9px] opacity-60">EV</div>
-                <div className="font-bold">
+                <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">EV</div>
+                <div className="font-bold text-[color:var(--hud-text)]">
                   {exposureComp > 0 ? '+' : ''}{exposureComp.toFixed(1)}
                 </div>
               </div>
 
               {/* White Balance */}
               <div className="flex flex-col items-center">
-                <div className="text-[9px] opacity-60">WB</div>
-                <div className="font-bold uppercase text-[10px]">
+                <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">WB</div>
+                <div className="font-bold uppercase text-[10px] text-[color:var(--hud-text)]">
                   {whiteBalance.slice(0, 3)}
                 </div>
               </div>
@@ -248,32 +321,32 @@ export default function CameraHUD() {
             <>
               {/* Focus Mode */}
               <div className="flex flex-col items-center">
-                <div className="text-[9px] opacity-60">FOCUS</div>
-                <div className="font-bold uppercase text-[10px]">
+                <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">FOCUS</div>
+                <div className="font-bold uppercase text-[10px] text-[color:var(--hud-text)]">
                   {focusMode === 'single' ? 'AF-S' : focusMode === 'continuous' ? 'AF-C' : 'MF'}
                 </div>
               </div>
 
               {/* Brightness reading */}
               <div className="flex flex-col items-center">
-                <div className="text-[9px] opacity-60">LUX</div>
-                <div className="font-bold">{realTimeData.avgBrightness}</div>
+                <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">LUX</div>
+                <div className="font-bold text-[color:var(--hud-text)]">{realTimeData.avgBrightness}</div>
               </div>
 
               {/* Scene analyser */}
               <div className="flex flex-col items-center">
-                <div className="text-[9px] opacity-60">SCENE</div>
+                <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">SCENE</div>
                 <div className="flex items-center gap-1">
                   <span
                     className="w-3 h-3 rounded-full border border-white/40"
                     style={{ backgroundColor: realTimeData.avgColor }}
                     aria-label={`Scene color ${realTimeData.avgColor}`}
                   />
-                  <div className="text-[10px] font-semibold flex gap-1">
+                  <div className="text-[10px] font-semibold flex gap-1 text-[color:var(--hud-text)]">
                     {realTimeData.highlightWarning && <span className="text-red-400">HL</span>}
                     {realTimeData.shadowWarning && <span className="text-sky-300">SH</span>}
                     {!realTimeData.highlightWarning && !realTimeData.shadowWarning && (
-                      <span className="text-green-300/80">OK</span>
+                      <span style={{ color: `rgba(${accentRgb}, 0.85)` }}>OK</span>
                     )}
                   </div>
                 </div>
@@ -286,8 +359,8 @@ export default function CameraHUD() {
         <div className="flex items-center gap-4">
           {(hudVisibility === 'standard' || hudVisibility === 'full') && (
             <div className="flex flex-col items-center">
-              <div className="text-[9px] opacity-60">BATTERY</div>
-              <div className="font-bold">{batteryLevel}%</div>
+              <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">BATTERY</div>
+              <div className="font-bold text-[color:var(--hud-text)]">{batteryLevel}%</div>
             </div>
           )}
 
@@ -298,16 +371,19 @@ export default function CameraHUD() {
               {audioLevels.map((level, idx) => (
                 <div
                   key={idx}
-                  className="w-2 rounded bg-gradient-to-t from-green-500/40 via-green-400/70 to-green-200/90"
-                  style={{ height: `${Math.min(100, Math.max(15, level))}%` }}
+                  className="w-2 rounded"
+                  style={{
+                    height: `${Math.min(100, Math.max(15, level))}%`,
+                    background: `linear-gradient(to top, rgba(${accentRgb}, 0.3), rgba(${accentRgb}, 0.8))`,
+                  }}
                 />
               ))}
-              <span className="mono text-[9px] uppercase tracking-[0.3em] text-white/60 ml-2">dB</span>
+              <span className="mono text-[9px] uppercase tracking-[0.3em] opacity-70 text-[color:var(--hud-text)] ml-2">dB</span>
             </div>
           )}
 
           {hudVisibility === 'full' && (
-            <div className="text-[10px] opacity-75">
+            <div className="text-[10px] opacity-75 text-[color:var(--hud-text)]">
               {new Date().toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',

@@ -7,9 +7,6 @@ import BootSequence from '@/components/camera/BootSequence';
 import PowerButton from '@/components/camera/PowerButton';
 import CameraHUD from '@/components/camera/CameraHUD';
 import ControlBoxes from '@/components/camera/ControlBoxes';
-import FlashToggle from '@/components/camera/FlashToggle';
-import CameraModeToggle from '@/components/camera/CameraModeToggle';
-import LensToggle from '@/components/camera/LensToggle';
 import IrisTransition from '@/components/camera/IrisTransition';
 import FocusIndicator from '@/components/camera/FocusIndicator';
 import BottomMenu from '@/components/camera/BottomMenu';
@@ -43,7 +40,7 @@ export default function Home() {
     setCurrentSection,
     currentSection,
     getIsoNoise,
-    getWhiteBalanceFilter,
+    getContentFilter,
   } = useCameraContext();
 
   // Apply theme to document
@@ -53,7 +50,7 @@ export default function Home() {
 
   // Apply ISO noise and white balance effects
   const isoNoise = getIsoNoise();
-  const wbFilter = getWhiteBalanceFilter();
+  const contentFilter = getContentFilter();
 
   // Define all sections - Introduction first
   const sections = [
@@ -119,17 +116,6 @@ export default function Home() {
         onNavigate={setCurrentSection}
       />
 
-      {/* Flash toggle */}
-      <FlashToggle />
-
-      {/* Camera mode toggle */}
-      <div className="fixed top-20 right-4 z-[1600] pointer-events-auto">
-        <CameraModeToggle />
-      </div>
-
-      {/* Lens toggle */}
-      <LensToggle />
-
       {/* Control boxes */}
       <ControlBoxes />
 
@@ -140,7 +126,7 @@ export default function Home() {
       <div className="relative z-[1] h-full w-full overflow-hidden">
         <SectionNavigation
           sections={sections}
-          contentStyle={wbFilter.filter ? { filter: wbFilter.filter } : undefined}
+          contentStyle={contentFilter.filter ? { filter: contentFilter.filter } : undefined}
         />
       </div>
 

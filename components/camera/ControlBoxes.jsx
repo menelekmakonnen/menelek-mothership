@@ -1,6 +1,6 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Aperture,
   Camera,
@@ -32,6 +32,7 @@ export default function ControlBoxes() {
     setCameraMode,
     resetCamera,
     currentLens,
+    cycleLens,
     hasModifiedSettings,
     setHasModifiedSettings,
     setGestureLock,
@@ -42,6 +43,7 @@ export default function ControlBoxes() {
   } = useCameraContext();
   const [isMobile, setIsMobile] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -49,6 +51,23 @@ export default function ControlBoxes() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  const updateRailHeight = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const height = Math.max(72, Math.ceil(el.getBoundingClientRect().height));
+    document.documentElement.style.setProperty('--camera-top-rail-height', `${height}px`);
+  }, []);
+
+  useLayoutEffect(() => {
+    updateRailHeight();
+    window.addEventListener('resize', updateRailHeight);
+    return () => window.removeEventListener('resize', updateRailHeight);
+  }, [updateRailHeight]);
+
+  useEffect(() => {
+    updateRailHeight();
+  }, [updateRailHeight, isMobile, openBoxes, activeMobilePanel, hasModifiedSettings]);
 
   const boxes = [
     {
@@ -301,97 +320,136 @@ export default function ControlBoxes() {
 
   // Desktop layout - horizontal scroll
   if (!isMobile) {
-    return (
-      <div className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
-        <div className="flex items-stretch gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide">
-          <div className="pointer-events-auto flex items-center">
-            <PowerControls />
-          </div>
-          {/* Expandable control boxes */}
-          {boxes.map((box) => {
-            const isOpen = openBoxes.includes(box.id);
-            const Icon = box.icon;
-            const Component = box.component;
-
-            return (
-              <motion.div
-                key={box.id}
-                className={`pointer-events-auto flex-shrink-0 ${isOpen ? 'ring-2 ring-green-400/50 rounded-lg' : ''}`}
-                initial={false}
-              >
-                <div className="camera-hud rounded-lg overflow-hidden max-w-xs">
-                  {/* Header - Always visible */}
-                  <button
-                    onClick={() => handleToggle(box.id)}
-                    className={`w-full px-4 py-2 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs whitespace-nowrap ${isOpen ? 'bg-green-500/10' : ''}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
-                      <span className={`font-bold tracking-wider ${isOpen ? 'text-green-400' : ''}`}>{box.title}</span>
-                    </div>
-                    <motion.div
-                      animate={{ rotate: isOpen ? 180 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ChevronDown className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
-                    </motion.div>
-                  </button>
-
-                  {/* Content - Expandable */}
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                        className="overflow-hidden"
-                      >
-                        <div className="border-t border-white/10 p-4">
-                          <Component />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            );
-          })}
+    const renderRailButton = ({ onClick, icon: Icon, label, sublabel, accent }) => (
+      <motion.button
+        onClick={onClick}
+        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.02 }}
+        className={`camera-hud h-12 px-4 rounded-xl border border-white/10 flex items-center gap-3 transition-all ${accent || ''}`}
+      >
+        <Icon className="w-4 h-4" />
+        <div className="flex flex-col leading-none text-left">
+          <span className="mono text-[10px] uppercase tracking-[0.35em] opacity-70">{sublabel}</span>
+          <span className="mono text-xs font-semibold tracking-wider">{label}</span>
         </div>
+      </motion.button>
+    );
 
-        {/* Reset button */}
-        <div className="fixed top-52 right-4 pointer-events-auto">
-          <AnimatePresence>
-            {hasModifiedSettings && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{
-                  opacity: 1,
-                  scale: 1,
-                  boxShadow: [
-                    '0 0 10px rgba(34, 197, 94, 0.3)',
-                    '0 0 20px rgba(34, 197, 94, 0.6)',
-                    '0 0 10px rgba(34, 197, 94, 0.3)'
-                  ]
-                }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{
-                  boxShadow: {
-                    repeat: Infinity,
-                    duration: 2,
-                    ease: 'easeInOut'
-                  }
-                }}
-                onClick={resetCamera}
-                className="camera-hud px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs font-bold hover:bg-green-500/10 transition-colors"
-                whileTap={{ scale: 0.95 }}
-                title="Reset camera settings"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span className="tracking-wider">RESET</span>
-              </motion.button>
-            )}
-          </AnimatePresence>
+    const flashLabel = flashMode === 'auto' ? 'AUTO' : flashMode === 'on' ? 'FLASH ON' : 'FLASH OFF';
+    const flashAccent = flashMode === 'on' ? 'text-amber-200 border-amber-400/40' : flashMode === 'off' ? 'text-slate-200' : '';
+
+    return (
+      <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1500]">
+        <div className="camera-top-rail pointer-events-none">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-3 flex flex-col gap-3 pointer-events-auto">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <PowerControls orientation="horizontal" variant="inline" />
+                {renderRailButton({
+                  onClick: () => {
+                    setHasModifiedSettings(true);
+                    const modes = ['auto', 'on', 'off'];
+                    const currentIndex = modes.indexOf(flashMode);
+                    const nextIndex = (currentIndex + 1) % modes.length;
+                    setFlashMode(modes[nextIndex]);
+                  },
+                  icon: getFlashIcon(),
+                  label: flashLabel,
+                  sublabel: 'Flash',
+                  accent: flashAccent,
+                })}
+                {renderRailButton({
+                  onClick: () => {
+                    setHasModifiedSettings(true);
+                    setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr');
+                  },
+                  icon: cameraMode === 'dslr' ? Camera : CameraOff,
+                  label: cameraMode === 'dslr' ? 'DSLR' : 'MIRRORLESS',
+                  sublabel: 'Body',
+                  accent: cameraMode === 'mirrorless' ? 'text-cyan-200 border-cyan-400/40' : '',
+                })}
+                {renderRailButton({
+                  onClick: () => {
+                    setHasModifiedSettings(true);
+                    cycleLens();
+                  },
+                  icon: RefreshCw,
+                  label: currentLens.id.toUpperCase(),
+                  sublabel: 'Lens',
+                  accent: 'text-green-200',
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <AnimatePresence>
+                  {hasModifiedSettings && (
+                    <motion.button
+                      key="reset"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={resetCamera}
+                      className="camera-hud h-12 px-4 rounded-xl border border-green-400/50 flex items-center gap-2 mono text-xs font-bold text-green-300 hover:bg-green-500/10"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span className="tracking-wider">RESET</span>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <div className="flex items-stretch gap-3 overflow-x-auto pb-1 scrollbar-hide pointer-events-auto">
+              {boxes.map((box) => {
+                const isOpen = openBoxes.includes(box.id);
+                const Icon = box.icon;
+                const Component = box.component;
+
+                return (
+                  <motion.div
+                    key={box.id}
+                    className={`flex-shrink-0 min-w-[240px] ${isOpen ? 'ring-2 ring-green-400/50 rounded-xl' : ''}`}
+                    initial={false}
+                  >
+                    <div className="camera-hud rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => handleToggle(box.id)}
+                        className={`w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs whitespace-nowrap ${isOpen ? 'bg-green-500/10' : ''}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
+                          <span className={`font-bold tracking-wider ${isOpen ? 'text-green-400' : ''}`}>{box.title}</span>
+                        </div>
+                        <motion.div
+                          animate={{ rotate: isOpen ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
+                        </motion.div>
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="border-t border-white/10 p-4">
+                              <Component />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -399,7 +457,7 @@ export default function ControlBoxes() {
 
   // Mobile layout - icon strip with expandable panels
   return (
-    <div className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
+    <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
       <div className="px-3 pt-4">
         <div className="pointer-events-auto">
           <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 bg-black/75 border border-white/10 rounded-full backdrop-blur-md">

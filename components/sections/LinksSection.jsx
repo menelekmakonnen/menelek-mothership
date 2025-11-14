@@ -63,7 +63,7 @@ export default function LinksSection() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 text-center mb-16"
+          className="text-xl text-[color:var(--text-secondary)] text-center mb-16"
         >
           Follow my journey across platforms
         </motion.p>
@@ -80,16 +80,16 @@ export default function LinksSection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * index }}
-                className="group relative overflow-hidden rounded-2xl p-8 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 hover:border-green-500 transition-all hover:scale-105"
+                className="group relative overflow-hidden rounded-2xl p-8 camera-hud border border-white/10 transition-all hover:scale-105"
                 whileHover={{ y: -8 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${link.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${link.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
 
                 <div className="relative z-10 flex flex-col items-center text-center">
                   <IconBox icon={Icon} gradient={link.gradient} size="lg" className="mb-4" />
 
                   <h3 className="text-2xl font-bold mb-2">{link.name}</h3>
-                  <p className="text-gray-400">{link.description}</p>
+                  <p className="text-[color:var(--text-secondary)]">{link.description}</p>
 
                   <div className="mt-4 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
                     Visit →
