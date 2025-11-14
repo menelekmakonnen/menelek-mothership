@@ -341,9 +341,9 @@ export default function ControlBoxes() {
     return (
       <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1500]">
         <div className="camera-top-rail pointer-events-none">
-          <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-3 flex flex-col gap-3 pointer-events-auto">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-3 pointer-events-auto">
+            <div className="flex items-stretch gap-3 overflow-x-auto pb-1 scrollbar-hide pointer-events-auto">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <PowerControls orientation="horizontal" variant="inline" />
                 {renderRailButton({
                   onClick: () => {
@@ -378,9 +378,6 @@ export default function ControlBoxes() {
                   sublabel: 'Lens',
                   accent: 'text-green-200',
                 })}
-              </div>
-
-              <div className="flex items-center gap-2">
                 <AnimatePresence>
                   {hasModifiedSettings && (
                     <motion.button
@@ -398,9 +395,7 @@ export default function ControlBoxes() {
                   )}
                 </AnimatePresence>
               </div>
-            </div>
 
-            <div className="flex items-stretch gap-3 overflow-x-auto pb-1 scrollbar-hide pointer-events-auto">
               {boxes.map((box) => {
                 const isOpen = openBoxes.includes(box.id);
                 const Icon = box.icon;

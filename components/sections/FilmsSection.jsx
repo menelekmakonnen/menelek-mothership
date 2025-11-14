@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Play, Film, Music } from 'lucide-react';
+import IconBox from '@/components/ui/IconBox';
 import { useCameraContext } from '@/context/CameraContext';
 
 const videos = [
@@ -54,6 +55,21 @@ const videos = [
   },
 ];
 
+const filmThemes = {
+  film: {
+    panel: 'from-indigo-800/85 via-purple-600/75 to-slate-950/85',
+    halo: 'from-purple-300/40 via-indigo-200/10 to-transparent',
+    icon: 'from-purple-400 to-fuchsia-400',
+    iconComponent: Film,
+  },
+  music: {
+    panel: 'from-rose-800/85 via-amber-600/75 to-slate-950/85',
+    halo: 'from-amber-200/45 via-rose-200/15 to-transparent',
+    icon: 'from-amber-400 to-rose-400',
+    iconComponent: Music,
+  },
+};
+
 export default function FilmsSection() {
   const [filter, setFilter] = useState('all');
   const { currentLens } = useCameraContext();
@@ -87,7 +103,7 @@ export default function FilmsSection() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-8"
+          className="text-xl text-[color:var(--text-secondary)] mb-8"
         >
           Cinematic storytelling and visual artistry
         </motion.p>
@@ -120,39 +136,53 @@ export default function FilmsSection() {
 
         {/* Video grid - Responsive to lens zoom */}
         <div className={`grid ${getGridCols()} gap-4 md:gap-6 transition-all duration-700`}>
-          {filteredVideos.map((video, index) => (
-            <motion.div
-              key={video.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
-              className="luxury-card group cursor-pointer"
-            >
-              {/* Thumbnail */}
-              <div className="aspect-video bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg mb-4 flex items-center justify-center text-6xl relative overflow-hidden group-hover:scale-105 transition-transform">
-                {video.thumbnail}
-
-                {/* Play button overlay */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center">
-                    <Play className="w-8 h-8 text-white ml-1" />
+          {filteredVideos.map((video, index) => {
+            const theme = filmThemes[video.type];
+            const Icon = theme.iconComponent;
+            return (
+              <motion.div
+                key={video.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+                className="luxury-card group cursor-pointer"
+              >
+                {/* Thumbnail */}
+                <div className="relative aspect-video overflow-hidden rounded-2xl mb-4">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.panel}`} />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.halo}`} />
+                  <div className="relative z-10 h-full flex flex-col justify-between p-6">
+                    <div className="flex items-center justify-between">
+                      <IconBox icon={Icon} gradient={theme.icon} size="md" className="shadow-xl" />
+                      <div className="px-3 py-1 rounded-full bg-black/35 backdrop-blur text-[11px] mono uppercase tracking-[0.35em] text-white">
+                        {video.year}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-black/35 flex items-center justify-center backdrop-blur">
+                          <Play className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-sm text-white/80 mono uppercase tracking-[0.35em]">
+                          {video.type}
+                        </div>
+                      </div>
+                      <div className="px-3 py-1 rounded-full bg-[rgba(10,12,18,0.85)] text-white font-semibold text-xs mono">
+                        {video.duration}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Duration badge */}
-                <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs mono">
-                  {video.duration}
+                {/* Info */}
+                <h3 className="font-bold text-base md:text-lg mb-2 line-clamp-2">{video.title}</h3>
+                <div className="flex items-center justify-between text-xs md:text-sm text-[color:var(--text-secondary)]">
+                  <span className="capitalize">{video.type}</span>
+                  <span>{video.year}</span>
                 </div>
-              </div>
-
-              {/* Info */}
-              <h3 className="font-bold text-base md:text-lg mb-2 line-clamp-2">{video.title}</h3>
-              <div className="flex items-center justify-between text-xs md:text-sm text-gray-400">
-                <span className="capitalize">{video.type}</span>
-                <span>{video.year}</span>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </div>

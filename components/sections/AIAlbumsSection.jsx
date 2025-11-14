@@ -98,7 +98,7 @@ export default function AIAlbumsSection() {
             focusOnMount
             lockGestures
             onClose={() => setSelectedAlbum(null)}
-            className="fixed left-0 right-0 bottom-0 top-[var(--camera-top-rail-height,112px)] z-[1850] flex items-center justify-center p-6"
+            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+96px)] z-[1850] flex items-center justify-center p-6"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}

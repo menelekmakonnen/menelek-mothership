@@ -194,7 +194,7 @@ export default function PhotographySection() {
               setActiveImage(null);
               setSelectedAlbum(null);
             }}
-            className="fixed left-0 right-0 bottom-0 top-[var(--camera-top-rail-height,112px)] z-[1800] flex items-center justify-center"
+            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+96px)] z-[1800] flex items-center justify-center"
           >
             <motion.div
               initial={{ opacity: 0, y: 40 }}

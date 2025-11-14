@@ -17,32 +17,43 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
   // Filter out the current section
   const visibleSections = sections.filter(section => section.id !== currentSection);
 
+  const topOffset = `calc(var(--camera-top-rail-height, 112px) + 16px)`;
+
   return (
-    <div className="fixed top-24 left-6 z-[1400] flex gap-3 pointer-events-auto">
-      <AnimatePresence mode="popLayout">
-        {visibleSections.map((section, index) => {
-          const Icon = section.icon;
-          return (
-            <motion.button
-              key={section.id}
-              onClick={() => onNavigate(section.id)}
-              className={`bg-gradient-to-br ${section.gradient} p-3 rounded-2xl hover:scale-110 transition-all shadow-lg border border-white/20 group`}
-              whileTap={{ scale: 0.95 }}
-              whileHover={{ y: -2, boxShadow: "0 20px 40px rgba(0, 255, 136, 0.3)" }}
-              initial={{ opacity: 0, scale: 0.8, x: -20 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.8, x: -20 }}
-              transition={{ delay: index * 0.05 }}
-              title={section.name}
-            >
-              <Icon className="w-5 h-5 text-white" />
-              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/90 px-3 py-1 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                {section.name}
-              </span>
-            </motion.button>
-          );
-        })}
-      </AnimatePresence>
+    <div
+      className="fixed z-[1400] w-full px-4 sm:px-6 flex justify-center pointer-events-none"
+      style={{ top: topOffset }}
+    >
+      <div className="pointer-events-auto w-full max-w-4xl">
+        <div className="camera-hud rounded-full border border-white/10 px-4 py-2 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
+            <AnimatePresence mode="popLayout">
+              {visibleSections.map((section, index) => {
+                const Icon = section.icon;
+                return (
+                  <motion.button
+                    key={section.id}
+                    onClick={() => onNavigate(section.id)}
+                    className={`bg-gradient-to-br ${section.gradient} p-3 rounded-2xl transition-all shadow-lg border border-white/20 group flex-shrink-0`}
+                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ y: -2, boxShadow: '0 20px 40px rgba(0, 255, 136, 0.3)' }}
+                    initial={{ opacity: 0, scale: 0.8, x: -20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, x: -20 }}
+                    transition={{ delay: index * 0.05 }}
+                    title={section.name}
+                  >
+                    <Icon className="w-5 h-5 text-white" />
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-[rgba(10,12,18,0.9)] px-3 py-1 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                      {section.name}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

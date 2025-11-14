@@ -59,19 +59,23 @@ const rotatingContent = [
 
 const spotlightStyles = {
   emerald: {
-    gradient: 'linear-gradient(135deg, rgba(18, 42, 36, 0.95) 0%, rgba(12, 32, 42, 0.94) 52%, rgba(6, 14, 24, 0.96) 100%)',
+    panelGradient: 'from-emerald-700/80 via-emerald-500/70 to-slate-950/90',
+    sheenGradient: 'from-emerald-300/40 via-teal-300/10 to-transparent',
     iconGradient: 'from-emerald-400 to-teal-400',
   },
   ember: {
-    gradient: 'linear-gradient(135deg, rgba(48, 20, 28, 0.95) 0%, rgba(54, 24, 18, 0.92) 50%, rgba(20, 12, 16, 0.96) 100%)',
+    panelGradient: 'from-rose-700/80 via-amber-500/70 to-slate-950/90',
+    sheenGradient: 'from-amber-200/40 via-rose-300/10 to-transparent',
     iconGradient: 'from-rose-400 to-amber-400',
   },
   indigo: {
-    gradient: 'linear-gradient(135deg, rgba(28, 22, 60, 0.94) 0%, rgba(18, 30, 64, 0.93) 54%, rgba(10, 14, 28, 0.96) 100%)',
+    panelGradient: 'from-indigo-700/80 via-purple-500/70 to-slate-950/90',
+    sheenGradient: 'from-indigo-300/45 via-sky-200/15 to-transparent',
     iconGradient: 'from-indigo-400 to-purple-400',
   },
   azure: {
-    gradient: 'linear-gradient(135deg, rgba(12, 36, 58, 0.94) 0%, rgba(14, 48, 66, 0.92) 52%, rgba(8, 14, 24, 0.95) 100%)',
+    panelGradient: 'from-sky-700/80 via-cyan-500/70 to-slate-950/90',
+    sheenGradient: 'from-sky-200/45 via-cyan-200/15 to-transparent',
     iconGradient: 'from-sky-400 to-cyan-400',
   },
 };
@@ -85,7 +89,8 @@ const featuredProjects = [
     action: 'View on Amazon',
     href: 'https://www.amazon.com/s?k=The+Last+Ochiyamie',
     stats: ['Novel', 'Worldbuilding', 'Amazon Release'],
-    gradient: spotlightStyles.emerald.gradient,
+    panelGradient: spotlightStyles.emerald.panelGradient,
+    sheenGradient: spotlightStyles.emerald.sheenGradient,
     icon: BookOpen,
     iconGradient: spotlightStyles.emerald.iconGradient,
   },
@@ -97,7 +102,8 @@ const featuredProjects = [
     action: 'Watch on YouTube',
     href: 'https://www.youtube.com/results?search_query=I%27m+Alright+short+film',
     stats: ['Narrative Film', 'Director', 'YouTube Premiere'],
-    gradient: spotlightStyles.ember.gradient,
+    panelGradient: spotlightStyles.ember.panelGradient,
+    sheenGradient: spotlightStyles.ember.sheenGradient,
     icon: Film,
     iconGradient: spotlightStyles.ember.iconGradient,
   },
@@ -109,7 +115,8 @@ const featuredProjects = [
     action: 'Explore the Universe',
     href: 'https://loremakeruniverse.com',
     stats: ['Worldbuilding', 'Interactive Hub', 'Transmedia'],
-    gradient: spotlightStyles.indigo.gradient,
+    panelGradient: spotlightStyles.indigo.panelGradient,
+    sheenGradient: spotlightStyles.indigo.sheenGradient,
     icon: Globe,
     iconGradient: spotlightStyles.indigo.iconGradient,
   },
@@ -121,7 +128,8 @@ const featuredProjects = [
     action: 'Join the Program',
     href: 'https://starterclass.icuni.org',
     stats: ['Education', 'AI Strategy', 'Mentorship'],
-    gradient: spotlightStyles.azure.gradient,
+    panelGradient: spotlightStyles.azure.panelGradient,
+    sheenGradient: spotlightStyles.azure.sheenGradient,
     icon: Sparkles,
     iconGradient: spotlightStyles.azure.iconGradient,
   },
@@ -231,11 +239,13 @@ export default function IntroductionSection() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                  style={{ backgroundImage: activeProject.gradient }}
-                  className="absolute inset-0"
+                  className={`absolute inset-0 bg-gradient-to-br ${activeProject.panelGradient}`}
                 />
               </AnimatePresence>
-              <div className="absolute inset-0 bg-black/10" aria-hidden="true" />
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${activeProject.sheenGradient}`}
+                aria-hidden="true"
+              />
               <AnimatePresence mode="sync">
                 <motion.div
                   key={activeProject.id}
@@ -245,6 +255,10 @@ export default function IntroductionSection() {
                   transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
                   className="relative z-10 p-6 md:p-8 h-full flex flex-col"
                 >
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/35 backdrop-blur text-[11px] mono uppercase tracking-[0.45em] text-white/80 mb-4">
+                    <span>FEATURE</span>
+                    <span className="text-white/60">PROJECT</span>
+                  </div>
                   <IconBox icon={activeProject.icon} gradient={activeProject.iconGradient} size="lg" className="mb-6" />
                   <div className="space-y-4 flex-1">
                     <h4 className="text-3xl font-bold leading-tight">{activeProject.title}</h4>
@@ -255,7 +269,7 @@ export default function IntroductionSection() {
                       {activeProject.stats.map((stat) => (
                         <span
                           key={stat}
-                          className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] mono uppercase"
+                          className="px-3 py-1 rounded-full bg-[rgba(10,12,18,0.55)] border border-white/20 text-[11px] mono uppercase text-white/80"
                         >
                           {stat}
                         </span>
@@ -343,8 +357,10 @@ export default function IntroductionSection() {
                 transition={{ delay: 0.5 + i * 0.08 }}
                 className="camera-hud rounded-2xl border border-white/10 px-4 py-5 text-center"
               >
-                <div className="text-3xl font-semibold text-green-300 mb-1">{stat.value}</div>
-                <div className="text-xs uppercase mono tracking-[0.35em] text-white/60">{stat.label}</div>
+                <div className="text-3xl font-semibold text-[color:var(--accent)] mb-1">{stat.value}</div>
+                <div className="text-xs uppercase mono tracking-[0.35em] text-[color:var(--text-secondary)]">
+                  {stat.label}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -362,13 +378,10 @@ export default function IntroductionSection() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.65 + i * 0.05 }}
                   whileHover={{ y: -6 }}
-                  className="camera-hud rounded-2xl border border-white/10 px-4 py-4 flex items-center gap-4 group"
+                  className="camera-hud rounded-2xl border border-white/10 p-4 flex items-center justify-center group"
                 >
                   <IconBox icon={Icon} gradient={link.gradient} size="md" />
-                  <div>
-                    <div className="font-semibold">{link.name}</div>
-                    <div className="text-[12px] text-[color:var(--text-secondary)]">{link.tagline}</div>
-                  </div>
+                  <span className="sr-only">{link.name}</span>
                 </motion.a>
               );
             })}
