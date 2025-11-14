@@ -31,6 +31,7 @@ export default function ControlBoxes() {
     cameraMode,
     setCameraMode,
     resetCamera,
+    ensurePartialReset,
     currentLens,
     cycleLens,
     hasModifiedSettings,
@@ -44,6 +45,8 @@ export default function ControlBoxes() {
   const [isMobile, setIsMobile] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
   const containerRef = useRef(null);
+  const buttonRefs = useRef({});
+  const [boxAlignment, setBoxAlignment] = useState({});
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -68,6 +71,23 @@ export default function ControlBoxes() {
   useEffect(() => {
     updateRailHeight();
   }, [updateRailHeight, isMobile, openBoxes, activeMobilePanel, hasModifiedSettings]);
+
+  const computeBoxAlignment = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const next = {};
+    Object.entries(buttonRefs.current).forEach(([id, node]) => {
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      next[id] = rect.left + 320 > window.innerWidth;
+    });
+    setBoxAlignment(next);
+  }, []);
+
+  useLayoutEffect(() => {
+    computeBoxAlignment();
+    window.addEventListener('resize', computeBoxAlignment);
+    return () => window.removeEventListener('resize', computeBoxAlignment);
+  }, [computeBoxAlignment, openBoxes, isMobile]);
 
   const boxes = [
     {
@@ -297,22 +317,38 @@ export default function ControlBoxes() {
   // On mobile, close all other boxes when opening one
   const handleToggle = (boxId) => {
     if (isMobile) {
-      // Only allow one box open at a time on mobile
       if (openBoxes.includes(boxId)) {
-        toggleBox(boxId); // Close it
+        toggleBox(boxId);
+        ensurePartialReset();
       } else {
-        // Close all others and open this one
-        openBoxes.forEach(id => toggleBox(id));
+        let closedOther = false;
+        openBoxes.forEach((id) => {
+          if (id !== boxId) {
+            toggleBox(id);
+            closedOther = true;
+          }
+        });
+        if (closedOther) {
+          ensurePartialReset();
+        }
         toggleBox(boxId);
       }
     } else {
       const isOpen = openBoxes.includes(boxId);
       if (isOpen) {
         toggleBox(boxId);
+        ensurePartialReset();
       } else {
+        let closedOther = false;
         exclusiveBoxIds
           .filter((id) => id !== boxId && openBoxes.includes(id))
-          .forEach((id) => toggleBox(id));
+          .forEach((id) => {
+            toggleBox(id);
+            closedOther = true;
+          });
+        if (closedOther) {
+          ensurePartialReset();
+        }
         toggleBox(boxId);
       }
     }
@@ -342,9 +378,83 @@ export default function ControlBoxes() {
       <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1500]">
         <div className="camera-top-rail pointer-events-none">
           <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-3 pointer-events-auto">
-            <div className="flex items-stretch gap-3 overflow-x-auto pb-1 scrollbar-hide pointer-events-auto">
+            <div className="flex items-center gap-3 overflow-x-auto overflow-y-visible pb-1 scrollbar-hide pointer-events-auto">
               <div className="flex items-center gap-2 flex-shrink-0">
                 <PowerControls orientation="horizontal" variant="inline" />
+              </div>
+
+              {boxes.map((box) => {
+                const isOpen = openBoxes.includes(box.id);
+                const Icon = box.icon;
+                const Component = box.component;
+                const alignRight = boxAlignment[box.id];
+
+                return (
+                  <div
+                    key={box.id}
+                    className="relative flex-shrink-0"
+                    ref={(node) => {
+                      if (node) {
+                        buttonRefs.current[box.id] = node;
+                      } else {
+                        delete buttonRefs.current[box.id];
+                      }
+                    }}
+                  >
+                    <motion.button
+                      onClick={() => handleToggle(box.id)}
+                      className={`camera-hud h-12 px-4 rounded-xl border border-white/10 flex items-center gap-3 transition-all whitespace-nowrap ${
+                        isOpen ? 'bg-green-500/10 border-green-400/40 text-green-200' : ''
+                      }`}
+                      whileTap={{ scale: 0.96 }}
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <div className="flex flex-col text-left leading-none">
+                        <span className="mono text-[10px] uppercase tracking-[0.35em] opacity-70">Control</span>
+                        <span className="mono text-xs font-semibold tracking-wider">{box.title}</span>
+                      </div>
+                      <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                        <ChevronDown className="w-4 h-4" />
+                      </motion.div>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -12 }}
+                          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                          className="absolute z-[1600] mt-3 w-[320px]"
+                          style={{ left: alignRight ? 'auto' : 0, right: alignRight ? 0 : 'auto' }}
+                        >
+                          <div className="camera-hud rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                              <div className="flex items-center gap-3">
+                                <Icon className="w-4 h-4" />
+                                <span className="mono text-xs tracking-[0.3em]">{box.title}</span>
+                              </div>
+                              <button
+                                onClick={() => handleToggle(box.id)}
+                                className="rounded-full p-1.5 hover:bg-white/10"
+                                aria-label={`Close ${box.title}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="p-4 max-h-[60vh] overflow-y-auto">
+                              <Component />
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {renderRailButton({
                   onClick: () => {
                     setHasModifiedSettings(true);
@@ -395,54 +505,6 @@ export default function ControlBoxes() {
                   )}
                 </AnimatePresence>
               </div>
-
-              {boxes.map((box) => {
-                const isOpen = openBoxes.includes(box.id);
-                const Icon = box.icon;
-                const Component = box.component;
-
-                return (
-                  <motion.div
-                    key={box.id}
-                    className={`flex-shrink-0 min-w-[240px] ${isOpen ? 'ring-2 ring-green-400/50 rounded-xl' : ''}`}
-                    initial={false}
-                  >
-                    <div className="camera-hud rounded-xl overflow-hidden">
-                      <button
-                        onClick={() => handleToggle(box.id)}
-                        className={`w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors mono text-xs whitespace-nowrap ${isOpen ? 'bg-green-500/10' : ''}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Icon className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
-                          <span className={`font-bold tracking-wider ${isOpen ? 'text-green-400' : ''}`}>{box.title}</span>
-                        </div>
-                        <motion.div
-                          animate={{ rotate: isOpen ? 180 : 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <ChevronDown className={`w-4 h-4 ${isOpen ? 'text-green-400' : ''}`} />
-                        </motion.div>
-                      </button>
-
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                            className="overflow-hidden"
-                          >
-                            <div className="border-t border-white/10 p-4">
-                              <Component />
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.div>
-                );
-              })}
             </div>
           </div>
         </div>

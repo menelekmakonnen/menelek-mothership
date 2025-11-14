@@ -79,6 +79,7 @@ export const CameraProvider = ({ children }) => {
 
   // Track if any settings have been changed (for showing reset button)
   const [hasModifiedSettings, setHasModifiedSettings] = useState(false);
+  const [resetStage, setResetStage] = useState(0);
 
   // Lock gestures when secondary layers are active
   const [gestureLockMap, setGestureLockMap] = useState({});
@@ -261,7 +262,7 @@ export const CameraProvider = ({ children }) => {
   }, []);
 
   // Reset all camera settings to defaults
-  const resetCamera = useCallback(() => {
+  const performFullReset = useCallback(() => {
     setIso(400);
     setAperture(2.8);
     setShutterSpeed(125);
@@ -283,7 +284,35 @@ export const CameraProvider = ({ children }) => {
     setHasModifiedSettings(false);
     setFocusedLayerId(null);
     setFocusedLayerState(null);
+    setResetStage(0);
   }, [applyInterfaceProfile, baseInterfaceProfiles]);
+
+  const partialReset = useCallback(() => {
+    setOpenBoxes([]);
+    setRuleOfThirds('off');
+    setShowHistogram(false);
+    setHasModifiedSettings(true);
+  }, []);
+
+  const resetCamera = useCallback(() => {
+    if (resetStage === 0) {
+      partialReset();
+      setResetStage(1);
+    } else {
+      performFullReset();
+    }
+  }, [partialReset, performFullReset, resetStage]);
+
+  const ensurePartialReset = useCallback(() => {
+    partialReset();
+    setResetStage((stage) => (stage === 0 ? 1 : stage));
+  }, [partialReset]);
+
+  useEffect(() => {
+    if (!hasModifiedSettings && resetStage !== 0) {
+      setResetStage(0);
+    }
+  }, [hasModifiedSettings, resetStage]);
 
   // Control boxes management (max 2 open)
   const toggleBox = useCallback((boxId) => {
@@ -688,6 +717,8 @@ export const CameraProvider = ({ children }) => {
     powerOff,
     setStandby,
     resetCamera,
+    ensurePartialReset,
+    resetStage,
     hasBooted,
 
     // Camera mode

@@ -11,7 +11,6 @@ import {
   FileText,
   Link2,
   Move,
-  ArrowDownToLine,
 } from 'lucide-react';
 
 const sections = [
@@ -121,7 +120,7 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
     [navSize, viewport, readCameraRailHeight]
   );
 
-  const hiddenOffset = Math.max(0, navSize.height - 28);
+  const hiddenOffset = Math.max(0, navSize.height - 18);
   const activeFloatX = !isCollapsed && isFloating ? floatPosition.x : 0;
   const activeFloatY = !isCollapsed && isFloating ? floatPosition.y : 0;
 
@@ -168,6 +167,11 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
         return;
       }
 
+      if (isCollapsed && info.offset.y > 28 && Math.abs(info.offset.x) < 80) {
+        markInteraction();
+        return;
+      }
+
       const clamped = clampFloatPosition(attempted.x, attempted.y);
 
       if (Math.abs(clamped.x) > 2 || Math.abs(clamped.y) > 2) {
@@ -195,13 +199,6 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
     },
     [dragControls, isCollapsed, markInteraction]
   );
-
-  const handleDock = useCallback(() => {
-    clearHideTimer();
-    setIsCollapsed(true);
-    setIsFloating(false);
-    setFloatPosition({ x: 0, y: 0 });
-  }, [clearHideTimer]);
 
   const handleNavigate = useCallback(
     (id) => {
@@ -231,8 +228,13 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
           onFocusCapture={markInteraction}
           onPointerLeave={scheduleHide}
           onBlurCapture={scheduleHide}
+          onPointerDownCapture={() => {
+            if (isCollapsed) {
+              markInteraction();
+            }
+          }}
         >
-          <div className="camera-hud rounded-full border border-white/10 px-3 sm:px-4 py-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl bg-[color:var(--nav-blend-color)]/90">
+          <div className="camera-hud rounded-full border border-white/10 px-3 sm:px-4 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl bg-[color:var(--nav-blend-color)]/90">
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
@@ -273,17 +275,6 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
                   })}
                 </AnimatePresence>
               </div>
-
-              <div className="h-6 w-px bg-white/10" aria-hidden="true" />
-
-              <button
-                type="button"
-                onClick={handleDock}
-                className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/20 transition-colors"
-                aria-label="Hide navigation bar"
-              >
-                <ArrowDownToLine className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </motion.div>
