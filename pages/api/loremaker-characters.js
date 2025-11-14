@@ -1,3 +1,5 @@
+import { buildDriveImageVariants } from '@/lib/googleDrive';
+
 const SHEET_ID = '1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=tsv`;
 
@@ -20,16 +22,6 @@ const IMAGE_COLUMNS = [
   'Gallery Image 15',
 ];
 
-function buildDriveImageUrls(id) {
-  if (!id) return null;
-  return {
-    id,
-    thumb: `https://drive.google.com/thumbnail?id=${id}&sz=w1600-h1600`,
-    view: `https://drive.google.com/uc?export=view&id=${id}`,
-    download: `https://drive.google.com/uc?export=download&id=${id}`,
-  };
-}
-
 function normaliseDriveEntry(url) {
   if (!url) return null;
   const trimmed = url.trim();
@@ -39,11 +31,13 @@ function normaliseDriveEntry(url) {
     return {
       id: trimmed,
       thumb: trimmed,
+      preview: trimmed,
       view: trimmed,
       download: trimmed,
+      full: trimmed,
     };
   }
-  return buildDriveImageUrls(idMatch[0]);
+  return buildDriveImageVariants(idMatch[0]);
 }
 
 function parseTsv(tsv) {
@@ -102,13 +96,15 @@ export default async function handler(req, res) {
           shortDescription: row['Short Description'] || '',
           longDescription: row['Long Description'] || '',
           stories: row.Stories || '',
-          coverImage: coverAsset.view || coverAsset.thumb,
-          coverImageFull: coverAsset.download || coverAsset.view || coverAsset.thumb,
+          coverImage: coverAsset.preview || coverAsset.view || coverAsset.thumb,
+          coverImageFull: coverAsset.full || coverAsset.preview || coverAsset.view || coverAsset.thumb,
           galleryImages: images.map((image) => ({
             id: image.id,
             thumb: image.thumb,
+            preview: image.preview,
             view: image.view,
             download: image.download,
+            full: image.full,
           })),
         };
       })

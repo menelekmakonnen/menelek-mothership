@@ -161,48 +161,53 @@ export default function LinksSection() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 * groupIndex }}
-            className="space-y-5"
+            className="relative overflow-hidden rounded-4xl border border-white/10 bg-[rgba(12,14,22,0.85)] p-6 sm:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
           >
-            <div className="text-left">
-              <p className="mono text-[11px] uppercase tracking-[0.5em] text-[color:var(--text-tertiary)]">{group.title}</p>
-              <h2 className="mt-2 text-2xl font-semibold text-[color:var(--text-primary)]">{group.description}</h2>
-            </div>
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${group.accent.panel} opacity-70`} />
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${group.accent.halo}`} />
+            <div className="relative z-10 space-y-6">
+              <div className="text-left space-y-2">
+                <p className="mono text-[11px] uppercase tracking-[0.5em] text-white/70">{group.title}</p>
+                <h2 className="text-2xl font-semibold text-white/90">{group.description}</h2>
+              </div>
 
-            <div className="flex flex-col gap-4">
-              {group.items.map((item, itemIndex) => {
-                const external = isExternalLink(item.href);
-                const Icon = item.icon || Globe;
-                return (
-                  <motion.a
-                    key={item.label}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: itemIndex * 0.05 }}
-                    href={item.href}
-                    target={external ? '_blank' : undefined}
-                    rel={external ? 'noopener noreferrer' : undefined}
-                    className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-[rgba(10,12,18,0.78)] px-5 py-4 transition-all hover:-translate-y-1 hover:border-white/25 hover:bg-[rgba(14,18,26,0.9)]"
-                  >
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/12 via-white/5 to-white/0 border border-white/15">
-                      <Icon className="h-5 w-5 text-[color:var(--text-primary)]" />
+              <div className="grid gap-4">
+                {group.items.map((item, itemIndex) => {
+                  const external = isExternalLink(item.href);
+                  const Icon = item.icon || Globe;
+                  return (
+                    <motion.a
+                      key={item.label}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: itemIndex * 0.05 }}
+                      href={item.href}
+                      target={external ? '_blank' : undefined}
+                      rel={external ? 'noopener noreferrer' : undefined}
+                    className="group flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-5 py-4 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-white/40 hover:bg-white/10"
+                    >
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-[rgba(10,12,18,0.55)] shadow-[0_12px_30px_rgba(0,0,0,0.45)] transition-colors group-hover:border-white/40">
+                      <Icon className="h-5 w-5 text-white/85" />
                     </div>
                     <div className="flex-1 text-left">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-lg font-semibold text-[color:var(--text-primary)]">{item.label}</p>
+                          <p className="text-lg font-semibold text-white/95">{item.label}</p>
                           {item.meta && (
-                            <p className="mono text-[10px] uppercase tracking-[0.4em] text-[color:var(--text-tertiary)]">{item.meta}</p>
+                            <p className="mono text-[10px] uppercase tracking-[0.4em] text-white/60">{item.meta}</p>
                           )}
                         </div>
-                        <ArrowUpRight className="h-4 w-4 text-[color:var(--text-secondary)] transition-colors group-hover:text-[color:var(--accent-300)]" />
+                        <ArrowUpRight className="h-4 w-4 text-white/60 transition-colors group-hover:text-white" />
                       </div>
                       {item.description && (
-                        <p className="mt-2 text-sm text-[color:var(--text-secondary)] leading-relaxed">{item.description}</p>
+                        <p className="mt-2 text-sm text-white/75 leading-relaxed">{item.description}</p>
                       )}
                     </div>
                   </motion.a>
                 );
               })}
+              </div>
             </div>
           </motion.section>
         ))}

@@ -86,7 +86,7 @@ export default function LoremakerSection() {
     if (!activeCharacter) return null;
     const galleryAsset = activeCharacter.galleryImages?.[activeImageIndex] || null;
     if (galleryAsset) {
-      return galleryAsset.view || galleryAsset.thumb;
+      return galleryAsset.full || galleryAsset.preview || galleryAsset.view || galleryAsset.thumb;
     }
     return activeCharacter.coverImageFull || activeCharacter.coverImage || null;
   }, [activeCharacter, activeImageIndex]);

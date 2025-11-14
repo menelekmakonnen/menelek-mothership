@@ -32,13 +32,16 @@ const albumMeta = {
 
 const buildPreviewSrc = (item, size = 'w1600-h1600') => {
   if (!item) return null;
+  if (item.imageVariants) {
+    return item.imageVariants.preview || item.imageVariants.full || item.imageVariants.thumb;
+  }
   if (item.previewUrl) return item.previewUrl;
   if (item.thumbnail) return item.thumbnail;
   if (item.thumb) return item.thumb;
   if (item.viewUrl) return item.viewUrl;
   if (item.downloadUrl) return item.downloadUrl;
   if (item.id) {
-    return `https://drive.google.com/thumbnail?id=${item.id}&sz=${size}`;
+    return `https://lh3.googleusercontent.com/d/${item.id}=${size}`;
   }
   return null;
 };
@@ -373,7 +376,7 @@ export default function PhotographySection() {
 
   const activeAlbumMeta = activeAlbum ? albumMeta[activeAlbum.title] || null : null;
   const activeImageSrc = activeImage
-    ? activeImage.viewUrl || activeImage.downloadUrl || buildPreviewSrc(activeImage, 'w2400-h2400')
+    ? activeImage.imageVariants?.full || activeImage.viewUrl || activeImage.downloadUrl || buildPreviewSrc(activeImage, 'w2400-h2400')
     : null;
 
   return (

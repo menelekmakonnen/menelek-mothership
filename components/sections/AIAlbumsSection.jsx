@@ -8,12 +8,15 @@ const AI_ALBUM_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
 
 const getPreviewSrc = (item) => {
   if (!item) return null;
+  if (item.imageVariants) {
+    return item.imageVariants.preview || item.imageVariants.full || item.imageVariants.thumb;
+  }
   if (item.previewUrl) return item.previewUrl;
   if (item.thumbnail) return item.thumbnail;
   if (item.viewUrl) return item.viewUrl;
   if (item.downloadUrl) return item.downloadUrl;
   if (item.id) {
-    return `https://drive.google.com/thumbnail?id=${item.id}&sz=w1600-h1600`;
+    return `https://lh3.googleusercontent.com/d/${item.id}=w1600-h1600`;
   }
   return null;
 };
@@ -251,7 +254,13 @@ export default function AIAlbumsSection() {
               className="relative flex h-full w-full items-center justify-center bg-[rgba(4,6,12,0.94)]"
             >
               <img
-                src={activeImage.viewUrl || activeImage.downloadUrl || getPreviewSrc(activeImage)}
+                src={
+                  activeImage.imageVariants?.full ||
+                  activeImage.imageVariants?.preview ||
+                  activeImage.viewUrl ||
+                  activeImage.downloadUrl ||
+                  getPreviewSrc(activeImage)
+                }
                 alt={activeImage.title}
                 className="max-h-full max-w-full object-contain"
               />

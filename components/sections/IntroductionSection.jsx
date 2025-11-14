@@ -441,7 +441,7 @@ export default function IntroductionSection() {
         transition={{ duration: 0.6, delay: 0.3 }}
         className="grid grid-flow-col auto-cols-fr gap-3 rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.75)] p-4 overflow-x-auto scrollbar-hide"
       >
-        {socialLinks.map((link) => {
+        {socialLinks.slice(0, 8).map((link) => {
           const Icon = link.icon;
           return (
             <a
