@@ -1,7 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Compass, Loader2, Play, Zap, ChevronDown } from 'lucide-react';
+import {
+  ArrowLeft,
+  Brain,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Play,
+  X,
+  Zap,
+  Compass,
+} from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
+import BlurLayer from '@/components/ui/BlurLayer';
+import { parseMediaLink } from '@/lib/mediaLinks';
 
 const editCollections = [
   {
@@ -111,7 +125,9 @@ const previewFallback = [
 export default function VideoEditsSection() {
   const [previews, setPreviews] = useState({});
   const initiatedRef = useRef(new Set());
-  const [collapsedSections, setCollapsedSections] = useState([]);
+  const [collapsedSections, setCollapsedSections] = useState(() => editCollections.map((collection) => collection.id));
+  const [activeSectionId, setActiveSectionId] = useState(null);
+  const [activeClipIndex, setActiveClipIndex] = useState(null);
 
   useEffect(() => {
     const urls = editCollections.flatMap((collection) => collection.links);
@@ -135,28 +151,103 @@ export default function VideoEditsSection() {
     });
   }, []);
 
-  const toggleCollapsed = useCallback((sectionId) => {
-    setCollapsedSections((prev) =>
-      prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId]
-    );
+  const closeQuickView = useCallback(() => {
+    setActiveSectionId(null);
+    setActiveClipIndex(null);
   }, []);
 
-  const renderClipCard = useCallback(
-    (url, index) => {
+  const toggleCollapsed = useCallback(
+    (sectionId) => {
+      setCollapsedSections((prev) => {
+        const isCollapsed = prev.includes(sectionId);
+        const next = isCollapsed ? prev.filter((id) => id !== sectionId) : [...prev, sectionId];
+        if (!isCollapsed && activeSectionId === sectionId) {
+          closeQuickView();
+        }
+        return next;
+      });
+    },
+    [activeSectionId, closeQuickView]
+  );
+
+  const openQuickView = useCallback((sectionId, index) => {
+    setActiveSectionId(sectionId);
+    setActiveClipIndex(index);
+  }, []);
+
+  const activeCollection = useMemo(
+    () => editCollections.find((collection) => collection.id === activeSectionId) || null,
+    [activeSectionId]
+  );
+
+  const activeLinks = activeCollection?.links || [];
+
+  useEffect(() => {
+    if (!activeCollection) return;
+    if (activeClipIndex === null) {
+      setActiveClipIndex(0);
+      return;
+    }
+    if (activeClipIndex >= activeLinks.length) {
+      setActiveClipIndex(0);
+    }
+  }, [activeCollection, activeClipIndex, activeLinks.length]);
+
+  useEffect(() => {
+    if (activeSectionId === null || activeClipIndex === null) return;
+
+    const handleKeyDown = (event) => {
+      if (!activeCollection) return;
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        setActiveClipIndex((index) => ((index ?? 0) + 1) % activeLinks.length);
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setActiveClipIndex((index) => ((index ?? activeLinks.length) - 1 + activeLinks.length) % activeLinks.length);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeQuickView();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSectionId, activeClipIndex, activeCollection, activeLinks.length, closeQuickView]);
+
+  const getClipPreview = useCallback(
+    (url, collection, index) => {
       const preview = previews[url];
-      const image = preview?.data?.image;
-      const title = preview?.data?.title || `Clip ${index + 1}`;
-      const description = preview?.data?.description;
-      const status = preview?.status || 'idle';
+      const mediaMeta = parseMediaLink(url);
+      const fallbackImage = mediaMeta?.thumbnailUrl || null;
+      const title = preview?.data?.title || `${collection.title} · Clip ${index + 1}`;
+      const description =
+        preview?.data?.description || collection.description || 'Tap to explore this reel inside the camera viewer.';
+
+      return {
+        title,
+        description,
+        image: preview?.data?.image || fallbackImage,
+        status: preview?.status || (fallbackImage ? 'fallback' : 'idle'),
+        media: mediaMeta,
+      };
+    },
+    [previews]
+  );
+
+  const renderClipCard = useCallback(
+    (collection, url, index) => {
+      const { title, description, image, status } = getClipPreview(url, collection, index);
       const fallbackStyle = previewFallback[index % previewFallback.length];
 
       return (
-        <a
+        <motion.button
           key={url}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,10,16,0.82)] shadow-[0_25px_70px_rgba(0,0,0,0.55)] transition-transform hover:-translate-y-2"
+          type="button"
+          onClick={() => openQuickView(collection.id, index)}
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: index * 0.03 }}
+          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,10,16,0.82)] shadow-[0_25px_70px_rgba(0,0,0,0.55)] transition-transform hover:-translate-y-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-400)]"
         >
           <div className="relative aspect-[4/5] w-full overflow-hidden">
             <div
@@ -169,10 +260,15 @@ export default function VideoEditsSection() {
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 flex items-center gap-2">
               {status === 'loading' && <Loader2 className="h-5 w-5 animate-spin text-white/80" />}
+              {status === 'fallback' && (
+                <span className="rounded-full bg-black/60 px-2 py-1 text-[9px] mono uppercase tracking-[0.4em] text-white/70">
+                  Live
+                </span>
+              )}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 space-y-2 p-4">
+            <div className="absolute bottom-0 left-0 right-0 space-y-2 p-4 text-left">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
                 Reel
               </span>
@@ -180,11 +276,133 @@ export default function VideoEditsSection() {
               {description && <p className="text-xs text-white/70 line-clamp-2">{description}</p>}
             </div>
           </div>
-        </a>
+        </motion.button>
       );
     },
-    [previews]
+    [getClipPreview, openQuickView]
   );
+
+  const renderQuickView = () => {
+    if (!activeCollection || activeClipIndex === null) return null;
+    const clipUrl = activeLinks[activeClipIndex];
+    const clipMeta = clipUrl ? getClipPreview(clipUrl, activeCollection, activeClipIndex) : null;
+    const embedUrl = clipMeta?.media?.embedUrl;
+    const provider = clipMeta?.media?.provider || 'unknown';
+
+    return (
+      <BlurLayer
+        key={`${activeCollection.id}-clip-${activeClipIndex}`}
+        layerId={`video-edit-${activeCollection.id}`}
+        depth={1700}
+        type="interactive"
+        focusOnMount
+        lockGestures
+        onClose={closeQuickView}
+        className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1880] flex items-center justify-center p-6"
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0.9, scale: 0.96 }}
+          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+          className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,14,0.94)] shadow-[0_35px_100px_rgba(0,0,0,0.65)]"
+        >
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={closeQuickView}
+                className="flex items-center gap-2 text-xs mono uppercase tracking-[0.35em] text-green-300 hover:text-green-100"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to reels
+              </button>
+              <h2 className="text-2xl font-semibold text-white">{activeCollection.title}</h2>
+              <p className="text-sm text-white/65">{activeCollection.description}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeQuickView}
+              className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+              aria-label="Close quick view"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+            <div className="grid h-full gap-6 lg:grid-cols-[2fr_1fr]">
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/70">
+                {embedUrl ? (
+                  <iframe
+                    key={embedUrl}
+                    src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                    className="h-full w-full"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title={clipMeta?.title || 'Video playback'}
+                  />
+                ) : (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                    style={{
+                      backgroundImage: clipMeta?.image ? `url(${clipMeta.image})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    {!clipMeta?.image && <Play className="h-14 w-14" />}
+                  </div>
+                )}
+              </div>
+              <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
+                    {provider === 'youtube' ? 'YouTube' : provider === 'instagram' ? 'Instagram' : 'Clip'}
+                    <span className="rounded-full bg-white/10 px-2 py-[2px] text-[9px] mono">
+                      {activeClipIndex + 1} / {activeLinks.length}
+                    </span>
+                  </span>
+                  <h3 className="text-xl font-semibold text-white">{clipMeta?.title}</h3>
+                  {clipMeta?.description && (
+                    <p className="text-sm text-white/70 leading-relaxed">{clipMeta.description}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveClipIndex((index) => ((index ?? 0) - 1 + activeLinks.length) % activeLinks.length)
+                    }
+                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Prev
+                  </button>
+                  {clipUrl && (
+                    <a
+                      href={clipUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs mono uppercase tracking-[0.35em] text-white/80 hover:text-white"
+                    >
+                      View on platform
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveClipIndex((index) => ((index ?? 0) + 1) % activeLinks.length)}
+                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </motion.div>
+      </BlurLayer>
+    );
+  };
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
@@ -199,72 +417,61 @@ export default function VideoEditsSection() {
             transition={{ delay: 0.12 }}
             className="text-xl text-[color:var(--text-secondary)] max-w-3xl"
           >
-            Each reel opens into its Instagram showcase, complete with live thumbnails and metadata pulled straight from the source links.
+            Each category unfolds live reels from Instagram — open a set to enter the in-camera quick view, then scrub through clips with your keyboard or on-screen controls.
           </motion.p>
         </header>
 
-        {editCollections.map((collection, index) => {
-          const Icon = collection.icon;
-          const theme = collection.gradient;
-          const isCollapsed = collapsedSections.includes(collection.id);
-          return (
-            <section key={collection.id} className="space-y-6">
-              <motion.div
+        <div className="space-y-10">
+          {editCollections.map((collection, sectionIndex) => {
+            const collapsed = collapsedSections.includes(collection.id);
+            return (
+              <motion.section
+                key={collection.id}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 * index }}
-                className="rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.85)] shadow-[0_30px_90px_rgba(0,0,0,0.55)]"
+                transition={{ delay: 0.08 * sectionIndex }}
+                className="overflow-hidden rounded-3xl border border-white/10 bg-[color:var(--surface-raised)]/85 shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
               >
                 <button
                   type="button"
                   onClick={() => toggleCollapsed(collection.id)}
-                  className="relative w-full overflow-hidden rounded-t-3xl text-left"
-                  aria-expanded={!isCollapsed}
+                  className="relative flex w-full items-center justify-between gap-3 bg-gradient-to-br from-white/5 via-white/0 to-white/5 px-6 py-5 text-left transition-colors hover:bg-white/10"
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.panel}`} />
-                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.halo}`} />
-                  <div className="relative z-10 flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-4">
-                      <IconBox icon={Icon} gradient={theme.icon} size="lg" className="shadow-xl" />
-                      <div>
-                        <p className="mono text-[11px] uppercase tracking-[0.35em] text-white/70">Signature Series</p>
-                        <div className="flex items-center gap-3">
-                          <h2 className="text-2xl font-semibold text-white">{collection.title}</h2>
-                          <motion.span
-                            animate={{ rotate: isCollapsed ? 180 : 0 }}
-                            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"
-                          >
-                            <ChevronDown className="h-4 w-4 text-white" />
-                          </motion.span>
-                        </div>
-                      </div>
+                  <div className="flex items-center gap-4">
+                    <IconBox icon={collection.icon} gradient={collection.gradient.icon} size="sm" />
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">{collection.title}</h2>
+                      <p className="text-sm text-white/70 max-w-2xl">{collection.description}</p>
                     </div>
-                    <p className="max-w-2xl text-sm text-white/75 md:text-right">{collection.description}</p>
                   </div>
+                  <motion.div animate={{ rotate: collapsed ? -90 : 0 }} transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}>
+                    <ChevronDown className="h-6 w-6 text-white/70" />
+                  </motion.div>
                 </button>
+
                 <AnimatePresence initial={false}>
-                  {!isCollapsed && (
+                  {!collapsed && (
                     <motion.div
-                      key={`${collection.id}-grid`}
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                      key="section-content"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                      className="px-6 pb-6"
                     >
-                      <div className="p-6">
-                        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                          {collection.links.map((url, clipIndex) => renderClipCard(url, clipIndex))}
-                        </div>
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {collection.links.map((url, index) => renderClipCard(collection, url, index))}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
-            </section>
-          );
-        })}
+              </motion.section>
+            );
+          })}
+        </div>
       </div>
+
+      <AnimatePresence>{renderQuickView()}</AnimatePresence>
     </div>
   );
 }

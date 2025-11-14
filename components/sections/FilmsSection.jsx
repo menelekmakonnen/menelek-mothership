@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Film, Music, Clapperboard, Orbit, Loader2 } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
 import { useCameraContext } from '@/context/CameraContext';
+import { parseMediaLink } from '@/lib/mediaLinks';
 
 const projects = [
   {
@@ -151,6 +152,21 @@ export default function FilmsSection() {
     return projects.filter((project) => project.category === filter);
   }, [filter]);
 
+  const resolvePreview = useCallback(
+    (project) => {
+      const preview = previews[project.link];
+      const mediaMeta = parseMediaLink(project.link);
+      const fallbackImage = mediaMeta?.thumbnailUrl || null;
+
+      return {
+        status: preview?.status || (fallbackImage ? 'fallback' : 'idle'),
+        image: preview?.data?.image || fallbackImage,
+        description: preview?.data?.description || project.description,
+      };
+    },
+    [previews]
+  );
+
   // Calculate grid columns based on lens zoom
   // zoom: 0.7 (widest) -> 4 cols, 0.85 -> 3 cols, 0.9-1.0 -> 3 cols, 1.2+ -> 2 cols
   const getGridCols = () => {
@@ -206,10 +222,7 @@ export default function FilmsSection() {
           {filteredVideos.map((project, index) => {
             const theme = filmThemes[project.category] || filmThemes.film;
             const Icon = theme.iconComponent;
-            const preview = previews[project.link];
-            const image = preview?.data?.image;
-            const status = preview?.status;
-            const summary = preview?.data?.description || project.description;
+            const { image, status, description: summary } = resolvePreview(project);
 
             return (
               <motion.a
@@ -261,6 +274,13 @@ export default function FilmsSection() {
                   {status === 'loading' && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Loader2 className="h-8 w-8 animate-spin text-white/80" />
+                    </div>
+                  )}
+                  {status === 'fallback' && (
+                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                      <span className="rounded-full bg-black/60 px-3 py-1 text-[10px] mono uppercase tracking-[0.35em] text-white/70">
+                        Live preview
+                      </span>
                     </div>
                   )}
                 </div>

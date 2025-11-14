@@ -439,7 +439,7 @@ export default function IntroductionSection() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
-        className="flex flex-nowrap items-center gap-3 rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.75)] p-4 overflow-x-auto scrollbar-hide"
+        className="grid grid-flow-col auto-cols-fr gap-3 rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.75)] p-4 overflow-x-auto scrollbar-hide"
       >
         {socialLinks.map((link) => {
           const Icon = link.icon;
@@ -449,7 +449,7 @@ export default function IntroductionSection() {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`group flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br ${link.gradient} transition-all hover:-translate-y-1 hover:border-white/25`}
+              className={`group flex h-14 min-w-[3.5rem] items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br ${link.gradient} transition-all hover:-translate-y-1 hover:border-white/25`}
             >
               <span className="sr-only">{link.name}</span>
               <IconBox icon={Icon} gradient={link.gradient} size="sm" />

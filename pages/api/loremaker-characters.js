@@ -102,8 +102,8 @@ export default async function handler(req, res) {
           shortDescription: row['Short Description'] || '',
           longDescription: row['Long Description'] || '',
           stories: row.Stories || '',
-          coverImage: coverAsset.thumb,
-          coverImageFull: coverAsset.view,
+          coverImage: coverAsset.view || coverAsset.thumb,
+          coverImageFull: coverAsset.download || coverAsset.view || coverAsset.thumb,
           galleryImages: images.map((image) => ({
             id: image.id,
             thumb: image.thumb,

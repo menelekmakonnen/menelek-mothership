@@ -8,9 +8,10 @@ const AI_ALBUM_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
 
 const getPreviewSrc = (item) => {
   if (!item) return null;
-  if (item.thumbnail) return item.thumbnail;
   if (item.previewUrl) return item.previewUrl;
-  if (item.viewUrl && item.viewUrl.includes('googleusercontent')) return item.viewUrl;
+  if (item.thumbnail) return item.thumbnail;
+  if (item.viewUrl) return item.viewUrl;
+  if (item.downloadUrl) return item.downloadUrl;
   if (item.id) {
     return `https://drive.google.com/thumbnail?id=${item.id}&sz=w1600-h1600`;
   }

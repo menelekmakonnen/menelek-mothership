@@ -32,10 +32,11 @@ const albumMeta = {
 
 const buildPreviewSrc = (item, size = 'w1600-h1600') => {
   if (!item) return null;
-  if (item.thumb) return item.thumb;
-  if (item.thumbnail) return item.thumbnail;
   if (item.previewUrl) return item.previewUrl;
-  if (item.viewUrl && item.viewUrl.includes('googleusercontent')) return item.viewUrl;
+  if (item.thumbnail) return item.thumbnail;
+  if (item.thumb) return item.thumb;
+  if (item.viewUrl) return item.viewUrl;
+  if (item.downloadUrl) return item.downloadUrl;
   if (item.id) {
     return `https://drive.google.com/thumbnail?id=${item.id}&sz=${size}`;
   }
@@ -70,6 +71,25 @@ export default function PhotographySection() {
     });
   }, [albumFolders, loadFolder]);
 
+  const findFirstImage = useCallback(
+    (folderId, depth = 0) => {
+      if (!folderId || depth > 4) return null;
+      const data = getFolder(folderId);
+      if (!data) return null;
+      const fileCandidate = data.items.find((item) => item.type === 'file' && buildPreviewSrc(item));
+      if (fileCandidate) {
+        return buildPreviewSrc(fileCandidate);
+      }
+      const nestedFolders = data.items.filter((item) => item.type === 'folder');
+      for (const nested of nestedFolders) {
+        const result = findFirstImage(nested.id, depth + 1);
+        if (result) return result;
+      }
+      return null;
+    },
+    [getFolder]
+  );
+
   const resolveCoverImage = useCallback(
     (folder) => {
       if (!folder) return null;
@@ -79,20 +99,15 @@ export default function PhotographySection() {
         if (fileCandidate) {
           return buildPreviewSrc(fileCandidate);
         }
-        const nestedFolder = folderData.items.find((item) => item.type === 'folder');
-        if (nestedFolder) {
-          const nestedData = getFolder(nestedFolder.id);
-          if (nestedData) {
-            const nestedFile = nestedData.items.find((item) => item.type === 'file' && buildPreviewSrc(item));
-            if (nestedFile) {
-              return buildPreviewSrc(nestedFile);
-            }
-          }
+        const nestedFolders = folderData.items.filter((item) => item.type === 'folder');
+        for (const nested of nestedFolders) {
+          const nestedCover = findFirstImage(nested.id, 1);
+          if (nestedCover) return nestedCover;
         }
       }
-      return buildPreviewSrc(folder);
+      return buildPreviewSrc(folder) || findFirstImage(folder.id);
     },
-    [getFolder]
+    [findFirstImage, getFolder]
   );
 
   const openAlbum = useCallback((album) => {
