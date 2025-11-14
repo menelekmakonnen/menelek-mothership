@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Brain, Compass, Loader2, Play, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Brain, Compass, Loader2, Play, Zap, ChevronDown } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
 
 const editCollections = [
@@ -111,6 +111,7 @@ const previewFallback = [
 export default function VideoEditsSection() {
   const [previews, setPreviews] = useState({});
   const initiatedRef = useRef(new Set());
+  const [collapsedSections, setCollapsedSections] = useState([]);
 
   useEffect(() => {
     const urls = editCollections.flatMap((collection) => collection.links);
@@ -132,6 +133,12 @@ export default function VideoEditsSection() {
         }
       })();
     });
+  }, []);
+
+  const toggleCollapsed = useCallback((sectionId) => {
+    setCollapsedSections((prev) =>
+      prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId]
+    );
   }, []);
 
   const renderClipCard = useCallback(
@@ -199,6 +206,7 @@ export default function VideoEditsSection() {
         {editCollections.map((collection, index) => {
           const Icon = collection.icon;
           const theme = collection.gradient;
+          const isCollapsed = collapsedSections.includes(collection.id);
           return (
             <section key={collection.id} className="space-y-6">
               <motion.div
@@ -207,7 +215,12 @@ export default function VideoEditsSection() {
                 transition={{ delay: 0.08 * index }}
                 className="rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.85)] shadow-[0_30px_90px_rgba(0,0,0,0.55)]"
               >
-                <div className="relative overflow-hidden rounded-t-3xl">
+                <button
+                  type="button"
+                  onClick={() => toggleCollapsed(collection.id)}
+                  className="relative w-full overflow-hidden rounded-t-3xl text-left"
+                  aria-expanded={!isCollapsed}
+                >
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.panel}`} />
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.halo}`} />
                   <div className="relative z-10 flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
@@ -215,17 +228,38 @@ export default function VideoEditsSection() {
                       <IconBox icon={Icon} gradient={theme.icon} size="lg" className="shadow-xl" />
                       <div>
                         <p className="mono text-[11px] uppercase tracking-[0.35em] text-white/70">Signature Series</p>
-                        <h2 className="text-2xl font-semibold text-white">{collection.title}</h2>
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-2xl font-semibold text-white">{collection.title}</h2>
+                          <motion.span
+                            animate={{ rotate: isCollapsed ? 180 : 0 }}
+                            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10"
+                          >
+                            <ChevronDown className="h-4 w-4 text-white" />
+                          </motion.span>
+                        </div>
                       </div>
                     </div>
                     <p className="max-w-2xl text-sm text-white/75 md:text-right">{collection.description}</p>
                   </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {collection.links.map((url, clipIndex) => renderClipCard(url, clipIndex))}
-                  </div>
-                </div>
+                </button>
+                <AnimatePresence initial={false}>
+                  {!isCollapsed && (
+                    <motion.div
+                      key={`${collection.id}-grid`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      <div className="p-6">
+                        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          {collection.links.map((url, clipIndex) => renderClipCard(url, clipIndex))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             </section>
           );

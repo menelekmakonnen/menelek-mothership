@@ -144,13 +144,13 @@ const socialLinks = [
     gradient: 'from-blue-500 to-sky-500',
   },
   {
-    name: 'Personal Instagram',
+    name: 'Instagram',
     icon: Instagram,
     url: 'https://instagram.com/menelek.makonnen',
     gradient: 'from-pink-500 to-purple-500',
   },
   {
-    name: 'Personal YouTube',
+    name: 'YouTube',
     icon: Youtube,
     url: 'https://youtube.com/@menelekmakonnen',
     gradient: 'from-rose-500 to-red-500',
@@ -184,36 +184,6 @@ const socialLinks = [
     icon: Instagram,
     url: 'https://www.instagram.com/icuni_',
     gradient: 'from-cyan-500 to-blue-500',
-  },
-  {
-    name: 'MMM Media Instagram',
-    icon: Instagram,
-    url: 'https://www.instagram.com/mm.m.media/',
-    gradient: 'from-emerald-500 to-teal-500',
-  },
-  {
-    name: 'AI Educator Instagram',
-    icon: Instagram,
-    url: 'https://www.instagram.com/mr.mikaelgabriel/',
-    gradient: 'from-amber-500 to-pink-500',
-  },
-  {
-    name: 'Corporate LinkedIn',
-    icon: Linkedin,
-    url: 'https://www.linkedin.com/in/mikaelgabriel/',
-    gradient: 'from-slate-500 to-sky-500',
-  },
-  {
-    name: 'Loremaker Universe',
-    icon: Globe,
-    url: 'https://loremaker.cloud',
-    gradient: 'from-purple-500 to-indigo-500',
-  },
-  {
-    name: 'Starterclass',
-    icon: Sparkles,
-    url: 'https://starterclass.icuni.org',
-    gradient: 'from-teal-500 to-emerald-500',
   },
 ];
 
@@ -469,7 +439,7 @@ export default function IntroductionSection() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
-        className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3 rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.75)] p-4"
+        className="flex flex-nowrap items-center gap-3 rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.75)] p-4 overflow-x-auto scrollbar-hide"
       >
         {socialLinks.map((link) => {
           const Icon = link.icon;
@@ -479,7 +449,7 @@ export default function IntroductionSection() {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`group flex h-14 w-full items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br ${link.gradient} transition-all hover:-translate-y-1 hover:border-white/25`}
+              className={`group flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br ${link.gradient} transition-all hover:-translate-y-1 hover:border-white/25`}
             >
               <span className="sr-only">{link.name}</span>
               <IconBox icon={Icon} gradient={link.gradient} size="sm" />

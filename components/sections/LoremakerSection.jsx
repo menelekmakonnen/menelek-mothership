@@ -84,7 +84,11 @@ export default function LoremakerSection() {
 
   const activeImage = useMemo(() => {
     if (!activeCharacter) return null;
-    return activeCharacter.galleryImages?.[activeImageIndex] || activeCharacter.coverImage || null;
+    const galleryAsset = activeCharacter.galleryImages?.[activeImageIndex] || null;
+    if (galleryAsset) {
+      return galleryAsset.view || galleryAsset.thumb;
+    }
+    return activeCharacter.coverImageFull || activeCharacter.coverImage || null;
   }, [activeCharacter, activeImageIndex]);
 
   const openCharacter = useCallback((character) => {
@@ -223,9 +227,9 @@ export default function LoremakerSection() {
                   </div>
                   {activeCharacter.galleryImages?.length > 1 && (
                     <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
-                      {activeCharacter.galleryImages.map((_, idx) => (
+                      {activeCharacter.galleryImages.map((image, idx) => (
                         <button
-                          key={idx}
+                          key={image.id || idx}
                           type="button"
                           onClick={() => setActiveImageIndex(idx)}
                           className={`h-2 w-6 rounded-full border border-white/40 transition-all ${

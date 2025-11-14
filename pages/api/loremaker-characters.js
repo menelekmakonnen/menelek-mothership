@@ -20,17 +20,30 @@ const IMAGE_COLUMNS = [
   'Gallery Image 15',
 ];
 
-function normaliseDriveUrl(url) {
+function buildDriveImageUrls(id) {
+  if (!id) return null;
+  return {
+    id,
+    thumb: `https://drive.google.com/thumbnail?id=${id}&sz=w1600-h1600`,
+    view: `https://drive.google.com/uc?export=view&id=${id}`,
+    download: `https://drive.google.com/uc?export=download&id=${id}`,
+  };
+}
+
+function normaliseDriveEntry(url) {
   if (!url) return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
-  if (trimmed.includes('drive.google.com')) {
-    const idMatch = trimmed.match(/[-\w]{25,}/);
-    if (idMatch) {
-      return `https://drive.google.com/uc?id=${idMatch[0]}&export=view`;
-    }
+  const idMatch = trimmed.match(/[-\w]{25,}/);
+  if (!idMatch) {
+    return {
+      id: trimmed,
+      thumb: trimmed,
+      view: trimmed,
+      download: trimmed,
+    };
   }
-  return trimmed;
+  return buildDriveImageUrls(idMatch[0]);
 }
 
 function parseTsv(tsv) {
@@ -68,10 +81,12 @@ export default async function handler(req, res) {
     const rows = parseTsv(tsv);
     const characters = rows
       .map((row, index) => {
-        const images = IMAGE_COLUMNS.map((column) => normaliseDriveUrl(row[column])).filter(Boolean);
+        const images = IMAGE_COLUMNS.map((column) => normaliseDriveEntry(row[column])).filter(Boolean);
         if (!images.length) {
           return null;
         }
+
+        const coverAsset = images[0];
 
         return {
           id: row.Char_ID || row.Character || `character-${index}`,
@@ -87,8 +102,14 @@ export default async function handler(req, res) {
           shortDescription: row['Short Description'] || '',
           longDescription: row['Long Description'] || '',
           stories: row.Stories || '',
-          coverImage: images[0],
-          galleryImages: images,
+          coverImage: coverAsset.thumb,
+          coverImageFull: coverAsset.view,
+          galleryImages: images.map((image) => ({
+            id: image.id,
+            thumb: image.thumb,
+            view: image.view,
+            download: image.download,
+          })),
         };
       })
       .filter(Boolean);

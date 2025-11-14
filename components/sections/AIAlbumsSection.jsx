@@ -6,6 +6,17 @@ import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 
 const AI_ALBUM_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
 
+const getPreviewSrc = (item) => {
+  if (!item) return null;
+  if (item.thumbnail) return item.thumbnail;
+  if (item.previewUrl) return item.previewUrl;
+  if (item.viewUrl && item.viewUrl.includes('googleusercontent')) return item.viewUrl;
+  if (item.id) {
+    return `https://drive.google.com/thumbnail?id=${item.id}&sz=w1600-h1600`;
+  }
+  return null;
+};
+
 function resolveAiRootFolder(rootFolder) {
   if (!rootFolder) return null;
   const folders = rootFolder.items.filter((item) => item.type === 'folder');
@@ -41,6 +52,15 @@ export default function AIAlbumsSection() {
     if (!selectedAlbum) return;
     loadFolder(selectedAlbum.id);
   }, [selectedAlbum, loadFolder]);
+
+  useEffect(() => {
+    if (!albumEntries.length) return;
+    albumEntries.forEach((album) => {
+      if (!getFolder(album.id)) {
+        loadFolder(album.id);
+      }
+    });
+  }, [albumEntries, getFolder, loadFolder]);
 
   const selectedAlbumImages = useMemo(() => {
     if (!selectedAlbum) return [];
@@ -94,8 +114,20 @@ export default function AIAlbumsSection() {
                 onClick={() => setSelectedAlbum(album)}
                 className="group rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.8)] p-6 text-left transition-colors hover:border-white/25"
               >
-                <div className="relative mb-5 flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/70 via-fuchsia-500/65 to-indigo-600/70">
-                  <Sparkles className="h-16 w-16 text-white drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)]" />
+                <div className="relative mb-5 aspect-square overflow-hidden rounded-2xl">
+                  {(() => {
+                    const albumData = getFolder(album.id);
+                    const coverCandidate = albumData?.items.find((item) => item.type === 'file') || null;
+                    const cover = getPreviewSrc(coverCandidate) || getPreviewSrc(album);
+                    if (cover) {
+                      return <img src={cover} alt={`${album.title} cover`} className="h-full w-full object-cover" loading="lazy" />;
+                    }
+                    return (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500/70 via-fuchsia-500/65 to-indigo-600/70">
+                        <Sparkles className="h-16 w-16 text-white drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)]" />
+                      </div>
+                    );
+                  })()}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_65%)]" />
                   <div className="absolute bottom-3 left-3 text-xs mono uppercase tracking-[0.35em] text-white/80">Open</div>
                   {isLoading(album.id) && <Loader2 className="absolute right-3 top-3 h-5 w-5 animate-spin text-white/80" />}
@@ -169,13 +201,17 @@ export default function AIAlbumsSection() {
                       transition={{ delay: 0.01 * index }}
                       className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/50"
                     >
-                      {image.thumbnail ? (
-                        <img src={image.thumbnail} alt={image.title} className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 text-white/80">
-                          <Sparkles className="h-8 w-8" />
-                        </div>
-                      )}
+                      {(() => {
+                        const preview = getPreviewSrc(image);
+                        if (preview) {
+                          return <img src={preview} alt={image.title} className="h-full w-full object-cover" loading="lazy" />;
+                        }
+                        return (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 text-white/80">
+                            <Sparkles className="h-8 w-8" />
+                          </div>
+                        );
+                      })()}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-70" />
                       <div className="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white/85 truncate">
                         {image.title}
@@ -214,7 +250,7 @@ export default function AIAlbumsSection() {
               className="relative flex h-full w-full items-center justify-center bg-[rgba(4,6,12,0.94)]"
             >
               <img
-                src={activeImage.viewUrl || activeImage.thumbnail}
+                src={activeImage.viewUrl || activeImage.downloadUrl || getPreviewSrc(activeImage)}
                 alt={activeImage.title}
                 className="max-h-full max-w-full object-contain"
               />

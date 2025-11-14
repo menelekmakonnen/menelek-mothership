@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Instagram, Youtube, Linkedin, Mail, Globe } from 'lucide-react';
 
 const linkGroups = [
   {
@@ -15,24 +16,28 @@ const linkGroups = [
         meta: '@menelek.makonnen',
         description: 'Personal photography, filmmaking notes, and life moments.',
         href: 'https://instagram.com/menelek.makonnen',
+        icon: Instagram,
       },
       {
         label: 'YouTube',
         meta: '@menelekmakonnen',
         description: 'Films, essays, and behind-the-scenes drops.',
         href: 'https://youtube.com/@menelekmakonnen',
+        icon: Youtube,
       },
       {
         label: 'LinkedIn',
         meta: 'menelekmakonnen',
         description: 'Professional profile and collaborations.',
         href: 'https://linkedin.com/in/menelekmakonnen',
+        icon: Linkedin,
       },
       {
         label: 'Email',
         meta: 'admin@menelekmakonnen.com',
         description: 'Direct contact for speaking and inquiries.',
         href: 'mailto:admin@menelekmakonnen.com',
+        icon: Mail,
       },
     ],
   },
@@ -50,42 +55,49 @@ const linkGroups = [
         meta: '@director_menelek',
         description: 'Director-level reels and flagship edits.',
         href: 'https://www.youtube.com/@director_menelek',
+        icon: Youtube,
       },
       {
         label: 'Director Instagram',
         meta: '@menelek.makonnen',
         description: 'Set life, directing, and cinematic stills.',
         href: 'https://www.instagram.com/menelek.makonnen/',
+        icon: Instagram,
       },
       {
         label: 'Loremaker Instagram',
         meta: '@lore.maker',
         description: 'Immersive lore drops and world-building visuals.',
         href: 'https://www.instagram.com/lore.maker',
+        icon: Instagram,
       },
       {
         label: 'ICUNI Instagram',
         meta: '@icuni_',
         description: 'AI education and Starterclass community.',
         href: 'https://www.instagram.com/icuni_',
+        icon: Instagram,
       },
       {
         label: 'MMM Media Instagram',
         meta: '@mm.m.media',
         description: 'Commercial production house portfolio.',
         href: 'https://www.instagram.com/mm.m.media/',
+        icon: Instagram,
       },
       {
         label: 'AI Educator Instagram',
         meta: '@mr.mikaelgabriel',
         description: 'Corporate AI educator persona.',
         href: 'https://www.instagram.com/mr.mikaelgabriel/',
+        icon: Instagram,
       },
       {
         label: 'Corporate LinkedIn',
         meta: 'Mikael Gabriel',
         description: 'Business-facing updates and partnerships.',
         href: 'https://www.linkedin.com/in/mikaelgabriel/',
+        icon: Linkedin,
       },
     ],
   },
@@ -103,18 +115,21 @@ const linkGroups = [
         meta: 'loremaker.cloud',
         description: 'Home for the transmedia lore universe.',
         href: 'https://loremaker.cloud',
+        icon: Globe,
       },
       {
         label: 'Starterclass',
         meta: 'starterclass.icuni.org',
         description: 'AI Starterclass by ICUNI.',
         href: 'https://starterclass.icuni.org',
+        icon: Globe,
       },
       {
         label: 'Old Blog',
         meta: 'wordpress.com/mikaelgabriel',
         description: 'Legacy essays and archives.',
         href: 'https://wordpress.com/mikaelgabriel',
+        icon: Globe,
       },
     ],
   },
@@ -143,49 +158,55 @@ export default function LinksSection() {
           Films, socials, and knowledge hubs across the Menelek universe.
         </motion.p>
 
-        <div className="grid gap-6">
+        <div className="space-y-10">
           {linkGroups.map((group, groupIndex) => (
             <motion.section
               key={group.id}
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 * groupIndex }}
-              className="rounded-3xl border border-white/10 overflow-hidden bg-[color:var(--surface-raised)]/95 shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+              className="overflow-hidden rounded-3xl border border-white/10 bg-[color:var(--surface-raised)]/90 shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
             >
-              <div className="relative">
+              <div className="relative overflow-hidden">
                 <div className={`absolute inset-0 bg-gradient-to-br ${group.accent.panel}`} />
                 <div className={`absolute inset-0 bg-gradient-to-br ${group.accent.halo}`} />
-                <div className="relative z-10 p-6 md:p-8">
-                  <h2 className="text-2xl md:text-3xl font-semibold text-white mb-2">{group.title}</h2>
-                  <p className="text-sm md:text-base text-white/70 max-w-3xl">{group.description}</p>
+                <div className="relative z-10 flex flex-col gap-2 p-6 md:p-8 text-white">
+                  <h2 className="text-2xl md:text-3xl font-semibold">{group.title}</h2>
+                  <p className="text-sm md:text-base text-white/75 max-w-3xl">{group.description}</p>
                 </div>
               </div>
-              <div className="p-6 md:p-8 bg-[color:var(--surface-raised)]">
-                <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+              <div className="p-6 md:p-8 bg-[color:var(--surface-raised)]/95">
+                <div className="flex flex-col gap-4">
                   {group.items.map((item) => {
                     const external = isExternalLink(item.href);
+                    const Icon = item.icon || Globe;
                     return (
                       <a
                         key={item.label}
                         href={item.href}
                         target={external ? '_blank' : undefined}
                         rel={external ? 'noopener noreferrer' : undefined}
-                        className="group flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 transition-all hover:border-white/25"
+                        className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 transition-all hover:border-white/25 hover:bg-white/10"
                       >
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-[color:var(--text-primary)]">{item.label}</h3>
-                            {item.meta && (
-                              <p className="mono text-[11px] uppercase tracking-[0.3em] text-[color:var(--text-tertiary)]">{item.meta}</p>
-                            )}
-                          </div>
-                          <span className="text-xs mono uppercase tracking-[0.3em] text-[color:var(--text-secondary)] group-hover:text-[color:var(--accent-300)]">
-                            Visit
-                          </span>
+                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-white/10 via-white/5 to-white/0 border border-white/20">
+                          <Icon className="h-6 w-6 text-[color:var(--text-primary)]" />
                         </div>
-                        {item.description && (
-                          <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed">{item.description}</p>
-                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-[color:var(--text-primary)]">{item.label}</h3>
+                              {item.meta && (
+                                <p className="mono text-[11px] uppercase tracking-[0.3em] text-[color:var(--text-tertiary)]">{item.meta}</p>
+                              )}
+                            </div>
+                            <span className="text-xs mono uppercase tracking-[0.3em] text-[color:var(--text-secondary)] group-hover:text-[color:var(--accent-300)]">
+                              Visit
+                            </span>
+                          </div>
+                          {item.description && (
+                            <p className="mt-2 text-sm text-[color:var(--text-secondary)] leading-relaxed">{item.description}</p>
+                          )}
+                        </div>
                       </a>
                     );
                   })}
