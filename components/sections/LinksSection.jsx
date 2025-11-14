@@ -2,73 +2,9 @@ import { motion } from 'framer-motion';
 
 const linkGroups = [
   {
-    id: 'films',
-    title: '🎬 Films (with descriptions)',
-    description: 'Award-ready shorts, features, and documentaries that define the Menelek visual language.',
-    accent: {
-      panel: 'from-[#2a1236]/85 via-[#3d2060]/78 to-[#08030f]/92',
-      halo: 'from-purple-200/35 via-indigo-200/12 to-transparent',
-    },
-    items: [
-      {
-        label: "I'm Alright (2024)",
-        meta: 'Writer–Director · 8 min',
-        description: 'A raw psychological short about addiction and depression during the lockdown.',
-        href: 'https://www.youtube.com/watch?v=A8cGpNe2JAE&pp=ygUTbWVuZWxlayBJJ20gYWxyaWdodA%3D%3D',
-      },
-      {
-        label: 'Blinded by Magic (2022)',
-        meta: 'Writer–Director · 12 min',
-        description: 'A cursed camera grants visions and powers — at the cost of the user’s sight.',
-        href: 'https://www.youtube.com/watch?v=ivsCBuD1JYQ&pp=ygUYbWVuZWxlayBibGluZGVkIGJ5IG1hZ2lj',
-      },
-      {
-        label: 'Heroes & Gods (2024)',
-        meta: 'Writer–Director, Editor · 120 min',
-        description: 'Ten-part anthology fused into a feature film — gods, vengeance, superheroes, lore foundations.',
-        href: 'https://www.youtube.com/watch?v=jtiOv0OvD-0&pp=ygUXbWVuZWxlayBoZXJvZXMgYW5kIGdvZHM%3D',
-      },
-      {
-        label: 'SPAR (Doc, 2024)',
-        meta: 'Director, Cinematographer, Editor · 14 min',
-        description: 'BTS-style boxing pilot documentary shot in London’s Left Hook Gym.',
-        href: 'https://www.youtube.com/watch?v=4q6X6prhVOE',
-      },
-      {
-        label: 'Soldier (Music Video)',
-        meta: 'Director, Editor · 3 min',
-        description: 'Full-cycle creative direction — concept, video, cover art.',
-        href: 'https://www.youtube.com/watch?v=BHPaJieCAXY&pp=ygUMd29udSBzb2xkaWVy0gcJCfsJAYcqIYzv',
-      },
-      {
-        label: 'Abranteers (Proof, 2023)',
-        meta: 'Writer–Director · 9 min',
-        description: 'Anti-magic vet + rookie take on a dangerous magic user.',
-        href: 'https://www.youtube.com/shorts/CPPkq5zsXgE',
-      },
-    ],
-  },
-  {
-    id: 'novel',
-    title: '📘 Novel',
-    description: 'Author of The Last Ochiyamie — experience the prose world-building that fuels the visuals.',
-    accent: {
-      panel: 'from-[#122633]/85 via-[#1e3d4d]/78 to-[#02080c]/92',
-      halo: 'from-teal-200/35 via-cyan-200/12 to-transparent',
-    },
-    items: [
-      {
-        label: 'The Last Ochiyamie',
-        meta: 'Amazon Release',
-        description: 'Purchase the novel and dive into the universe in print.',
-        href: 'https://a.co/d/iG5DOBk',
-      },
-    ],
-  },
-  {
     id: 'personal-socials',
     title: '🌍 Personal Socials',
-    description: 'Follow Menelek’s personal voice, art, and day-to-day updates.',
+    description: 'Follow Menelek’s day-to-day voice, perspective, and authentic creative life.',
     accent: {
       panel: 'from-[#161b32]/85 via-[#202c4a]/78 to-[#03050a]/92',
       halo: 'from-blue-200/30 via-indigo-200/12 to-transparent',
@@ -103,7 +39,7 @@ const linkGroups = [
   {
     id: 'professional-socials',
     title: '🏢 Professional & Brand Pages',
-    description: 'The director’s studio ecosystem — brand channels, companies, and corporate presence.',
+    description: 'The director’s studio ecosystem — production brands, education arms, and corporate presence.',
     accent: {
       panel: 'from-[#2e1a30]/85 via-[#48263f]/78 to-[#0a040c]/92',
       halo: 'from-rose-200/30 via-amber-200/12 to-transparent',
@@ -112,7 +48,7 @@ const linkGroups = [
       {
         label: 'Director YouTube',
         meta: '@director_menelek',
-        description: 'Director-level reels and projects.',
+        description: 'Director-level reels and flagship edits.',
         href: 'https://www.youtube.com/@director_menelek',
       },
       {
@@ -179,46 +115,6 @@ const linkGroups = [
         meta: 'wordpress.com/mikaelgabriel',
         description: 'Legacy essays and archives.',
         href: 'https://wordpress.com/mikaelgabriel',
-      },
-    ],
-  },
-  {
-    id: 'albums',
-    title: '📸 Albums & Libraries',
-    description: 'High-resolution galleries and AI concept vaults.',
-    accent: {
-      panel: 'from-[#311631]/85 via-[#482244]/78 to-[#0b050d]/92',
-      halo: 'from-rose-200/30 via-violet-200/12 to-transparent',
-    },
-    items: [
-      {
-        label: 'MMM Media Albums',
-        meta: 'Google Drive',
-        description: 'Beauty & professional shoots organised by shoot date and gallery.',
-        href: 'https://drive.google.com/drive/folders/1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4?usp=sharing',
-      },
-      {
-        label: 'AI Albums',
-        meta: 'Google Drive',
-        description: 'AI-generated galleries by theme — ready for case studies and decks.',
-        href: 'https://drive.google.com/drive/folders/1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4?usp=sharing',
-      },
-    ],
-  },
-  {
-    id: 'database',
-    title: '📊 Loremaker Universe Database',
-    description: 'The central spreadsheet for characters, timelines, factions, and lore assets.',
-    accent: {
-      panel: 'from-[#132830]/85 via-[#1e3e4a]/78 to-[#03090c]/92',
-      halo: 'from-cyan-200/30 via-emerald-200/12 to-transparent',
-    },
-    items: [
-      {
-        label: 'Universe Spreadsheet',
-        meta: 'Google Sheets',
-        description: 'Character bios, powers, locations, galleries, and story references.',
-        href: 'https://docs.google.com/spreadsheets/d/1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM/edit?usp=sharing',
       },
     ],
   },

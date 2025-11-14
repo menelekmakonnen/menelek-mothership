@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Camera,
   Film,
@@ -142,35 +142,78 @@ const socialLinks = [
     icon: Linkedin,
     url: 'https://linkedin.com/in/menelekmakonnen',
     gradient: 'from-blue-500 to-sky-500',
-    tagline: 'Professional network',
   },
   {
-    name: 'Instagram',
+    name: 'Personal Instagram',
     icon: Instagram,
-    url: 'https://instagram.com/menelekmakonnen',
+    url: 'https://instagram.com/menelek.makonnen',
     gradient: 'from-pink-500 to-purple-500',
-    tagline: 'Visual narratives',
   },
   {
-    name: 'YouTube',
+    name: 'Personal YouTube',
     icon: Youtube,
     url: 'https://youtube.com/@menelekmakonnen',
     gradient: 'from-rose-500 to-red-500',
-    tagline: 'Films & edits',
-  },
-  {
-    name: 'TikTok',
-    icon: Music,
-    url: 'https://tiktok.com/@menelekmakonnen',
-    gradient: 'from-cyan-500 to-fuchsia-500',
-    tagline: 'Short form stories',
   },
   {
     name: 'Email',
     icon: Mail,
-    url: 'mailto:contact@menelekmakonnen.com',
+    url: 'mailto:admin@menelekmakonnen.com',
     gradient: 'from-amber-500 to-orange-500',
-    tagline: 'Direct connect',
+  },
+  {
+    name: 'Director YouTube',
+    icon: Youtube,
+    url: 'https://www.youtube.com/@director_menelek',
+    gradient: 'from-red-500 to-rose-500',
+  },
+  {
+    name: 'Director Instagram',
+    icon: Instagram,
+    url: 'https://www.instagram.com/menelek.makonnen/',
+    gradient: 'from-fuchsia-500 to-rose-500',
+  },
+  {
+    name: 'Loremaker Instagram',
+    icon: Instagram,
+    url: 'https://www.instagram.com/lore.maker',
+    gradient: 'from-indigo-500 to-purple-500',
+  },
+  {
+    name: 'ICUNI Instagram',
+    icon: Instagram,
+    url: 'https://www.instagram.com/icuni_',
+    gradient: 'from-cyan-500 to-blue-500',
+  },
+  {
+    name: 'MMM Media Instagram',
+    icon: Instagram,
+    url: 'https://www.instagram.com/mm.m.media/',
+    gradient: 'from-emerald-500 to-teal-500',
+  },
+  {
+    name: 'AI Educator Instagram',
+    icon: Instagram,
+    url: 'https://www.instagram.com/mr.mikaelgabriel/',
+    gradient: 'from-amber-500 to-pink-500',
+  },
+  {
+    name: 'Corporate LinkedIn',
+    icon: Linkedin,
+    url: 'https://www.linkedin.com/in/mikaelgabriel/',
+    gradient: 'from-slate-500 to-sky-500',
+  },
+  {
+    name: 'Loremaker Universe',
+    icon: Globe,
+    url: 'https://loremaker.cloud',
+    gradient: 'from-purple-500 to-indigo-500',
+  },
+  {
+    name: 'Starterclass',
+    icon: Sparkles,
+    url: 'https://starterclass.icuni.org',
+    gradient: 'from-teal-500 to-emerald-500',
   },
 ];
 
@@ -178,6 +221,8 @@ export default function IntroductionSection() {
   const [roleIndex, setRoleIndex] = useState(0);
   const [projectIndex, setProjectIndex] = useState(0);
   const [cycleCount, setCycleCount] = useState(0);
+  const [projectPreviews, setProjectPreviews] = useState({});
+  const previewInitiatedRef = useRef(new Set());
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -195,13 +240,37 @@ export default function IntroductionSection() {
     }
   }, [cycleCount]);
 
+  useEffect(() => {
+    featuredProjects.forEach((project) => {
+      if (previewInitiatedRef.current.has(project.href)) return;
+      previewInitiatedRef.current.add(project.href);
+      setProjectPreviews((prev) => ({ ...prev, [project.href]: { status: 'loading' } }));
+      (async () => {
+        try {
+          const response = await fetch(`/api/link-preview?url=${encodeURIComponent(project.href)}`);
+          if (!response.ok) {
+            throw new Error('Failed to load preview');
+          }
+          const data = await response.json();
+          setProjectPreviews((prev) => ({ ...prev, [project.href]: { status: 'ready', data } }));
+        } catch (error) {
+          console.error('Project preview failed', project.href, error);
+          setProjectPreviews((prev) => ({ ...prev, [project.href]: { status: 'error' } }));
+        }
+      })();
+    });
+  }, []);
+
   const activeRole = rotatingContent[roleIndex];
   const activeProject = featuredProjects[projectIndex];
+  const activeProjectPreview = projectPreviews[activeProject.href];
+  const activeProjectImage = activeProjectPreview?.data?.image;
   const personaTheme = personaThemes[activeRole.theme];
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32">
-      <div className="max-w-6xl w-full grid lg:grid-cols-[1.1fr_1fr] gap-12 items-stretch">
+      <div className="max-w-6xl w-full space-y-10">
+        <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 items-stretch">
         {/* Left - Spotlight slider */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
@@ -210,7 +279,29 @@ export default function IntroductionSection() {
           className="flex flex-col gap-6"
         >
           <div className="relative flex flex-col overflow-hidden rounded-3xl border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 overflow-hidden">
+              <AnimatePresence initial={false} mode="popLayout">
+                {activeProjectImage && (
+                  <motion.div
+                    key={`image-${activeProject.id}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.35 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                    className="absolute inset-0"
+                  >
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `url(${activeProjectImage})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.45),rgba(0,0,0,0.75))]" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.div
                   key={`gradient-${activeProject.id}`}
@@ -371,29 +462,32 @@ export default function IntroductionSection() {
             ))}
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
-            {socialLinks.map((link, i) => {
-              const Icon = link.icon;
-              return (
-                <motion.a
-                  key={link.name}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.65 + i * 0.05 }}
-                  whileHover={{ y: -6 }}
-                  className="camera-hud rounded-2xl border border-white/10 p-4 flex items-center justify-center group"
-                >
-                  <IconBox icon={Icon} gradient={link.gradient} size="md" />
-                  <span className="sr-only">{link.name}</span>
-                </motion.a>
-              );
-            })}
-          </div>
         </motion.div>
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3 rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.75)] p-4"
+      >
+        {socialLinks.map((link) => {
+          const Icon = link.icon;
+          return (
+            <a
+              key={link.name}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`group flex h-14 w-full items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br ${link.gradient} transition-all hover:-translate-y-1 hover:border-white/25`}
+            >
+              <span className="sr-only">{link.name}</span>
+              <IconBox icon={Icon} gradient={link.gradient} size="sm" />
+            </a>
+          );
+        })}
+      </motion.div>
     </div>
+  </div>
   );
 }

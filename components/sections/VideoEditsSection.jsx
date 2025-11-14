@@ -1,5 +1,6 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Zap, Compass, Brain } from 'lucide-react';
+import { Brain, Compass, Loader2, Play, Zap } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
 
 const editCollections = [
@@ -101,82 +102,134 @@ const editCollections = [
   },
 ];
 
+const previewFallback = [
+  'linear-gradient(135deg, rgba(63,94,251,0.45) 0%, rgba(252,70,107,0.45) 100%)',
+  'linear-gradient(135deg, rgba(14,164,212,0.45) 0%, rgba(55,238,207,0.45) 100%)',
+  'linear-gradient(135deg, rgba(92,59,206,0.45) 0%, rgba(162,121,241,0.45) 100%)',
+];
+
 export default function VideoEditsSection() {
+  const [previews, setPreviews] = useState({});
+  const initiatedRef = useRef(new Set());
+
+  useEffect(() => {
+    const urls = editCollections.flatMap((collection) => collection.links);
+    urls.forEach((url) => {
+      if (initiatedRef.current.has(url)) return;
+      initiatedRef.current.add(url);
+      setPreviews((prev) => ({ ...prev, [url]: { status: 'loading' } }));
+      (async () => {
+        try {
+          const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+          if (!response.ok) {
+            throw new Error('Failed to load preview');
+          }
+          const data = await response.json();
+          setPreviews((prev) => ({ ...prev, [url]: { status: 'ready', data } }));
+        } catch (error) {
+          console.error('Preview fetch failed for', url, error);
+          setPreviews((prev) => ({ ...prev, [url]: { status: 'error' } }));
+        }
+      })();
+    });
+  }, []);
+
+  const renderClipCard = useCallback(
+    (url, index) => {
+      const preview = previews[url];
+      const image = preview?.data?.image;
+      const title = preview?.data?.title || `Clip ${index + 1}`;
+      const description = preview?.data?.description;
+      const status = preview?.status || 'idle';
+      const fallbackStyle = previewFallback[index % previewFallback.length];
+
+      return (
+        <a
+          key={url}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,10,16,0.82)] shadow-[0_25px_70px_rgba(0,0,0,0.55)] transition-transform hover:-translate-y-2"
+        >
+          <div className="relative aspect-[4/5] w-full overflow-hidden">
+            <div
+              className="absolute inset-0"
+              style={{
+                background: image ? undefined : fallbackStyle,
+                backgroundImage: image ? `url(${image})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+            <div className="absolute top-3 right-3">
+              {status === 'loading' && <Loader2 className="h-5 w-5 animate-spin text-white/80" />}
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 space-y-2 p-4">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
+                Reel
+              </span>
+              <h4 className="text-lg font-semibold text-white line-clamp-2">{title}</h4>
+              {description && <p className="text-xs text-white/70 line-clamp-2">{description}</p>}
+            </div>
+          </div>
+        </a>
+      );
+    },
+    [previews]
+  );
+
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          Epic Video Edits
-        </motion.h1>
+      <div className="max-w-7xl mx-auto space-y-12">
+        <header className="space-y-4">
+          <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
+            Epic Video Edits
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="text-xl text-[color:var(--text-secondary)] max-w-3xl"
+          >
+            Each reel opens into its Instagram showcase, complete with live thumbnails and metadata pulled straight from the source links.
+          </motion.p>
+        </header>
 
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-[color:var(--text-secondary)] mb-12"
-        >
-          Professional video editing and motion graphics
-        </motion.p>
-
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {editCollections.map((collection, index) => {
-            const Icon = collection.icon;
-            const theme = collection.gradient;
-            return (
+        {editCollections.map((collection, index) => {
+          const Icon = collection.icon;
+          const theme = collection.gradient;
+          return (
+            <section key={collection.id} className="space-y-6">
               <motion.div
-                key={collection.id}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 * index }}
-                className="rounded-3xl border border-white/10 overflow-hidden bg-[color:var(--surface-raised)]/95 shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+                className="rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.85)] shadow-[0_30px_90px_rgba(0,0,0,0.55)]"
               >
-                <div className="relative aspect-video">
+                <div className="relative overflow-hidden rounded-t-3xl">
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.panel}`} />
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.halo}`} />
-                  <div className="relative z-10 h-full flex flex-col justify-between p-6">
-                    <div className="flex items-center justify-between">
-                      <IconBox icon={Icon} gradient={theme.icon} size="md" className="shadow-xl" />
-                      <div className="px-3 py-1 rounded-full bg-black/35 backdrop-blur text-[11px] mono uppercase tracking-[0.3em] text-white">
-                        {collection.links.length} reels
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-white/85">
+                  <div className="relative z-10 flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-4">
+                      <IconBox icon={Icon} gradient={theme.icon} size="lg" className="shadow-xl" />
                       <div>
-                        <p className="mono text-[11px] uppercase tracking-[0.35em] opacity-80">Signature Style</p>
-                        <p className="text-sm font-semibold">{collection.title}</p>
-                      </div>
-                      <div className="rounded-full px-4 py-2 bg-[rgba(10,12,18,0.85)] text-xs mono uppercase tracking-[0.3em]">
-                        View Reels
+                        <p className="mono text-[11px] uppercase tracking-[0.35em] text-white/70">Signature Series</p>
+                        <h2 className="text-2xl font-semibold text-white">{collection.title}</h2>
                       </div>
                     </div>
+                    <p className="max-w-2xl text-sm text-white/75 md:text-right">{collection.description}</p>
                   </div>
                 </div>
-                <div className="p-6 space-y-4">
-                  <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">{collection.title}</h3>
-                  <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{collection.description}</p>
-                  <div className="max-h-32 overflow-y-auto pr-1 flex flex-col gap-2">
-                    {collection.links.map((link, linkIndex) => (
-                      <a
-                        key={link}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs mono uppercase tracking-[0.3em] text-[color:var(--text-primary)]/80 hover:border-white/25"
-                      >
-                        <span className="truncate">Clip {linkIndex + 1}</span>
-                        <Play className="w-4 h-4" />
-                      </a>
-                    ))}
+                <div className="p-6">
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {collection.links.map((url, clipIndex) => renderClipCard(url, clipIndex))}
                   </div>
                 </div>
               </motion.div>
-            );
-          })}
-        </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );
