@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import IconBox from '@/components/ui/IconBox';
-import { Camera, Film, Brain, Code, Sparkles, Heart, Video, Pen, Linkedin, Instagram, Youtube, Music, Mail, Globe } from 'lucide-react';
+import { Camera, Film, Brain, Code, Sparkles, Heart, Video, Pen, Linkedin, Instagram, Youtube, Music, Mail } from 'lucide-react';
 
 // Matched word-icon pairs for consistent theming
 const rotatingContent = [
@@ -88,32 +87,83 @@ export default function IntroductionSection() {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32">
-      <div className="max-w-6xl w-full grid md:grid-cols-2 gap-12 items-center">
-        {/* Left - Rotating Icon */}
+      <div className="max-w-6xl w-full grid lg:grid-cols-[1.1fr_1fr] gap-12 items-stretch">
+        {/* Left - Spotlight slider */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
+          initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
-          className="relative"
+          className="flex flex-col gap-6"
         >
-          <div className="aspect-square rounded-2xl overflow-hidden border-2 border-green-500/30 shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center p-12">
-            <AnimatePresence mode="popLayout">
-              <motion.div
-                key={roleIndex}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.1 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="w-full h-full absolute"
-              >
-                <IconBox
-                  icon={activeRole.icon}
-                  gradient={activeRole.gradient}
-                  size="xl"
-                  className="w-full h-full !rounded-3xl"
-                />
-              </motion.div>
-            </AnimatePresence>
+          <div className="camera-hud rounded-3xl border border-white/10 overflow-hidden flex-1 flex flex-col">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4">
+              <div>
+                <p className="mono text-[10px] uppercase tracking-[0.45em] text-green-400/70">Spotlight</p>
+                <h3 className="text-3xl font-semibold mt-2">Featured Project</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {featuredProjects.map((project, index) => (
+                  <button
+                    key={project.id}
+                    onClick={() => {
+                      setProjectIndex(index);
+                      setCycleCount(0);
+                    }}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                      index === projectIndex ? 'bg-green-400 w-6' : 'bg-white/25 hover:bg-white/40'
+                    }`}
+                    aria-label={`Show ${project.title}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden flex-1">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeProject.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+                  className="p-6 md:p-8 h-full flex flex-col"
+                >
+                  <div className="space-y-4 flex-1">
+                    <h4 className="text-3xl font-bold leading-tight">{activeProject.title}</h4>
+                    <p className="text-[color:var(--text-secondary)] leading-relaxed">
+                      {activeProject.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {activeProject.stats.map((stat) => (
+                        <span
+                          key={stat}
+                          className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] mono uppercase"
+                        >
+                          {stat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <motion.a
+                    href={activeProject.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="self-start mt-auto px-6 py-3 rounded-full border border-green-400/50 text-green-300 font-semibold hover:bg-green-500/10 transition-all"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {activeProject.action}
+                  </motion.a>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <div className="camera-hud rounded-3xl border border-white/10 px-6 py-5">
+            <div className="text-sm text-[color:var(--text-secondary)] leading-relaxed">
+              Every featured project connects to the persona cycling to your right. Watch the HUD swap focus every fourth title change.
+            </div>
           </div>
         </motion.div>
 
@@ -130,16 +180,22 @@ export default function IntroductionSection() {
             </div>
             <div className="relative h-[1.2em]">
               <AnimatePresence mode="popLayout">
-                <motion.div
-                  key={roleIndex}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4, ease: "easeInOut" }}
-                  className="text-green-400 absolute"
-                >
-                  {activeRole.word}
-                </motion.div>
+                {(() => {
+                  const RoleIcon = activeRole.icon;
+                  return (
+                  <motion.div
+                    key={roleIndex}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    className="text-green-400 absolute flex items-center gap-3"
+                  >
+                    <RoleIcon className="w-6 h-6" />
+                    <span>{activeRole.word}</span>
+                  </motion.div>
+                  );
+                })()}
               </AnimatePresence>
             </div>
           </h1>
@@ -210,73 +266,6 @@ export default function IntroductionSection() {
             ))}
           </div>
 
-          {/* Featured project slider */}
-          <div className="pt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="mono text-[10px] uppercase tracking-[0.45em] text-green-400/70">Featured Project</p>
-                <h3 className="text-2xl font-semibold mt-2">Spotlight</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {featuredProjects.map((project, index) => (
-                  <button
-                    key={project.id}
-                    onClick={() => {
-                      setProjectIndex(index);
-                      setCycleCount(0);
-                    }}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${
-                      index === projectIndex ? 'bg-green-400 w-6' : 'bg-white/25 hover:bg-white/40'
-                    }`}
-                    aria-label={`Show ${project.title}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[color:var(--bg-secondary)]/80 backdrop-blur">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeProject.id}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -24 }}
-                  transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-                  className="p-6 md:p-8"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-                    <div className="space-y-3 max-w-xl">
-                      <h4 className="text-3xl font-bold">{activeProject.title}</h4>
-                      <p className="text-[color:var(--text-secondary)] leading-relaxed">
-                        {activeProject.description}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {activeProject.stats.map((stat) => (
-                          <span
-                            key={stat}
-                            className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] mono uppercase"
-                          >
-                            {stat}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <motion.a
-                      href={activeProject.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="self-start md:self-center px-5 py-3 rounded-full border border-green-400/50 text-green-300 font-semibold hover:bg-green-500/10 transition-all"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      {activeProject.action}
-                    </motion.a>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
         </motion.div>
       </div>
     </div>

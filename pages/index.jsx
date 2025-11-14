@@ -13,8 +13,8 @@ import LensToggle from '@/components/camera/LensToggle';
 import IrisTransition from '@/components/camera/IrisTransition';
 import FocusIndicator from '@/components/camera/FocusIndicator';
 import BottomMenu from '@/components/camera/BottomMenu';
-import PowerControls from '@/components/camera/PowerControls';
 import MobileImmersiveHUD from '@/components/camera/MobileImmersiveHUD';
+import InterfaceOverlays from '@/components/camera/InterfaceOverlays';
 
 // UI components
 import RuleOfThirds from '@/components/ui/RuleOfThirds';
@@ -110,6 +110,9 @@ export default function Home() {
       {/* Histogram */}
       <Histogram />
 
+      {/* Mode-specific overlays */}
+      <InterfaceOverlays />
+
       {/* Section navigation buttons (show all except current section) */}
       <SectionNavButtons
         currentSection={currentSection}
@@ -126,9 +129,6 @@ export default function Home() {
 
       {/* Lens toggle */}
       <LensToggle />
-
-      {/* Power controls under the lens */}
-      <PowerControls />
 
       {/* Control boxes */}
       <ControlBoxes />

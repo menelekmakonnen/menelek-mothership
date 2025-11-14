@@ -15,12 +15,14 @@ export default function CameraHUD() {
     hudVisibility,
     batteryLevel,
     cameraMode,
+    interfaceModules,
   } = useCameraContext();
 
   const [realTimeData, setRealTimeData] = useState({
     avgBrightness: 50,
     avgColor: 'rgb(128, 128, 128)',
   });
+  const [audioLevels, setAudioLevels] = useState([30, 55, 40]);
 
   // Analyze page content for real-time readings
   useEffect(() => {
@@ -48,6 +50,14 @@ export default function CameraHUD() {
     return () => clearInterval(interval);
   }, [iso]);
 
+  useEffect(() => {
+    if (!interfaceModules.audioMeters) return;
+    const interval = setInterval(() => {
+      setAudioLevels((prev) => prev.map(() => 20 + Math.random() * 60));
+    }, 500);
+    return () => clearInterval(interval);
+  }, [interfaceModules.audioMeters]);
+
   if (hudVisibility === 'none') return null;
 
   const formatShutterSpeed = (speed) => {
@@ -56,6 +66,15 @@ export default function CameraHUD() {
   };
 
   const formatAperture = (ap) => `f/${ap.toFixed(1)}`;
+
+  const analogNeedle = (() => {
+    const exposureBias = exposureComp * 30;
+    const isoBias = (iso - 400) / 100;
+    const apertureBias = (2.8 - aperture) * 10;
+    const shutterBias = (125 - shutterSpeed) / 20;
+    const total = exposureBias + isoBias + apertureBias + shutterBias;
+    return Math.max(-60, Math.min(60, total));
+  })();
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[2500] pointer-events-none">
@@ -77,6 +96,18 @@ export default function CameraHUD() {
 
         {/* Center section - Main camera readings */}
         <div className="flex items-center gap-6">
+          {interfaceModules.analogMeter && (
+            <div className="hidden md:flex flex-col items-center mr-4">
+              <div className="mono text-[9px] uppercase tracking-[0.3em] text-white/60 mb-1">Meter</div>
+              <div className="relative w-24 h-12 rounded-b-full border border-green-400/40 bg-black/40 overflow-hidden">
+                <div className="absolute inset-x-4 bottom-2 h-1 bg-gradient-to-r from-green-500 via-green-200 to-green-500/80 opacity-60" />
+                <div
+                  className="absolute left-1/2 bottom-0 w-0.5 h-10 bg-green-300 origin-bottom"
+                  style={{ transform: `translateX(-50%) rotate(${analogNeedle}deg)` }}
+                />
+              </div>
+            </div>
+          )}
           {/* ISO */}
           <div className="flex flex-col items-center">
             <div className="text-[9px] opacity-60">ISO</div>
@@ -144,6 +175,19 @@ export default function CameraHUD() {
           )}
 
           <BatteryIndicator />
+
+          {interfaceModules.audioMeters && (
+            <div className="flex items-end gap-1 h-10">
+              {audioLevels.map((level, idx) => (
+                <div
+                  key={idx}
+                  className="w-2 rounded bg-gradient-to-t from-green-500/40 via-green-400/70 to-green-200/90"
+                  style={{ height: `${Math.min(100, Math.max(15, level))}%` }}
+                />
+              ))}
+              <span className="mono text-[9px] uppercase tracking-[0.3em] text-white/60 ml-2">dB</span>
+            </div>
+          )}
 
           {hudVisibility === 'full' && (
             <div className="text-[10px] opacity-75">

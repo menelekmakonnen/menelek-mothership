@@ -2,32 +2,49 @@ import { useCameraContext } from '@/context/CameraContext';
 import { motion } from 'framer-motion';
 import { Power, Moon } from 'lucide-react';
 
-export default function PowerControls() {
+export default function PowerControls({ orientation = 'horizontal', variant = 'panel' }) {
   const { powerOff, setStandby } = useCameraContext();
 
-  return (
-    <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[1650] pointer-events-auto">
-      <div className="flex items-center gap-3 px-4 py-2 bg-black/80 border border-white/10 rounded-full shadow-lg backdrop-blur">
-        <motion.button
-          onClick={setStandby}
-          className="flex items-center justify-center w-10 h-10 rounded-full border border-white/15 text-yellow-300 hover:border-yellow-400 transition-colors"
-          whileTap={{ scale: 0.9 }}
-          whileHover={{ scale: 1.05 }}
-          title="Standby"
-        >
-          <Moon className="w-4 h-4" />
-        </motion.button>
+  const controls = [
+    {
+      id: 'standby',
+      icon: Moon,
+      title: 'Standby',
+      onClick: setStandby,
+      accent: 'text-amber-300 border-amber-400/60 hover:bg-amber-500/10',
+    },
+    {
+      id: 'power',
+      icon: Power,
+      title: 'Power Down',
+      onClick: powerOff,
+      accent: 'text-red-400 border-red-500/60 hover:bg-red-500/10',
+    },
+  ];
 
+  return (
+    <div
+      className={`${
+        variant === 'panel'
+          ? 'camera-hud rounded-xl px-2 py-2'
+          : 'bg-transparent'
+      } flex ${orientation === 'vertical' ? 'flex-col' : 'flex-row'} gap-2 pointer-events-auto`}
+    >
+      {controls.map(({ id, icon: Icon, title, onClick, accent }) => (
         <motion.button
-          onClick={powerOff}
-          className="flex items-center justify-center w-10 h-10 rounded-full border border-white/15 text-red-400 hover:border-red-500 transition-colors"
+          key={id}
+          onClick={onClick}
+          className={`w-12 h-12 rounded-lg border border-white/10 flex items-center justify-center transition-all ${
+            variant === 'inline' ? 'bg-white/5' : ''
+          } ${accent}`}
           whileTap={{ scale: 0.9 }}
           whileHover={{ scale: 1.05 }}
-          title="Power Off"
+          title={title}
+          aria-label={title}
         >
-          <Power className="w-4 h-4" />
+          <Icon className="w-4 h-4" />
         </motion.button>
-      </div>
+      ))}
     </div>
   );
 }

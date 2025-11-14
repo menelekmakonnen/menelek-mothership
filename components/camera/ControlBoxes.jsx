@@ -20,6 +20,7 @@ import {
 import ExposureControls from './ExposureControls';
 import LensSelector from './LensSelector';
 import AssistTools from './AssistTools';
+import PowerControls from './PowerControls';
 
 export default function ControlBoxes() {
   const {
@@ -302,7 +303,10 @@ export default function ControlBoxes() {
   if (!isMobile) {
     return (
       <div className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
-        <div className="flex gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex items-stretch gap-2 p-4 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="pointer-events-auto flex items-center">
+            <PowerControls />
+          </div>
           {/* Expandable control boxes */}
           {boxes.map((box) => {
             const isOpen = openBoxes.includes(box.id);
@@ -419,6 +423,7 @@ export default function ControlBoxes() {
                 </motion.button>
               );
             })}
+            <PowerControls variant="inline" />
           </div>
         </div>
       </div>

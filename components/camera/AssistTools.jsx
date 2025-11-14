@@ -28,6 +28,13 @@ export default function AssistTools() {
     { id: 'full', label: 'Full' },
   ];
 
+  const gridLevels = [
+    { id: 'off', label: 'Off', desc: 'Hide framing guides.' },
+    { id: 'classic', label: 'Classic', desc: 'Standard 3x3 guidance.' },
+    { id: 'precision', label: 'Precision', desc: 'Adds horizon splits and diagonals.' },
+    { id: 'golden', label: 'Cinematic', desc: 'Dense grid with golden ratio highlights.' },
+  ];
+
   const presets = [
     { id: 'modern', label: 'Modern Hybrid', description: 'Balanced mirrorless layout with adaptive flash.' },
     { id: 'retro', label: 'Retro HUD', description: 'Warm tungsten palette with manual focus bias.' },
@@ -37,21 +44,30 @@ export default function AssistTools() {
   return (
     <div className="space-y-4 mono text-xs">
       {/* Rule of Thirds Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Grid3x3 className="w-4 h-4" />
-          <span>Rule of Thirds</span>
+      <div>
+        <div className="flex items-center gap-2 justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Grid3x3 className="w-4 h-4" />
+            <span className="uppercase tracking-wide text-[11px]">Framing Grid</span>
+          </div>
+          <span className="text-[10px] opacity-60 uppercase">{gridLevels.find((level) => level.id === ruleOfThirds)?.label}</span>
         </div>
-        <button
-          onClick={() => setRuleOfThirds(!ruleOfThirds)}
-          className={`px-3 py-1 rounded transition-all ${
-            ruleOfThirds
-              ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-              : 'bg-white/5 border border-white/10'
-          }`}
-        >
-          {ruleOfThirds ? 'ON' : 'OFF'}
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          {gridLevels.map((level) => (
+            <button
+              key={level.id}
+              onClick={() => setRuleOfThirds(level.id)}
+              className={`px-3 py-2 rounded text-left transition-all ${
+                ruleOfThirds === level.id
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/50 shadow-lg'
+                  : 'bg-white/5 border border-white/10 hover:border-white/30'
+              }`}
+            >
+              <div className="font-bold text-xs uppercase">{level.label}</div>
+              <div className="text-[9px] opacity-60 mt-1 leading-relaxed">{level.desc}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Histogram Toggle */}

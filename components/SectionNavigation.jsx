@@ -18,7 +18,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   const [scrollOpacity, setScrollOpacity] = useState(1);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const dragState = useRef({ x: 0, y: 0, scrollTop: 0, scrollLeft: 0, pointerId: null });
+  const dragState = useRef({ x: 0, y: 0, scrollTop: 0, scrollLeft: 0, pointerId: null, isActive: false });
   const containerRef = useRef(null);
 
   const minSwipeDistance = 50;
@@ -69,6 +69,9 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
       if (gestureLock) return;
       const tagName = e.target?.tagName;
       if (tagName && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+      }
       if (e.key === 'ArrowLeft') prevSection();
       if (e.key === 'ArrowRight') nextSection();
     };
@@ -101,25 +104,38 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     const container = containerRef.current;
     if (!container) return;
 
-    setIsDragging(true);
     dragState.current = {
       x: e.clientX,
       y: e.clientY,
       scrollTop: container.scrollTop,
       scrollLeft: container.scrollLeft,
       pointerId: e.pointerId,
+      isActive: false,
     };
-
-    container.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e) => {
-    if (gestureLock || !isDragging) return;
+    if (gestureLock) return;
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || dragState.current.pointerId !== e.pointerId) return;
 
     const deltaX = e.clientX - dragState.current.x;
     const deltaY = e.clientY - dragState.current.y;
+    const distance = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+
+    if (!dragState.current.isActive) {
+      if (distance > 4) {
+        dragState.current.isActive = true;
+        setIsDragging(true);
+        try {
+          container.setPointerCapture(e.pointerId);
+        } catch (err) {
+          // ignore capture errors
+        }
+      } else {
+        return;
+      }
+    }
 
     container.scrollLeft = dragState.current.scrollLeft - deltaX;
     container.scrollTop = dragState.current.scrollTop - deltaY;
@@ -127,7 +143,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
 
   const endPointerDrag = (e) => {
     const container = containerRef.current;
-    if (container && dragState.current.pointerId !== null) {
+    if (container && dragState.current.pointerId !== null && dragState.current.isActive) {
       try {
         container.releasePointerCapture(dragState.current.pointerId);
       } catch (err) {
@@ -135,12 +151,15 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
       }
     }
     dragState.current.pointerId = null;
+    dragState.current.isActive = false;
     setIsDragging(false);
   };
 
   const handlePointerUp = (e) => {
     if (e.pointerType === 'touch' || gestureLock) return;
-    endPointerDrag(e);
+    if (dragState.current.pointerId === e.pointerId) {
+      endPointerDrag(e);
+    }
   };
 
   const handlePointerLeave = (e) => {
