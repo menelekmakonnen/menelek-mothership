@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 const CameraContext = createContext();
 
@@ -34,7 +34,7 @@ export const CameraProvider = ({ children }) => {
   const [hasBooted, setHasBooted] = useState(false);
 
   // Camera type
-  const [cameraMode, setCameraMode] = useState('dslr'); // 'dslr' or 'mirrorless'
+  const [cameraMode, _setCameraMode] = useState('dslr'); // 'dslr' or 'mirrorless'
 
   // Battery system
   const [batteryLevel, setBatteryLevel] = useState(100);
@@ -77,6 +77,18 @@ export const CameraProvider = ({ children }) => {
   // Track if any settings have been changed (for showing reset button)
   const [hasModifiedSettings, setHasModifiedSettings] = useState(false);
 
+  // Lock gestures when secondary layers are active
+  const [gestureLock, setGestureLock] = useState(false);
+
+  // Immersive mobile layout
+  const [mobileImmersiveMode, setMobileImmersiveMode] = useState(false);
+
+  // Camera skin / presets
+  const [activePreset, setActivePreset] = useState(null);
+
+  const dslrSettingsRef = useRef(null);
+  const mirrorlessSettingsRef = useRef(null);
+
   // Calculate battery based on time of day
   useEffect(() => {
     const updateBattery = () => {
@@ -84,8 +96,16 @@ export const CameraProvider = ({ children }) => {
       const hours = now.getHours();
       const minutes = now.getMinutes();
       const totalMinutes = hours * 60 + minutes;
-      const midnightMinutes = 23 * 60 + 11; // 23:11
-      const batteryPercent = Math.max(0, 100 - (totalMinutes / midnightMinutes) * 100);
+      const minutesInDay = 24 * 60 - 1; // 1439 (23:59)
+      const clampedMinutes = Math.min(totalMinutes, minutesInDay);
+      let batteryPercent = 100 - (clampedMinutes / minutesInDay) * 100;
+
+      if (clampedMinutes < minutesInDay) {
+        batteryPercent = Math.max(1, batteryPercent);
+      } else {
+        batteryPercent = 0;
+      }
+
       setBatteryLevel(Math.round(batteryPercent));
 
       // Auto reboot at midnight
@@ -156,7 +176,10 @@ export const CameraProvider = ({ children }) => {
     setShowHistogram(false);
     setFocusMode('single');
     setOpenBoxes([]);
-    setCameraMode('dslr');
+    _setCameraMode('dslr');
+    setActivePreset(null);
+    setGestureLock(false);
+    setMobileImmersiveMode(false);
     setHasModifiedSettings(false);
   }, []);
 
@@ -195,6 +218,93 @@ export const CameraProvider = ({ children }) => {
     const nextIndex = (currentIndex + 1) % LENSES.length;
     changeLens(LENSES[nextIndex]);
   }, [currentLens, changeLens]);
+
+  // Change camera mode with immersive adjustments
+  const setCameraMode = useCallback((mode) => {
+    setHasModifiedSettings(true);
+
+    if (mode === cameraMode) return;
+
+    if (mode === 'mirrorless') {
+      dslrSettingsRef.current = {
+        hudVisibility,
+        focusMode,
+        showHistogram,
+        ruleOfThirds,
+      };
+
+      _setCameraMode('mirrorless');
+      setHudVisibility('minimal');
+      setFocusMode('continuous');
+      setShowHistogram(true);
+      setRuleOfThirds(true);
+    } else {
+      mirrorlessSettingsRef.current = {
+        hudVisibility,
+        focusMode,
+        showHistogram,
+        ruleOfThirds,
+      };
+
+      _setCameraMode('dslr');
+
+      if (dslrSettingsRef.current) {
+        setHudVisibility(dslrSettingsRef.current.hudVisibility);
+        setFocusMode(dslrSettingsRef.current.focusMode);
+        setShowHistogram(dslrSettingsRef.current.showHistogram);
+        setRuleOfThirds(dslrSettingsRef.current.ruleOfThirds);
+      } else {
+        setHudVisibility('standard');
+        setFocusMode('single');
+        setShowHistogram(false);
+        setRuleOfThirds(false);
+      }
+    }
+  }, [cameraMode, hudVisibility, focusMode, showHistogram, ruleOfThirds, setHudVisibility, setFocusMode, setShowHistogram, setRuleOfThirds, setHasModifiedSettings]);
+
+  useEffect(() => {
+    const skin = activePreset || cameraMode;
+    document.documentElement.setAttribute('data-camera-skin', skin);
+    document.documentElement.setAttribute('data-camera-mode', cameraMode);
+  }, [activePreset, cameraMode]);
+
+  const applyCameraPreset = useCallback((presetId) => {
+    setHasModifiedSettings(true);
+
+    if (!presetId) {
+      setActivePreset(null);
+      return;
+    }
+
+    setActivePreset(presetId);
+
+    switch (presetId) {
+      case 'modern':
+        setHudVisibility('minimal');
+        setFlashMode('auto');
+        setWhiteBalance('daylight');
+        setFocusMode('continuous');
+        setExposureComp(0);
+        break;
+      case 'retro':
+        setHudVisibility('full');
+        setFlashMode('off');
+        setWhiteBalance('tungsten');
+        setFocusMode('manual');
+        setExposureComp(0.3);
+        break;
+      case 'cinema':
+        setHudVisibility('full');
+        setFlashMode('off');
+        setWhiteBalance('cloudy');
+        setFocusMode('manual');
+        setExposureComp(-0.3);
+        break;
+      default:
+        setActivePreset(null);
+        break;
+    }
+  }, [setExposureComp, setHudVisibility, setFlashMode, setWhiteBalance, setFocusMode]);
 
   // Theme based on flash mode
   const getTheme = useCallback(() => {
@@ -328,6 +438,12 @@ export const CameraProvider = ({ children }) => {
     getIsoNoise,
     getWhiteBalanceFilter,
     whiteBalanceModes: WHITE_BALANCE_MODES,
+    gestureLock,
+    setGestureLock,
+    mobileImmersiveMode,
+    setMobileImmersiveMode,
+    activePreset,
+    applyCameraPreset,
   };
 
   return (

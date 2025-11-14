@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useCameraContext } from '@/context/CameraContext';
 import { Grid, Grid2x2, Grid3x3, Maximize } from 'lucide-react';
 
 // Placeholder gallery - will be replaced with Google Drive integration
@@ -37,6 +38,12 @@ const albums = [
 export default function PhotographySection() {
   const [viewMode, setViewMode] = useState('grid'); // 'single', 'grid-4', 'grid-8', 'grid-16'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const { setGestureLock } = useCameraContext();
+
+  useEffect(() => {
+    setGestureLock(Boolean(selectedAlbum));
+    return () => setGestureLock(false);
+  }, [selectedAlbum, setGestureLock]);
 
   const viewModes = [
     { id: 'single', label: 'Single', icon: Maximize },
@@ -60,7 +67,7 @@ export default function PhotographySection() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-8"
+          className="text-xl text-[color:var(--text-secondary)] mb-8"
         >
           Capturing moments through the lens
         </motion.p>
@@ -86,7 +93,7 @@ export default function PhotographySection() {
 
                   {/* Album info */}
                   <h3 className="font-bold text-xl mb-2">{album.name}</h3>
-                  <p className="text-sm text-gray-400">{album.count} photos</p>
+                  <p className="text-sm text-[color:var(--text-secondary)]">{album.count} photos</p>
 
                   <div className="mt-4 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
                     View Album →
@@ -107,7 +114,7 @@ export default function PhotographySection() {
                   ← Back to Albums
                 </button>
                 <h2 className="text-3xl font-bold">{selectedAlbum.name}</h2>
-                <p className="text-gray-400">{selectedAlbum.count} photos</p>
+                <p className="text-[color:var(--text-secondary)]">{selectedAlbum.count} photos</p>
               </div>
 
               {/* View mode selector */}

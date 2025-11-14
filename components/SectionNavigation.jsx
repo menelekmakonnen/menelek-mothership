@@ -1,42 +1,58 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import BlurLayer from './ui/BlurLayer';
 
 export default function SectionNavigation({ sections, contentStyle = {} }) {
-  const { currentSection, setCurrentSection, currentLens, shutterSpeed, setFocusedLayer } = useCameraContext();
+  const {
+    currentSection,
+    setCurrentSection,
+    currentLens,
+    shutterSpeed,
+    setFocusedLayer,
+    gestureLock,
+  } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [swipeDirection, setSwipeDirection] = useState(1); // 1 for next, -1 for prev
   const [scrollOpacity, setScrollOpacity] = useState(1);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragState = useRef({ x: 0, y: 0, scrollTop: 0, scrollLeft: 0, pointerId: null });
+  const containerRef = useRef(null);
 
   const minSwipeDistance = 50;
 
-  const nextSection = () => {
-    setSwipeDirection(1);
-    setCurrentSection((prev) => (prev + 1) % sections.length);
-    // Trigger refocus event
-    setFocusedLayer(100);
-  };
+  const totalSections = sections.length;
 
-  const prevSection = () => {
-    setSwipeDirection(-1);
-    setCurrentSection((prev) => (prev - 1 + sections.length) % sections.length);
-    // Trigger refocus event
+  const nextSection = useCallback(() => {
+    if (gestureLock) return;
+    setSwipeDirection(1);
+    setCurrentSection((prev) => (prev + 1) % totalSections);
     setFocusedLayer(100);
-  };
+  }, [gestureLock, setCurrentSection, totalSections, setFocusedLayer]);
+
+  const prevSection = useCallback(() => {
+    if (gestureLock) return;
+    setSwipeDirection(-1);
+    setCurrentSection((prev) => (prev - 1 + totalSections) % totalSections);
+    setFocusedLayer(100);
+  }, [gestureLock, setCurrentSection, totalSections, setFocusedLayer]);
 
   const onTouchStart = (e) => {
+    if (gestureLock) return;
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
   };
 
   const onTouchMove = (e) => {
+    if (gestureLock) return;
     setTouchEnd(e.targetTouches[0].clientX);
   };
 
   const onTouchEnd = () => {
+    if (gestureLock) return;
     if (!touchStart || !touchEnd) return;
 
     const distance = touchStart - touchEnd;
@@ -59,23 +75,84 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [prevSection, nextSection]);
 
   // Scroll-based arrow fade
   useEffect(() => {
-    const handleScroll = (e) => {
-      const scrollTop = e.target.scrollTop || 0;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop || 0;
       // Fade out arrows as user scrolls down (fully faded at 300px scroll)
       const opacity = Math.max(0.2, 1 - scrollTop / 300);
       setScrollOpacity(opacity);
+      setShowBackToTop(scrollTop > 240);
     };
 
-    const container = document.querySelector('.section-scroll-container');
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-      return () => container.removeEventListener('scroll', handleScroll);
-    }
+    container.addEventListener('scroll', handleScroll);
+    handleScroll();
+    return () => container.removeEventListener('scroll', handleScroll);
   }, [currentSection]);
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'touch' || e.button !== 0) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    setIsDragging(true);
+    dragState.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollTop: container.scrollTop,
+      scrollLeft: container.scrollLeft,
+      pointerId: e.pointerId,
+    };
+
+    container.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const deltaX = e.clientX - dragState.current.x;
+    const deltaY = e.clientY - dragState.current.y;
+
+    container.scrollLeft = dragState.current.scrollLeft - deltaX;
+    container.scrollTop = dragState.current.scrollTop - deltaY;
+  };
+
+  const endPointerDrag = (e) => {
+    const container = containerRef.current;
+    if (container && dragState.current.pointerId !== null) {
+      try {
+        container.releasePointerCapture(dragState.current.pointerId);
+      } catch (err) {
+        // ignore
+      }
+    }
+    dragState.current.pointerId = null;
+    setIsDragging(false);
+  };
+
+  const handlePointerUp = (e) => {
+    if (e.pointerType === 'touch') return;
+    endPointerDrag(e);
+  };
+
+  const handlePointerLeave = (e) => {
+    if (isDragging) {
+      endPointerDrag(e);
+    }
+  };
+
+  const scrollToTop = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Motion blur effect based on shutter speed
   const getMotionBlur = () => {
@@ -94,14 +171,20 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
 
   return (
     <div
+      ref={containerRef}
       className={`section-scroll-container w-full h-full relative ${scrollClasses}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
       style={isZoomedIn ? {
         paddingTop: '120px',
         paddingBottom: '120px',
-      } : {}}
+        cursor: isDragging ? 'grabbing' : 'grab',
+      } : { cursor: isDragging ? 'grabbing' : 'grab' }}
     >
       {/* Navigation arrows - Fixed desktop position, fade with scroll */}
       <button
@@ -175,6 +258,22 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Back to top button */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.2 }}
+            onClick={scrollToTop}
+            className="fixed bottom-28 right-6 z-[1450] camera-hud px-4 py-2 rounded-full flex items-center gap-2 text-xs uppercase tracking-[0.3em]"
+          >
+            Back to Top
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

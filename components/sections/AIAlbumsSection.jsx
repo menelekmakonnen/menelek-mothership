@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useCameraContext } from '@/context/CameraContext';
 import { Sparkles, Wand2, Cpu, Zap } from 'lucide-react';
 
 // Placeholder AI-generated content albums
@@ -36,6 +37,12 @@ const aiAlbums = [
 
 export default function AIAlbumsSection() {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const { setGestureLock } = useCameraContext();
+
+  useEffect(() => {
+    setGestureLock(Boolean(selectedAlbum));
+    return () => setGestureLock(false);
+  }, [selectedAlbum, setGestureLock]);
 
   if (selectedAlbum) {
     return (
@@ -84,7 +91,7 @@ export default function AIAlbumsSection() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
+          className="text-xl text-[color:var(--text-secondary)] mb-12"
         >
           AI-generated visual art and experiments
         </motion.p>
@@ -108,7 +115,7 @@ export default function AIAlbumsSection() {
                 </div>
 
                 <h3 className="font-bold text-xl mb-2">{album.name}</h3>
-                <p className="text-sm text-gray-400">{album.count} images</p>
+                <p className="text-sm text-[color:var(--text-secondary)]">{album.count} images</p>
 
                 <div className="mt-3 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
                   View Album →

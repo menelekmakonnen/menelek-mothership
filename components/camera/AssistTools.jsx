@@ -11,6 +11,8 @@ export default function AssistTools() {
     setFocusMode,
     hudVisibility,
     setHudVisibility,
+    applyCameraPreset,
+    activePreset,
   } = useCameraContext();
 
   const focusModes = [
@@ -24,6 +26,12 @@ export default function AssistTools() {
     { id: 'minimal', label: 'Minimal' },
     { id: 'standard', label: 'Standard' },
     { id: 'full', label: 'Full' },
+  ];
+
+  const presets = [
+    { id: 'modern', label: 'Modern Hybrid', description: 'Balanced mirrorless layout with adaptive flash.' },
+    { id: 'retro', label: 'Retro HUD', description: 'Warm tungsten palette with manual focus bias.' },
+    { id: 'cinema', label: 'Cinema Rig', description: 'Film-centric HUD with flash disabled and EV guard.' },
   ];
 
   return (
@@ -105,6 +113,35 @@ export default function AssistTools() {
               {mode.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Camera presets */}
+      <div className="space-y-2">
+        <div className="text-[10px] opacity-75 tracking-wider">CAMERA PRESETS</div>
+        <div className="space-y-2">
+          {presets.map((preset) => (
+            <button
+              key={preset.id}
+              onClick={() => applyCameraPreset(preset.id)}
+              className={`w-full px-3 py-3 rounded text-left transition-all ${
+                activePreset === preset.id
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                  : 'bg-white/5 border border-white/10 hover:border-white/30'
+              }`}
+            >
+              <div className="font-bold text-xs uppercase">{preset.label}</div>
+              <div className="text-[9px] opacity-60 mt-1">{preset.description}</div>
+            </button>
+          ))}
+          <button
+            onClick={() => applyCameraPreset(null)}
+            className={`w-full px-3 py-2 rounded text-left transition-all text-[11px] mono uppercase ${
+              !activePreset ? 'bg-green-500/10 text-green-400 border border-green-400/50' : 'bg-white/5 border border-white/10 hover:border-white/30'
+            }`}
+          >
+            Manual Setup
+          </button>
         </div>
       </div>
     </div>

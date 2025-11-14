@@ -26,7 +26,7 @@ export default function VideoEditsSection() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
+          className="text-xl text-[color:var(--text-secondary)] mb-12"
         >
           Professional video editing and motion graphics
         </motion.p>
@@ -60,7 +60,7 @@ export default function VideoEditsSection() {
 
               {/* Video info */}
               <h3 className="font-bold mb-1">{video.title}</h3>
-              <p className="text-xs text-gray-400">{video.views} views</p>
+              <p className="text-xs text-[color:var(--text-secondary)]">{video.views} views</p>
             </motion.div>
           ))}
         </div>
