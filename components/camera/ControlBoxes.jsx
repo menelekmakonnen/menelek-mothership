@@ -375,7 +375,7 @@ export default function ControlBoxes() {
     const flashAccent = flashMode === 'on' ? 'text-amber-200 border-amber-400/40' : flashMode === 'off' ? 'text-slate-200' : '';
 
     return (
-      <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1500]">
+      <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1700]">
         <div className="camera-top-rail pointer-events-none">
           <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-3 pointer-events-auto">
             <div className="flex items-center gap-3 overflow-x-auto overflow-y-visible pb-1 scrollbar-hide pointer-events-auto">
@@ -426,7 +426,7 @@ export default function ControlBoxes() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -12 }}
                           transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                          className="absolute z-[1600] mt-3 w-[320px]"
+                          className="absolute z-[2000] mt-3 w-[320px] pointer-events-auto"
                           style={{ left: alignRight ? 'auto' : 0, right: alignRight ? 0 : 'auto' }}
                         >
                           <div className="camera-hud rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
@@ -514,7 +514,7 @@ export default function ControlBoxes() {
 
   // Mobile layout - icon strip with expandable panels
   return (
-    <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1500] pointer-events-none">
+    <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1700] pointer-events-none">
       <div className="px-3 pt-4">
         <div className="pointer-events-auto">
           <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 bg-black/75 border border-white/10 rounded-full backdrop-blur-md">

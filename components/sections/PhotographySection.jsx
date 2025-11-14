@@ -35,12 +35,12 @@ const buildPreviewSrc = (item, size = 'w1600-h1600') => {
   if (item.imageVariants) {
     return item.imageVariants.preview || item.imageVariants.full || item.imageVariants.thumb;
   }
-  if (item.previewUrl) return item.previewUrl;
-  if (item.thumbnail) return item.thumbnail;
-  if (item.thumb) return item.thumb;
-  if (item.viewUrl) return item.viewUrl;
-  if (item.downloadUrl) return item.downloadUrl;
-  if (item.id) {
+  if (item.previewUrl && item.type !== 'folder') return item.previewUrl;
+  if (item.thumbnail && item.type !== 'folder') return item.thumbnail;
+  if (item.thumb && item.type !== 'folder') return item.thumb;
+  if (item.type !== 'folder' && item.viewUrl) return item.viewUrl;
+  if (item.type !== 'folder' && item.downloadUrl) return item.downloadUrl;
+  if (item.type !== 'folder' && item.id) {
     return `https://lh3.googleusercontent.com/d/${item.id}=${size}`;
   }
   return null;

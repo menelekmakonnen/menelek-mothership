@@ -35,37 +35,18 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
 
   const navRef = useRef(null);
   const dragControls = useDragControls();
-  const hideTimerRef = useRef(null);
   const [navSize, setNavSize] = useState({ width: 0, height: 0 });
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 0 : window.innerWidth,
     height: typeof window === 'undefined' ? 0 : window.innerHeight,
   }));
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [floatPosition, setFloatPosition] = useState({ x: 0, y: 0 });
 
-  const clearHideTimer = useCallback(() => {
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleHide = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    clearHideTimer();
-    hideTimerRef.current = window.setTimeout(() => {
-      setIsCollapsed(true);
-    }, 5200);
-  }, [clearHideTimer]);
-
   const markInteraction = useCallback(() => {
     setIsCollapsed(false);
-    scheduleHide();
-  }, [scheduleHide]);
-
-  useEffect(() => () => clearHideTimer(), [clearHideTimer]);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -160,7 +141,6 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
       };
 
       if (!isFloating && info.offset.y < -36 && Math.abs(info.offset.x) < 60) {
-        clearHideTimer();
         setIsCollapsed(true);
         setIsFloating(false);
         setFloatPosition({ x: 0, y: 0 });
@@ -181,7 +161,7 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
       setFloatPosition(clamped);
       markInteraction();
     },
-    [clampFloatPosition, clearHideTimer, floatPosition, isFloating, markInteraction]
+    [clampFloatPosition, floatPosition, isFloating, markInteraction]
   );
 
   const handleHandlePointerDown = useCallback(
@@ -226,8 +206,6 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
           onDragEnd={handleDragEnd}
           onPointerEnter={markInteraction}
           onFocusCapture={markInteraction}
-          onPointerLeave={scheduleHide}
-          onBlurCapture={scheduleHide}
           onPointerDownCapture={() => {
             if (isCollapsed) {
               markInteraction();

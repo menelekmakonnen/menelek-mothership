@@ -21,13 +21,6 @@ const getPreviewSrc = (item) => {
   return null;
 };
 
-function resolveAiRootFolder(rootFolder) {
-  if (!rootFolder) return null;
-  const folders = rootFolder.items.filter((item) => item.type === 'folder');
-  const aiFolder = folders.find((folder) => folder.title.toLowerCase().includes('ai'));
-  return aiFolder || folders[0] || null;
-}
-
 export default function AIAlbumsSection() {
   const { loadFolder, getFolder, isLoading, getError } = useDriveFolderCache();
   const [selectedAlbum, setSelectedAlbum] = useState(null);
@@ -38,19 +31,38 @@ export default function AIAlbumsSection() {
   }, [loadFolder]);
 
   const aiRoot = getFolder(AI_ALBUM_ROOT);
-  const aiAlbumsFolder = resolveAiRootFolder(aiRoot);
+
+  const aiContainer = useMemo(() => {
+    if (!aiRoot) return null;
+    const folders = aiRoot.items.filter((item) => item.type === 'folder');
+    const explicitContainer = folders.find((folder) => /ai\s*albums?/i.test(folder.title));
+    return explicitContainer || null;
+  }, [aiRoot]);
 
   useEffect(() => {
-    if (!aiAlbumsFolder) return;
-    loadFolder(aiAlbumsFolder.id);
-  }, [aiAlbumsFolder, loadFolder]);
+    if (!aiContainer) return;
+    loadFolder(aiContainer.id);
+  }, [aiContainer, loadFolder]);
+
+  const rootLevelAlbums = useMemo(() => {
+    if (!aiRoot) return [];
+    return aiRoot.items.filter((item) => item.type === 'folder' && /ai/i.test(item.title));
+  }, [aiRoot]);
 
   const albumEntries = useMemo(() => {
-    if (!aiAlbumsFolder) return [];
-    const folderData = getFolder(aiAlbumsFolder.id);
-    if (!folderData) return [];
-    return folderData.items.filter((item) => item.type === 'folder');
-  }, [aiAlbumsFolder, getFolder]);
+    if (aiContainer) {
+      const folderData = getFolder(aiContainer.id);
+      if (!folderData) return [];
+      return folderData.items.filter((item) => item.type === 'folder');
+    }
+
+    if (rootLevelAlbums.length) {
+      return rootLevelAlbums;
+    }
+
+    if (!aiRoot) return [];
+    return aiRoot.items.filter((item) => item.type === 'folder');
+  }, [aiContainer, getFolder, aiRoot, rootLevelAlbums]);
 
   useEffect(() => {
     if (!selectedAlbum) return;
@@ -83,6 +95,32 @@ export default function AIAlbumsSection() {
   }, [selectedAlbumImages, selectedImageIndex]);
 
   const activeImage = selectedImageIndex !== null ? selectedAlbumImages[selectedImageIndex] : null;
+
+  useEffect(() => {
+    if (selectedImageIndex === null || !selectedAlbumImages.length) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        setSelectedImageIndex((index) => {
+          if (index === null) return index;
+          return (index + 1) % selectedAlbumImages.length;
+        });
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setSelectedImageIndex((index) => {
+          if (index === null) return index;
+          return (index - 1 + selectedAlbumImages.length) % selectedAlbumImages.length;
+        });
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setSelectedImageIndex(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAlbumImages.length, selectedImageIndex]);
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
@@ -142,9 +180,19 @@ export default function AIAlbumsSection() {
                 </div>
               </motion.button>
             ))}
-            {!albumEntries.length && isLoading(aiAlbumsFolder?.id) && (
+            {!albumEntries.length && isLoading(aiContainer?.id || AI_ALBUM_ROOT) && (
               <div className="col-span-full flex h-48 items-center justify-center rounded-3xl border border-white/10 bg-black/40">
                 <Loader2 className="h-8 w-8 animate-spin text-green-300" />
+              </div>
+            )}
+            {!albumEntries.length && !isLoading(aiContainer?.id || AI_ALBUM_ROOT) && !getError(AI_ALBUM_ROOT) && (
+              <div className="col-span-full flex h-48 items-center justify-center rounded-3xl border border-white/10 bg-black/40 text-sm text-[color:var(--text-secondary)]">
+                No AI albums are shared in the connected Google Drive yet.
+              </div>
+            )}
+            {!albumEntries.length && getError(aiContainer?.id || AI_ALBUM_ROOT) && (
+              <div className="col-span-full flex h-48 items-center justify-center rounded-3xl border border-rose-400/30 bg-rose-500/10 text-sm text-rose-200">
+                Unable to reach the AI albums right now. Please try again shortly.
               </div>
             )}
           </div>
