@@ -287,7 +287,6 @@ export const CameraProvider = ({ children }) => {
 
   // Control boxes management (max 2 open)
   const toggleBox = useCallback((boxId) => {
-    setHasModifiedSettings(true);
     setOpenBoxes(prev => {
       if (prev.includes(boxId)) {
         return prev.filter(id => id !== boxId);

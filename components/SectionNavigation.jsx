@@ -214,7 +214,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     ? 'overflow-x-auto overflow-y-auto'
     : 'overflow-y-auto overflow-x-hidden';
 
-  const navOffset = 'calc(var(--camera-top-rail-height, 112px) + 96px)';
+  const navOffset = 'calc(var(--camera-top-rail-height, 112px) + var(--camera-nav-safe-zone, 96px))';
   const baseBottomPadding = '140px';
   const containerStyle = {
     cursor: isDragging ? 'grabbing' : 'grab',

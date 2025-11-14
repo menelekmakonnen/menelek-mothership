@@ -23,6 +23,7 @@
   --glass: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
   --camera-top-rail-height: 112px;
+  --camera-nav-safe-zone: 96px;
   --camera-top-rail-bg: linear-gradient(135deg, rgba(12, 16, 24, 0.92), rgba(6, 10, 18, 0.92));
   --camera-top-rail-border: rgba(255, 255, 255, 0.06);
   --nav-blend-color: rgba(6, 10, 18, 0.7);
@@ -50,6 +51,7 @@
   --glass-border: rgba(0, 0, 0, 0.1);
   --camera-top-rail-bg: linear-gradient(135deg, rgba(250, 250, 252, 0.94), rgba(236, 238, 244, 0.9));
   --camera-top-rail-border: rgba(12, 18, 32, 0.08);
+  --camera-nav-safe-zone: 96px;
   --nav-blend-color: rgba(236, 240, 248, 0.85);
   --content-stage-gradient: radial-gradient(circle at 22% 18%, rgba(82, 126, 255, 0.15), transparent 46%),
     radial-gradient(circle at 80% 20%, rgba(80, 206, 255, 0.12), transparent 55%),

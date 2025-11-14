@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Grid,
   Grid2x2,
@@ -12,6 +12,8 @@ import {
   SlidersHorizontal,
   Focus,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
 
@@ -92,7 +94,7 @@ export default function PhotographySection() {
   const [viewMode, setViewMode] = useState('gallery');
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [sortMode, setSortMode] = useState('chronological');
-  const [activeImage, setActiveImage] = useState(null);
+  const [activeImageId, setActiveImageId] = useState(null);
   const [lightboxSettings, setLightboxSettings] = useState({
     focusDepth: 48,
     clarity: 0,
@@ -121,6 +123,14 @@ export default function PhotographySection() {
     return images;
   }, [selectedAlbum, sortMode]);
 
+  const activeIndex = useMemo(() => {
+    if (activeImageId === null) return null;
+    const index = sortedImages.findIndex((image) => image.id === activeImageId);
+    return index >= 0 ? index : null;
+  }, [activeImageId, sortedImages]);
+
+  const activeImage = activeIndex !== null ? sortedImages[activeIndex] : null;
+
   const previewFilter = useMemo(() => {
     const profile = lightboxSettings.colorProfile;
     const profileLooks = {
@@ -134,6 +144,52 @@ export default function PhotographySection() {
   }, [lightboxSettings]);
 
   const focusOverlayStrength = useMemo(() => lightboxSettings.focusDepth / 100, [lightboxSettings.focusDepth]);
+
+  const showPrevImage = useCallback(() => {
+    if (activeIndex === null || sortedImages.length <= 1) return;
+    const prevIndex = (activeIndex - 1 + sortedImages.length) % sortedImages.length;
+    const prevImage = sortedImages[prevIndex];
+    if (prevImage) {
+      setActiveImageId(prevImage.id);
+    }
+  }, [activeIndex, sortedImages]);
+
+  const showNextImage = useCallback(() => {
+    if (activeIndex === null || sortedImages.length <= 1) return;
+    const nextIndex = (activeIndex + 1) % sortedImages.length;
+    const nextImage = sortedImages[nextIndex];
+    if (nextImage) {
+      setActiveImageId(nextImage.id);
+    }
+  }, [activeIndex, sortedImages]);
+
+  useEffect(() => {
+    if (activeImageId === null) return;
+    if (!selectedAlbum || sortedImages.length === 0) {
+      setActiveImageId(null);
+      return;
+    }
+    if (!activeImage) {
+      setActiveImageId(sortedImages[0]?.id ?? null);
+    }
+  }, [activeImage, activeImageId, selectedAlbum, sortedImages]);
+
+  useEffect(() => {
+    if (activeImageId === null || activeIndex === null) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        showNextImage();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        showPrevImage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeImageId, activeIndex, showNextImage, showPrevImage]);
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
@@ -164,7 +220,10 @@ export default function PhotographySection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 * index }}
-                onClick={() => setSelectedAlbum(album)}
+                onClick={() => {
+                  setActiveImageId(null);
+                  setSelectedAlbum(album);
+                }}
                 className="group text-left"
               >
                 <div className={`aspect-square rounded-3xl bg-gradient-to-br ${album.gradient} p-6 flex flex-col justify-between shadow-xl transition-transform group-hover:-translate-y-2`}>
@@ -191,10 +250,10 @@ export default function PhotographySection() {
             focusOnMount
             lockGestures
             onClose={() => {
-              setActiveImage(null);
+              setActiveImageId(null);
               setSelectedAlbum(null);
             }}
-            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+96px)] z-[1800] flex items-center justify-center"
+            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1800] flex items-center justify-center"
           >
             <motion.div
               initial={{ opacity: 0, y: 40 }}
@@ -209,7 +268,7 @@ export default function PhotographySection() {
                   <div className="space-y-1">
                     <button
                       onClick={() => {
-                        setActiveImage(null);
+                        setActiveImageId(null);
                         setSelectedAlbum(null);
                       }}
                       className="text-green-300 hover:text-green-100 transition-colors text-sm mono"
@@ -265,7 +324,7 @@ export default function PhotographySection() {
                   {sortedImages.map((image, index) => (
                     <motion.button
                       key={image.id}
-                      onClick={() => setActiveImage(image)}
+                      onClick={() => setActiveImageId(image.id)}
                       className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-900/80 to-zinc-800/60 border border-white/10 group"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -293,154 +352,206 @@ export default function PhotographySection() {
                       depth={1680}
                       type="interactive"
                       lockGestures
-                      onClose={() => setActiveImage(null)}
-                      className="absolute inset-0 flex items-center justify-center px-4 py-6"
+                      onClose={() => setActiveImageId(null)}
+                      className="absolute inset-0"
                     >
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                        className="relative w-full max-w-5xl mx-auto bg-[rgba(4,6,10,0.94)] border border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.65)] overflow-hidden"
+                        exit={{ opacity: 0.85, scale: 0.98 }}
+                        transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                        className="relative flex h-full w-full overflow-hidden bg-[rgba(4,6,10,0.94)] shadow-[0_40px_100px_rgba(0,0,0,0.65)]"
                       >
-                        <div className="flex flex-col lg:flex-row">
-                          <div className="relative lg:w-2/3 p-6 flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h3 className="text-2xl font-semibold">{activeImage.title}</h3>
-                                <p className="text-[color:var(--text-secondary)] text-sm">
-                                  f/{activeImage.aperture.toFixed(1)} · 1/{activeImage.shutter} · ISO {activeImage.iso} · {activeImage.focalLength}mm
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => setActiveImage(null)}
-                                className="camera-hud rounded-full w-10 h-10 flex items-center justify-center"
-                                aria-label="Close lightbox"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            <div className="relative flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black/60">
-                              <div
-                                className="absolute inset-0"
-                                style={{ filter: previewFilter }}
-                              >
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_65%)]" />
-                                <div
-                                  className="absolute inset-0 pointer-events-none"
-                                  style={{
-                                    backdropFilter: `blur(${Math.max(0, 24 - focusOverlayStrength * 24)}px)`
-                                  }}
-                                />
-                              </div>
-                              {lightboxSettings.overlays.peaking && (
-                                <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(90deg, rgba(255,76,76,0.18) 0px, rgba(255,76,76,0.18) 6px, transparent 6px, transparent 14px)' }} />
-                              )}
-                              {lightboxSettings.overlays.zebra && (
-                                <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0px, rgba(255,255,255,0.12) 10px, transparent 10px, transparent 20px)' }} />
-                              )}
-                              {lightboxSettings.overlays.waveform && (
-                                <div className="absolute bottom-4 left-4 right-4 h-16 bg-black/60 border border-white/10 rounded-lg px-3 py-2 flex items-end gap-1">
-                                  {Array.from({ length: 32 }).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className="flex-1 bg-gradient-to-t from-green-500/30 via-green-400/50 to-green-200/80 rounded"
-                                      style={{ height: `${40 + Math.sin((i + focusOverlayStrength) * 0.5) * 20 + lightboxSettings.clarity * 5}%` }}
-                                    />
-                                  ))}
+                        <div
+                          className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(120,160,160,0.18),transparent_60%)]"
+                          aria-hidden="true"
+                        />
+                        <div className="relative flex h-full w-full flex-col lg:flex-row">
+                          <div className="relative flex-1 min-h-[360px] lg:min-h-0">
+                            <div className="absolute inset-0 flex h-full flex-col gap-8 px-6 py-10 lg:px-12 lg:py-12">
+                              <div className="flex flex-wrap items-start justify-between gap-6">
+                                <div className="space-y-2">
+                                  <h3 className="text-3xl font-semibold leading-tight">{activeImage.title}</h3>
+                                  <p className="text-sm text-[color:var(--text-secondary)]">
+                                    f/{activeImage.aperture.toFixed(1)} · 1/{activeImage.shutter} · ISO {activeImage.iso} · {activeImage.focalLength}mm
+                                  </p>
                                 </div>
-                              )}
+                                <div className="flex flex-wrap items-center gap-3 text-[11px] mono uppercase tracking-[0.35em] text-white/70">
+                                  {selectedAlbum && (
+                                    <span className="rounded-full bg-white/10 px-3 py-1">{selectedAlbum.name}</span>
+                                  )}
+                                  <span className="rounded-full bg-white/10 px-3 py-1">
+                                    Frame {activeIndex + 1} / {sortedImages.length}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/65 shadow-[0_40px_80px_rgba(0,0,0,0.55)]">
+                                <div className="absolute inset-0" style={{ filter: previewFilter }}>
+                                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_65%)]" />
+                                  <div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{ backdropFilter: `blur(${Math.max(0, 24 - focusOverlayStrength * 24)}px)` }}
+                                  />
+                                </div>
+                                {lightboxSettings.overlays.peaking && (
+                                  <div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                      backgroundImage:
+                                        'repeating-linear-gradient(90deg, rgba(255,76,76,0.18) 0px, rgba(255,76,76,0.18) 6px, transparent 6px, transparent 14px)',
+                                    }}
+                                  />
+                                )}
+                                {lightboxSettings.overlays.zebra && (
+                                  <div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                      backgroundImage:
+                                        'repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0px, rgba(255,255,255,0.12) 10px, transparent 10px, transparent 20px)',
+                                    }}
+                                  />
+                                )}
+                                {lightboxSettings.overlays.waveform && (
+                                  <div className="absolute bottom-6 left-6 right-6 flex h-20 items-end gap-1 rounded-xl border border-white/15 bg-black/65 px-4 py-3">
+                                    {Array.from({ length: 36 }).map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className="flex-1 rounded bg-gradient-to-t from-green-500/25 via-green-300/45 to-green-100/75"
+                                        style={{
+                                          height: `${38 + Math.sin((i + focusOverlayStrength) * 0.55) * 18 + lightboxSettings.clarity * 4}%`,
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-
-                          <div className="lg:w-1/3 border-t lg:border-l border-white/10 p-6 space-y-5 bg-black/40">
-                            <div>
-                              <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Tuning Suite</h4>
-                              <div className="space-y-3">
-                                <label className="flex flex-col gap-1 text-xs">
-                                  <span className="mono uppercase tracking-[0.3em] text-white/60">Focus Depth</span>
-                                  <input
-                                    type="range"
-                                    min={0}
-                                    max={100}
-                                    value={lightboxSettings.focusDepth}
-                                    onChange={(e) =>
-                                      setLightboxSettings((prev) => ({ ...prev, focusDepth: Number(e.target.value) }))
-                                    }
-                                    className="camera-slider"
-                                  />
-                                </label>
-                                <label className="flex flex-col gap-1 text-xs">
-                                  <span className="mono uppercase tracking-[0.3em] text-white/60">Clarity Microcontrast</span>
-                                  <input
-                                    type="range"
-                                    min={-4}
-                                    max={4}
-                                    value={lightboxSettings.clarity}
-                                    onChange={(e) =>
-                                      setLightboxSettings((prev) => ({ ...prev, clarity: Number(e.target.value) }))
-                                    }
-                                    className="camera-slider"
-                                  />
-                                </label>
+                          <div className="relative w-full max-h-full overflow-y-auto border-t border-white/10 bg-black/45 p-6 lg:w-[360px] lg:border-t-0 lg:border-l">
+                            <div className="space-y-6">
+                              <div>
+                                <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Tuning Suite</h4>
+                                <div className="space-y-3">
+                                  <label className="flex flex-col gap-1 text-xs">
+                                    <span className="mono uppercase tracking-[0.3em] text-white/60">Focus Depth</span>
+                                    <input
+                                      type="range"
+                                      min={0}
+                                      max={100}
+                                      value={lightboxSettings.focusDepth}
+                                      onChange={(e) =>
+                                        setLightboxSettings((prev) => ({ ...prev, focusDepth: Number(e.target.value) }))
+                                      }
+                                      className="camera-slider"
+                                    />
+                                  </label>
+                                  <label className="flex flex-col gap-1 text-xs">
+                                    <span className="mono uppercase tracking-[0.3em] text-white/60">Clarity Microcontrast</span>
+                                    <input
+                                      type="range"
+                                      min={-4}
+                                      max={4}
+                                      value={lightboxSettings.clarity}
+                                      onChange={(e) =>
+                                        setLightboxSettings((prev) => ({ ...prev, clarity: Number(e.target.value) }))
+                                      }
+                                      className="camera-slider"
+                                    />
+                                  </label>
+                                </div>
                               </div>
-                            </div>
 
-                            <div>
-                              <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Colour Science</h4>
-                              <div className="flex flex-wrap gap-2">
-                                {colorProfiles.map((profile) => (
-                                  <button
-                                    key={profile.id}
-                                    onClick={() =>
-                                      setLightboxSettings((prev) => ({ ...prev, colorProfile: profile.id }))
-                                    }
-                                    className={`px-3 py-1 rounded-full text-[11px] mono uppercase tracking-[0.3em] transition-colors ${
-                                      lightboxSettings.colorProfile === profile.id
-                                        ? 'bg-green-500/20 text-green-300 border border-green-400/50'
-                                        : 'bg-white/5 border border-white/10 text-white/60 hover:text-white'
-                                    }`}
-                                  >
-                                    {profile.label}
-                                  </button>
-                                ))}
+                              <div>
+                                <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Colour Science</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {colorProfiles.map((profile) => (
+                                    <button
+                                      key={profile.id}
+                                      type="button"
+                                      onClick={() =>
+                                        setLightboxSettings((prev) => ({ ...prev, colorProfile: profile.id }))
+                                      }
+                                      className={`px-3 py-1 rounded-full text-[11px] mono uppercase tracking-[0.3em] transition-colors ${
+                                        lightboxSettings.colorProfile === profile.id
+                                          ? 'bg-green-500/20 text-green-300 border border-green-400/50'
+                                          : 'bg-white/5 border border-white/10 text-white/60 hover:text-white'
+                                      }`}
+                                    >
+                                      {profile.label}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
 
-                            <div>
-                              <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Assist Modules</h4>
-                              <div className="space-y-2">
-                                {[
-                                  { key: 'peaking', label: 'Focus Peaking' },
-                                  { key: 'waveform', label: 'Waveform Monitor' },
-                                  { key: 'zebra', label: 'Zebra Warning' },
-                                ].map((overlay) => (
-                                  <button
-                                    key={overlay.key}
-                                    onClick={() =>
-                                      setLightboxSettings((prev) => ({
-                                        ...prev,
-                                        overlays: {
-                                          ...prev.overlays,
-                                          [overlay.key]: !prev.overlays[overlay.key],
-                                        },
-                                      }))
-                                    }
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs mono tracking-[0.3em] ${
-                                      lightboxSettings.overlays[overlay.key]
-                                        ? 'bg-green-500/15 text-green-300 border border-green-400/40'
-                                        : 'bg-white/5 border border-white/10 text-white/60 hover:text-white/80'
-                                    }`}
-                                  >
-                                    <span>{overlay.label}</span>
-                                    {lightboxSettings.overlays[overlay.key] ? <Focus className="w-4 h-4" /> : <Aperture className="w-4 h-4" />}
-                                  </button>
-                                ))}
+                              <div>
+                                <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Assist Modules</h4>
+                                <div className="space-y-2">
+                                  {[
+                                    { key: 'peaking', label: 'Focus Peaking' },
+                                    { key: 'waveform', label: 'Waveform Monitor' },
+                                    { key: 'zebra', label: 'Zebra Warning' },
+                                  ].map((overlay) => (
+                                    <button
+                                      key={overlay.key}
+                                      type="button"
+                                      onClick={() =>
+                                        setLightboxSettings((prev) => ({
+                                          ...prev,
+                                          overlays: {
+                                            ...prev.overlays,
+                                            [overlay.key]: !prev.overlays[overlay.key],
+                                          },
+                                        }))
+                                      }
+                                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs mono tracking-[0.3em] ${
+                                        lightboxSettings.overlays[overlay.key]
+                                          ? 'bg-green-500/15 text-green-300 border border-green-400/40'
+                                          : 'bg-white/5 border border-white/10 text-white/60 hover:text-white/80'
+                                      }`}
+                                    >
+                                      <span>{overlay.label}</span>
+                                      {lightboxSettings.overlays[overlay.key] ? (
+                                        <Focus className="w-4 h-4" />
+                                      ) : (
+                                        <Aperture className="w-4 h-4" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveImageId(null)}
+                          className="absolute top-6 right-6 camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                          aria-label="Close lightbox"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+
+                        {sortedImages.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={showPrevImage}
+                              className="absolute left-6 top-1/2 -translate-y-1/2 camera-hud flex h-12 w-12 items-center justify-center rounded-full"
+                              aria-label="Previous image"
+                            >
+                              <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={showNextImage}
+                              className="absolute right-6 top-1/2 -translate-y-1/2 camera-hud flex h-12 w-12 items-center justify-center rounded-full"
+                              aria-label="Next image"
+                            >
+                              <ChevronRight className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
                       </motion.div>
                     </BlurLayer>
                   )}

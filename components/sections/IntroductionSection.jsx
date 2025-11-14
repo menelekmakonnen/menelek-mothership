@@ -9,6 +9,7 @@ import {
   Heart,
   Video,
   Pen,
+  ArrowUpRight,
   Linkedin,
   Instagram,
   Youtube,
@@ -208,36 +209,14 @@ export default function IntroductionSection() {
           transition={{ duration: 0.8 }}
           className="flex flex-col gap-6"
         >
-          <div className="camera-hud rounded-3xl border border-white/10 overflow-hidden flex-1 flex flex-col relative">
-            <div className="flex items-center justify-between px-6 pt-6 pb-4">
-              <div>
-                <p className="mono text-[10px] uppercase tracking-[0.45em] text-green-400/70">Spotlight</p>
-                <h3 className="text-3xl font-semibold mt-2">Featured Project</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {featuredProjects.map((project, index) => (
-                  <button
-                    key={project.id}
-                    onClick={() => {
-                      setProjectIndex(index);
-                      setCycleCount(0);
-                    }}
-                    className={`h-2.5 rounded-full transition-all ${
-                      index === projectIndex ? 'bg-green-400 w-6' : 'bg-white/25 hover:bg-white/40 w-2.5'
-                    }`}
-                    aria-label={`Show ${project.title}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="relative overflow-hidden flex-1">
-              <AnimatePresence initial={false} mode="sync">
+          <div className="relative flex flex-col overflow-hidden rounded-3xl border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
+            <div className="absolute inset-0">
+              <AnimatePresence initial={false} mode="popLayout">
                 <motion.div
                   key={`gradient-${activeProject.id}`}
-                  initial={{ opacity: 0 }}
+                  initial={{ opacity: 0.6 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  exit={{ opacity: 1 }}
                   transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
                   className={`absolute inset-0 bg-gradient-to-br ${activeProject.panelGradient}`}
                 />
@@ -246,49 +225,76 @@ export default function IntroductionSection() {
                 className={`absolute inset-0 bg-gradient-to-br ${activeProject.sheenGradient}`}
                 aria-hidden="true"
               />
-              <AnimatePresence mode="sync">
+            </div>
+
+            <div className="relative z-10 flex h-full flex-col gap-8 p-6 md:p-8 lg:p-10">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-4 py-1.5 text-[11px] mono uppercase tracking-[0.45em] text-white/75">
+                  <span>Spotlight</span>
+                  <span className="text-white/60">Project</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {featuredProjects.map((project, index) => (
+                    <button
+                      key={project.id}
+                      onClick={() => {
+                        setProjectIndex(index);
+                        setCycleCount(0);
+                      }}
+                      className={`h-2.5 w-6 rounded-full border border-white/30 transition-all ${
+                        index === projectIndex ? 'bg-white/90 shadow-[0_6px_14px_rgba(0,0,0,0.25)]' : 'bg-white/25 hover:bg-white/45'
+                      }`}
+                      aria-label={`Show ${project.title}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
+                <div className="flex items-center justify-center">
+                  <IconBox icon={activeProject.icon} gradient={activeProject.iconGradient} size="xl" className="shadow-[0_25px_60px_rgba(0,0,0,0.35)]" />
+                </div>
                 <motion.div
                   key={activeProject.id}
-                  initial={{ opacity: 0, y: 24 }}
+                  initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -24 }}
+                  exit={{ opacity: 0, y: -18 }}
                   transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-                  className="relative z-10 p-6 md:p-8 h-full flex flex-col"
+                  className="flex-1 space-y-6"
                 >
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/35 backdrop-blur text-[11px] mono uppercase tracking-[0.45em] text-white/80 mb-4">
-                    <span>FEATURE</span>
-                    <span className="text-white/60">PROJECT</span>
-                  </div>
-                  <IconBox icon={activeProject.icon} gradient={activeProject.iconGradient} size="lg" className="mb-6" />
-                  <div className="space-y-4 flex-1">
-                    <h4 className="text-3xl font-bold leading-tight">{activeProject.title}</h4>
-                    <p className="text-[color:var(--text-secondary)] leading-relaxed">
+                  <div className="space-y-3">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 text-[11px] mono uppercase tracking-[0.4em] text-white/80">
+                      <span>Feature</span>
+                      <span className="text-white/60">Story</span>
+                    </span>
+                    <h4 className="text-3xl font-bold leading-tight md:text-4xl">{activeProject.title}</h4>
+                    <p className="text-[color:var(--text-secondary)] text-base leading-relaxed md:text-lg">
                       {activeProject.description}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {activeProject.stats.map((stat) => (
-                        <span
-                          key={stat}
-                          className="px-3 py-1 rounded-full bg-[rgba(10,12,18,0.55)] border border-white/20 text-[11px] mono uppercase text-white/80"
-                        >
-                          {stat}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-
+                  <div className="flex flex-wrap gap-2">
+                    {activeProject.stats.map((stat) => (
+                      <span
+                        key={stat}
+                        className="px-3 py-1 rounded-full bg-[rgba(10,12,18,0.55)] border border-white/25 text-[11px] mono uppercase text-white/85"
+                      >
+                        {stat}
+                      </span>
+                    ))}
+                  </div>
                   <motion.a
                     href={activeProject.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="self-start mt-auto px-6 py-3 rounded-full border border-green-400/50 text-green-300 font-semibold hover:bg-green-500/10 transition-all"
-                    whileHover={{ scale: 1.03 }}
+                    className="group inline-flex items-center gap-3 self-start rounded-full border border-white/25 bg-white/10 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/90 shadow-[0_20px_44px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/15"
+                    whileHover={{ scale: 1.04, translateY: -2 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    {activeProject.action}
+                    <span>{activeProject.action}</span>
+                    <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-1" />
                   </motion.a>
                 </motion.div>
-              </AnimatePresence>
+              </div>
             </div>
           </div>
 
