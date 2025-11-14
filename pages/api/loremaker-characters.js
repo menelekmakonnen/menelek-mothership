@@ -1,4 +1,4 @@
-import { buildDriveImageVariants } from '@/lib/googleDrive';
+import { buildDriveImageVariants, resolveDriveImage } from '@/lib/googleDrive';
 
 const SHEET_ID = '1nbAsU-zNe4HbM0bBLlYofi1pHhneEjEIWfW22JODBeM';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=tsv`;
@@ -81,6 +81,8 @@ export default async function handler(req, res) {
         }
 
         const coverAsset = images[0];
+        const coverPreview = resolveDriveImage(coverAsset, 'preview');
+        const coverFull = resolveDriveImage(coverAsset, 'full');
 
         return {
           id: row.Char_ID || row.Character || `character-${index}`,
@@ -96,15 +98,17 @@ export default async function handler(req, res) {
           shortDescription: row['Short Description'] || '',
           longDescription: row['Long Description'] || '',
           stories: row.Stories || '',
-          coverImage: coverAsset.preview || coverAsset.view || coverAsset.thumb,
-          coverImageFull: coverAsset.full || coverAsset.preview || coverAsset.view || coverAsset.thumb,
+          coverImage: coverPreview || coverAsset.preview || coverAsset.view || coverAsset.thumb,
+          coverImageFull: coverFull || coverPreview || coverAsset.view || coverAsset.thumb,
+          coverVariants: coverAsset,
           galleryImages: images.map((image) => ({
             id: image.id,
-            thumb: image.thumb,
-            preview: image.preview,
+            thumb: resolveDriveImage(image, 'thumb') || image.thumb,
+            preview: resolveDriveImage(image, 'preview') || image.preview,
             view: image.view,
             download: image.download,
-            full: image.full,
+            full: resolveDriveImage(image, 'full') || image.full,
+            variants: image,
           })),
         };
       })

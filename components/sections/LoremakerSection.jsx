@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, X } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
+import { resolveDriveImage } from '@/lib/googleDrive';
 
 const LOREMAKER_URL = 'https://loremaker.cloud';
 
@@ -86,9 +87,20 @@ export default function LoremakerSection() {
     if (!activeCharacter) return null;
     const galleryAsset = activeCharacter.galleryImages?.[activeImageIndex] || null;
     if (galleryAsset) {
-      return galleryAsset.full || galleryAsset.preview || galleryAsset.view || galleryAsset.thumb;
+      return (
+        resolveDriveImage(galleryAsset.variants, 'full') ||
+        galleryAsset.full ||
+        galleryAsset.preview ||
+        galleryAsset.view ||
+        galleryAsset.thumb
+      );
     }
-    return activeCharacter.coverImageFull || activeCharacter.coverImage || null;
+    return (
+      resolveDriveImage(activeCharacter.coverVariants, 'full') ||
+      activeCharacter.coverImageFull ||
+      activeCharacter.coverImage ||
+      null
+    );
   }, [activeCharacter, activeImageIndex]);
 
   const openCharacter = useCallback((character) => {
@@ -127,24 +139,32 @@ export default function LoremakerSection() {
               className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(8,10,16,0.78)] text-left shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
               onClick={() => openCharacter(character)}
             >
-              <div className="relative aspect-[3/4] w-full overflow-hidden">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage: character.coverImage ? `url(${character.coverImage})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundColor: character.coverImage ? undefined : 'rgba(20,24,32,0.85)',
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4 space-y-1">
-                  <p className="text-lg font-semibold text-white">{character.character}</p>
-                  {character.alias && (
-                    <p className="text-xs uppercase mono tracking-[0.35em] text-white/65">{character.alias}</p>
-                  )}
-                </div>
-              </div>
+              {(() => {
+                const cover =
+                  resolveDriveImage(character.coverVariants, 'preview') ||
+                  character.coverImage ||
+                  character.coverImageFull;
+                return (
+                  <div className="relative aspect-[3/4] w-full overflow-hidden">
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: cover ? `url(${cover})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundColor: cover ? undefined : 'rgba(20,24,32,0.85)',
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4 space-y-1">
+                      <p className="text-lg font-semibold text-white">{character.character}</p>
+                      {character.alias && (
+                        <p className="text-xs uppercase mono tracking-[0.35em] text-white/65">{character.alias}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="p-4 space-y-3">
                 <p className="text-sm text-[color:var(--text-secondary)] line-clamp-3">
                   {character.shortDescription || character.longDescription || 'Character dossier from the Loremaker Universe.'}

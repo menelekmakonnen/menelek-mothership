@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
+import { resolveDriveImage } from '@/lib/googleDrive';
 
 const MMM_MEDIA_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
 
@@ -30,18 +31,18 @@ const albumMeta = {
   },
 };
 
-const buildPreviewSrc = (item, size = 'w1600-h1600') => {
+const resolveItemImage = (item, intent = 'preview') => {
   if (!item) return null;
-  if (item.imageVariants) {
-    return item.imageVariants.preview || item.imageVariants.full || item.imageVariants.thumb;
-  }
-  if (item.previewUrl && item.type !== 'folder') return item.previewUrl;
-  if (item.thumbnail && item.type !== 'folder') return item.thumbnail;
-  if (item.thumb && item.type !== 'folder') return item.thumb;
-  if (item.type !== 'folder' && item.viewUrl) return item.viewUrl;
-  if (item.type !== 'folder' && item.downloadUrl) return item.downloadUrl;
-  if (item.type !== 'folder' && item.id) {
-    return `https://lh3.googleusercontent.com/d/${item.id}=${size}`;
+  const variants = item.imageVariants || item.variants || null;
+  const viaVariants = resolveDriveImage(variants, intent);
+  if (viaVariants) return viaVariants;
+  if (intent === 'thumb' && item.thumb) return item.thumb;
+  if (intent !== 'thumb' && item.previewUrl) return item.previewUrl;
+  if (item.thumbnail) return item.thumbnail;
+  if (item.viewUrl) return item.viewUrl;
+  if (item.downloadUrl) return item.downloadUrl;
+  if (item.id) {
+    return `https://lh3.googleusercontent.com/d/${item.id}=w1600-h1600-no`;
   }
   return null;
 };
@@ -79,9 +80,9 @@ export default function PhotographySection() {
       if (!folderId || depth > 4) return null;
       const data = getFolder(folderId);
       if (!data) return null;
-      const fileCandidate = data.items.find((item) => item.type === 'file' && buildPreviewSrc(item));
+      const fileCandidate = data.items.find((item) => item.type === 'file' && resolveItemImage(item));
       if (fileCandidate) {
-        return buildPreviewSrc(fileCandidate);
+        return resolveItemImage(fileCandidate);
       }
       const nestedFolders = data.items.filter((item) => item.type === 'folder');
       for (const nested of nestedFolders) {
@@ -98,9 +99,9 @@ export default function PhotographySection() {
       if (!folder) return null;
       const folderData = getFolder(folder.id);
       if (folderData) {
-        const fileCandidate = folderData.items.find((item) => item.type === 'file' && buildPreviewSrc(item));
+        const fileCandidate = folderData.items.find((item) => item.type === 'file' && resolveItemImage(item));
         if (fileCandidate) {
-          return buildPreviewSrc(fileCandidate);
+          return resolveItemImage(fileCandidate);
         }
         const nestedFolders = folderData.items.filter((item) => item.type === 'folder');
         for (const nested of nestedFolders) {
@@ -108,7 +109,7 @@ export default function PhotographySection() {
           if (nestedCover) return nestedCover;
         }
       }
-      return buildPreviewSrc(folder) || findFirstImage(folder.id);
+      return resolveItemImage(folder) || findFirstImage(folder.id);
     },
     [findFirstImage, getFolder]
   );
@@ -332,7 +333,7 @@ export default function PhotographySection() {
         <div className="flex-1 overflow-y-auto p-5">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {galleryImages.map((image, index) => {
-              const preview = buildPreviewSrc(image);
+                const preview = resolveItemImage(image);
               return (
                 <motion.button
                   key={image.id || image.title || index}
@@ -376,7 +377,12 @@ export default function PhotographySection() {
 
   const activeAlbumMeta = activeAlbum ? albumMeta[activeAlbum.title] || null : null;
   const activeImageSrc = activeImage
-    ? activeImage.imageVariants?.full || activeImage.viewUrl || activeImage.downloadUrl || buildPreviewSrc(activeImage, 'w2400-h2400')
+    ?
+        resolveItemImage(activeImage, 'full') ||
+        activeImage.imageVariants?.full ||
+        activeImage.viewUrl ||
+        activeImage.downloadUrl ||
+        resolveItemImage(activeImage)
     : null;
 
   return (

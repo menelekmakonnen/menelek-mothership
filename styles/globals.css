@@ -172,9 +172,11 @@ body,
 /* Camera HUD styling */
 .camera-hud {
   background: var(--hud-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background-image: linear-gradient(145deg, rgba(var(--accent-rgb), 0.18) 0%, rgba(12, 16, 28, 0.82) 35%, rgba(2, 4, 10, 0.9) 100%);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
   border: 1px solid var(--hud-border);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--hud-text);
 }
 

@@ -3,20 +3,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Loader2, Sparkles, X } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
+import { resolveDriveImage } from '@/lib/googleDrive';
 
 const AI_ALBUM_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
 
-const getPreviewSrc = (item) => {
+const getPreviewSrc = (item, intent = 'preview') => {
   if (!item) return null;
-  if (item.imageVariants) {
-    return item.imageVariants.preview || item.imageVariants.full || item.imageVariants.thumb;
-  }
+  const variants = item.imageVariants || item.variants || null;
+  const viaVariants = resolveDriveImage(variants, intent);
+  if (viaVariants) return viaVariants;
+  if (intent === 'thumb' && item.thumb) return item.thumb;
   if (item.previewUrl) return item.previewUrl;
   if (item.thumbnail) return item.thumbnail;
   if (item.viewUrl) return item.viewUrl;
   if (item.downloadUrl) return item.downloadUrl;
   if (item.id) {
-    return `https://lh3.googleusercontent.com/d/${item.id}=w1600-h1600`;
+    return `https://lh3.googleusercontent.com/d/${item.id}=w1600-h1600-no`;
   }
   return null;
 };
@@ -303,6 +305,7 @@ export default function AIAlbumsSection() {
             >
               <img
                 src={
+                  resolveDriveImage(activeImage.imageVariants || activeImage.variants, 'full') ||
                   activeImage.imageVariants?.full ||
                   activeImage.imageVariants?.preview ||
                   activeImage.viewUrl ||

@@ -140,17 +140,7 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
         y: origin.y + info.offset.y,
       };
 
-      if (!isFloating && info.offset.y < -36 && Math.abs(info.offset.x) < 60) {
-        setIsCollapsed(true);
-        setIsFloating(false);
-        setFloatPosition({ x: 0, y: 0 });
-        return;
-      }
-
-      if (isCollapsed && info.offset.y > 28 && Math.abs(info.offset.x) < 80) {
-        markInteraction();
-        return;
-      }
+      // Keep the navigation rail present at all times to avoid the hidden-state feedback from earlier revisions.
 
       const clamped = clampFloatPosition(attempted.x, attempted.y);
 
