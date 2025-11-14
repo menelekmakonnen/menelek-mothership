@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import { useCameraContext } from '@/context/CameraContext';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
 import { Grid, Grid2x2, Grid3x3, Maximize } from 'lucide-react';
+import BlurLayer from '@/components/ui/BlurLayer';
 
 // Placeholder gallery - will be replaced with Google Drive integration
 const albums = [
@@ -38,12 +38,6 @@ const albums = [
 export default function PhotographySection() {
   const [viewMode, setViewMode] = useState('grid'); // 'single', 'grid-4', 'grid-8', 'grid-16'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
-  const { setGestureLock } = useCameraContext();
-
-  useEffect(() => {
-    setGestureLock(Boolean(selectedAlbum));
-    return () => setGestureLock(false);
-  }, [selectedAlbum, setGestureLock]);
 
   const viewModes = [
     { id: 'single', label: 'Single', icon: Maximize },
@@ -72,95 +66,113 @@ export default function PhotographySection() {
           Capturing moments through the lens
         </motion.p>
 
-        {!selectedAlbum ? (
-          <>
-            {/* Album gallery */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {albums.map((album, index) => (
-                <motion.div
-                  key={album.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1 * index }}
-                  onClick={() => setSelectedAlbum(album)}
-                  className="luxury-card group cursor-pointer"
-                  whileHover={{ y: -8 }}
-                >
-                  {/* Album cover */}
-                  <div className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg mb-4 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform">
-                    {album.thumbnail}
-                  </div>
-
-                  {/* Album info */}
-                  <h3 className="font-bold text-xl mb-2">{album.name}</h3>
-                  <p className="text-sm text-[color:var(--text-secondary)]">{album.count} photos</p>
-
-                  <div className="mt-4 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    View Album →
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Album view with camera controls */}
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <button
-                  onClick={() => setSelectedAlbum(null)}
-                  className="text-green-400 hover:underline mb-2"
-                >
-                  ← Back to Albums
-                </button>
-                <h2 className="text-3xl font-bold">{selectedAlbum.name}</h2>
-                <p className="text-[color:var(--text-secondary)]">{selectedAlbum.count} photos</p>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {albums.map((album, index) => (
+            <motion.div
+              key={album.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 * index }}
+              onClick={() => setSelectedAlbum(album)}
+              className="luxury-card group cursor-pointer"
+              whileHover={{ y: -8 }}
+            >
+              {/* Album cover */}
+              <div className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg mb-4 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform">
+                {album.thumbnail}
               </div>
 
-              {/* View mode selector */}
-              <div className="flex gap-2">
-                {viewModes.map((mode) => {
-                  const Icon = mode.icon;
-                  return (
-                    <button
-                      key={mode.id}
-                      onClick={() => setViewMode(mode.id)}
-                      className={`px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs transition-all ${
-                        viewMode === mode.id
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                          : 'bg-white/5 border border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {mode.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              {/* Album info */}
+              <h3 className="font-bold text-xl mb-2">{album.name}</h3>
+              <p className="text-sm text-[color:var(--text-secondary)]">{album.count} photos</p>
 
-            {/* Photo grid */}
-            <div className={`grid gap-4 ${
-              viewMode === 'single' ? 'grid-cols-1' :
-              viewMode === 'grid-4' ? 'grid-cols-2' :
-              viewMode === 'grid-8' ? 'grid-cols-4' :
-              'grid-cols-4 md:grid-cols-6'
-            }`}>
-              {Array.from({ length: selectedAlbum.count }).map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.02 * i }}
-                  className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform flex items-center justify-center text-4xl"
-                >
-                  📷
-                </motion.div>
-              ))}
-            </div>
-          </>
-        )}
+              <div className="mt-4 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                View Album →
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
+      <AnimatePresence>
+        {selectedAlbum && (
+          <BlurLayer
+            key={selectedAlbum.id}
+            layerId={`photography-album-${selectedAlbum.id}`}
+            depth={1400}
+            type="interactive"
+            focusOnMount
+            lockGestures
+            onClose={() => setSelectedAlbum(null)}
+            className="fixed inset-0 z-[1800] flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="relative w-full h-full max-w-5xl mx-auto px-6 py-10"
+            >
+              <div className="absolute inset-0 rounded-3xl bg-black/85 border border-white/10 shadow-2xl" />
+              <div className="relative z-10 h-full overflow-hidden flex flex-col gap-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <button
+                      onClick={() => setSelectedAlbum(null)}
+                      className="text-green-300 hover:text-green-100 transition-colors text-sm mono"
+                    >
+                      ← Back to Albums
+                    </button>
+                    <h2 className="text-3xl font-bold mt-2">{selectedAlbum.name}</h2>
+                    <p className="text-[color:var(--text-secondary)]">{selectedAlbum.count} photos</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {viewModes.map((mode) => {
+                      const Icon = mode.icon;
+                      const isActive = viewMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          onClick={() => setViewMode(mode.id)}
+                          className={`px-4 py-2 rounded-lg flex items-center gap-2 mono text-xs transition-all ${
+                            isActive
+                              ? 'bg-green-500/20 text-green-300 border border-green-400/60 shadow-lg'
+                              : 'bg-white/5 border border-white/10 hover:border-white/30'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div
+                  className={`grid flex-1 gap-4 overflow-y-auto pr-2 ${
+                    viewMode === 'single' ? 'grid-cols-1' :
+                    viewMode === 'grid-4' ? 'grid-cols-2' :
+                    viewMode === 'grid-8' ? 'grid-cols-4' :
+                    'grid-cols-4 md:grid-cols-6'
+                  }`}
+                >
+                  {Array.from({ length: selectedAlbum.count }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.01 * i }}
+                      className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl overflow-hidden cursor-pointer hover:scale-105 transition-transform flex items-center justify-center text-4xl"
+                    >
+                      📷
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </BlurLayer>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

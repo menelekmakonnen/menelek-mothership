@@ -10,7 +10,8 @@ export default function MobileImmersiveHUD() {
   const {
     mobileImmersiveMode,
     setMobileImmersiveMode,
-    setGestureLock,
+    engageGestureLock,
+    releaseGestureLock,
     flashMode,
     setFlashMode,
     cameraMode,
@@ -30,9 +31,15 @@ export default function MobileImmersiveHUD() {
   }, []);
 
   useEffect(() => {
-    setGestureLock(mobileImmersiveMode);
-    return () => setGestureLock(false);
-  }, [mobileImmersiveMode, setGestureLock]);
+    const source = 'mobile-immersive';
+    if (mobileImmersiveMode) {
+      engageGestureLock(source);
+    } else {
+      releaseGestureLock(source);
+    }
+
+    return () => releaseGestureLock(source);
+  }, [mobileImmersiveMode, engageGestureLock, releaseGestureLock]);
 
   if (!mobileImmersiveMode || !isMobile) {
     return null;

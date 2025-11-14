@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 const CameraContext = createContext();
 
@@ -65,7 +65,10 @@ export const CameraProvider = ({ children }) => {
   const [openBoxes, setOpenBoxes] = useState([]); // Can have max 2 open, start with none
 
   // Focus system
-  const [focusedLayer, setFocusedLayer] = useState(null);
+  const [focusedLayer, setFocusedLayerState] = useState(null);
+  const [focusedLayerId, setFocusedLayerId] = useState(null);
+  const layerRegistryRef = useRef({});
+  const [layerRegistryVersion, setLayerRegistryVersion] = useState(0);
   const [focusPoint, setFocusPoint] = useState({ x: 50, y: 50 });
 
   // Section navigation
@@ -78,13 +81,45 @@ export const CameraProvider = ({ children }) => {
   const [hasModifiedSettings, setHasModifiedSettings] = useState(false);
 
   // Lock gestures when secondary layers are active
-  const [gestureLock, setGestureLock] = useState(false);
+  const [gestureLockMap, setGestureLockMap] = useState({});
 
   // Immersive mobile layout
   const [mobileImmersiveMode, setMobileImmersiveMode] = useState(false);
 
   // Camera skin / presets
   const [activePreset, setActivePreset] = useState(null);
+  const manualSettingsRef = useRef(null);
+
+  const gestureLock = useMemo(() => Object.keys(gestureLockMap).length > 0, [gestureLockMap]);
+
+  const setGestureLock = useCallback((value) => {
+    setGestureLockMap((prev) => {
+      if (value) {
+        if (prev.manual) return prev;
+        return { ...prev, manual: true };
+      }
+      if (!prev.manual) return prev;
+      const { manual, ...rest } = prev;
+      return rest;
+    });
+  }, []);
+
+  const engageGestureLock = useCallback((source) => {
+    if (!source) return;
+    setGestureLockMap((prev) => {
+      if (prev[source]) return prev;
+      return { ...prev, [source]: true };
+    });
+  }, []);
+
+  const releaseGestureLock = useCallback((source) => {
+    if (!source) return;
+    setGestureLockMap((prev) => {
+      if (!prev[source]) return prev;
+      const { [source]: _removed, ...rest } = prev;
+      return rest;
+    });
+  }, []);
 
   const dslrSettingsRef = useRef(null);
   const mirrorlessSettingsRef = useRef(null);
@@ -178,9 +213,12 @@ export const CameraProvider = ({ children }) => {
     setOpenBoxes([]);
     _setCameraMode('dslr');
     setActivePreset(null);
-    setGestureLock(false);
+    manualSettingsRef.current = null;
+    setGestureLockMap({});
     setMobileImmersiveMode(false);
     setHasModifiedSettings(false);
+    setFocusedLayerId(null);
+    setFocusedLayerState(null);
   }, []);
 
   // Control boxes management (max 2 open)
@@ -196,6 +234,67 @@ export const CameraProvider = ({ children }) => {
         return [...prev, boxId];
       }
     });
+  }, []);
+
+  const layerRegistry = useMemo(() => layerRegistryRef.current, [layerRegistryVersion]);
+
+  const orderedLayers = useMemo(() => {
+    return Object.values(layerRegistry).sort((a, b) => a.depth - b.depth);
+  }, [layerRegistry]);
+
+  const registerLayer = useCallback(({ id, depth, type = 'content', ref, onClose }) => {
+    if (!id || typeof depth !== 'number') return;
+    layerRegistryRef.current = {
+      ...layerRegistryRef.current,
+      [id]: { id, depth, type, ref, onClose },
+    };
+    setLayerRegistryVersion((v) => v + 1);
+  }, []);
+
+  const unregisterLayer = useCallback((id) => {
+    if (!id || !layerRegistryRef.current[id]) return;
+    const { [id]: removed, ...rest } = layerRegistryRef.current;
+    layerRegistryRef.current = rest;
+    setLayerRegistryVersion((v) => v + 1);
+    if (focusedLayerId === id) {
+      setFocusedLayerId(null);
+      setFocusedLayerState(null);
+    }
+    if (removed && removed.type === 'interactive') {
+      releaseGestureLock(id);
+    }
+  }, [focusedLayerId, releaseGestureLock]);
+
+  const focusLayer = useCallback((layerIdOrDepth) => {
+    if (typeof layerIdOrDepth === 'string') {
+      const layer = layerRegistryRef.current[layerIdOrDepth];
+      if (!layer) return;
+      setFocusedLayerId(layer.id);
+      setFocusedLayerState(layer.depth);
+      return;
+    }
+
+    if (typeof layerIdOrDepth === 'number') {
+      setFocusedLayerId(null);
+      setFocusedLayerState(layerIdOrDepth);
+    }
+  }, []);
+
+  const setFocusedLayer = useCallback((depth) => {
+    if (typeof depth !== 'number') return;
+    setFocusedLayerId(null);
+    setFocusedLayerState(depth);
+  }, []);
+
+  const closeTopLayer = useCallback(() => {
+    const interactiveLayers = Object.values(layerRegistryRef.current)
+      .filter((layer) => layer.type === 'interactive')
+      .sort((a, b) => a.depth - b.depth);
+
+    const topLayer = interactiveLayers[interactiveLayers.length - 1];
+    if (topLayer && typeof topLayer.onClose === 'function') {
+      topLayer.onClose();
+    }
   }, []);
 
   // Lens change with iris transition
@@ -263,48 +362,147 @@ export const CameraProvider = ({ children }) => {
   }, [cameraMode, hudVisibility, focusMode, showHistogram, ruleOfThirds, setHudVisibility, setFocusMode, setShowHistogram, setRuleOfThirds, setHasModifiedSettings]);
 
   useEffect(() => {
-    const skin = activePreset || cameraMode;
-    document.documentElement.setAttribute('data-camera-skin', skin);
+    if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-camera-skin', cameraMode);
     document.documentElement.setAttribute('data-camera-mode', cameraMode);
+    document.documentElement.setAttribute('data-camera-preset', activePreset || 'manual');
   }, [activePreset, cameraMode]);
+
+  useEffect(() => {
+    if (focusedLayer !== null || orderedLayers.length === 0) return;
+    const baseLayer = orderedLayers.find((layer) => layer.type === 'content');
+    if (baseLayer) {
+      focusLayer(baseLayer.id);
+    }
+  }, [orderedLayers, focusedLayer, focusLayer]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const handleClick = (event) => {
+      const target = event.target?.closest?.('[data-depth-layer]');
+      if (!target) return;
+      const layerId = target.getAttribute('data-depth-layer');
+      if (!layerId) return;
+      focusLayer(layerId);
+    };
+
+    const handleDoubleClick = (event) => {
+      const interactiveLayers = Object.values(layerRegistryRef.current)
+        .filter((layer) => layer.type === 'interactive')
+        .sort((a, b) => a.depth - b.depth);
+
+      const topLayer = interactiveLayers[interactiveLayers.length - 1];
+      if (!topLayer) return;
+
+      const topElement = topLayer.ref?.current;
+      if (topElement && topElement.contains(event.target)) {
+        return;
+      }
+
+      if (typeof topLayer.onClose === 'function') {
+        topLayer.onClose();
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+    document.addEventListener('dblclick', handleDoubleClick);
+
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('dblclick', handleDoubleClick);
+    };
+  }, [focusLayer]);
 
   const applyCameraPreset = useCallback((presetId) => {
     setHasModifiedSettings(true);
 
     if (!presetId) {
       setActivePreset(null);
+      if (manualSettingsRef.current) {
+        const settings = manualSettingsRef.current;
+        if (settings.cameraMode !== cameraMode) {
+          setCameraMode(settings.cameraMode);
+        }
+        setIso(settings.iso);
+        setAperture(settings.aperture);
+        setShutterSpeed(settings.shutterSpeed);
+        setExposureComp(settings.exposureComp);
+        setWhiteBalance(settings.whiteBalance);
+        setHudVisibility(settings.hudVisibility);
+        setFocusMode(settings.focusMode);
+        setShowHistogram(settings.showHistogram);
+        setRuleOfThirds(settings.ruleOfThirds);
+        setFlashMode(settings.flashMode);
+      }
+      manualSettingsRef.current = null;
+      setActivePreset(null);
       return;
+    }
+
+    if (!activePreset && !manualSettingsRef.current) {
+      manualSettingsRef.current = {
+        iso,
+        aperture,
+        shutterSpeed,
+        exposureComp,
+        whiteBalance,
+        hudVisibility,
+        focusMode,
+        showHistogram,
+        ruleOfThirds,
+        flashMode,
+        cameraMode,
+      };
     }
 
     setActivePreset(presetId);
 
     switch (presetId) {
       case 'modern':
+        setCameraMode('mirrorless');
         setHudVisibility('minimal');
         setFlashMode('auto');
         setWhiteBalance('daylight');
         setFocusMode('continuous');
         setExposureComp(0);
+        setIso(400);
+        setShutterSpeed(250);
+        setAperture(2.8);
+        setShowHistogram(true);
+        setRuleOfThirds(true);
         break;
       case 'retro':
+        setCameraMode('dslr');
         setHudVisibility('full');
         setFlashMode('off');
         setWhiteBalance('tungsten');
         setFocusMode('manual');
-        setExposureComp(0.3);
+        setExposureComp(0.5);
+        setIso(800);
+        setShutterSpeed(60);
+        setAperture(1.8);
+        setShowHistogram(false);
+        setRuleOfThirds(false);
         break;
       case 'cinema':
+        setCameraMode('mirrorless');
         setHudVisibility('full');
         setFlashMode('off');
         setWhiteBalance('cloudy');
         setFocusMode('manual');
-        setExposureComp(-0.3);
+        setExposureComp(-0.7);
+        setIso(640);
+        setShutterSpeed(50);
+        setAperture(4);
+        setShowHistogram(true);
+        setRuleOfThirds(true);
         break;
       default:
         setActivePreset(null);
         break;
     }
-  }, [setExposureComp, setHudVisibility, setFlashMode, setWhiteBalance, setFocusMode]);
+  }, [activePreset, aperture, cameraMode, exposureComp, flashMode, focusMode, hudVisibility, iso, ruleOfThirds, setAperture, setCameraMode, setExposureComp, setFlashMode, setFocusMode, setHudVisibility, setIso, setRuleOfThirds, setShutterSpeed, setShowHistogram, setWhiteBalance, shutterSpeed, whiteBalance]);
 
   // Theme based on flash mode
   const getTheme = useCallback(() => {
@@ -321,13 +519,15 @@ export const CameraProvider = ({ children }) => {
 
   // Calculate blur amount for depth of field
   const calculateBlur = useCallback((layerDepth, focusedDepth) => {
-    if (!focusedDepth || layerDepth === focusedDepth) return 0;
+    if (focusedDepth === null || typeof focusedDepth === 'undefined') return 0;
+    if (layerDepth === focusedDepth) return 0;
 
-    const depthDiff = Math.abs(layerDepth - focusedDepth);
-    const apertureEffect = 1 / aperture;
-    const blurAmount = apertureEffect * depthDiff * 2;
+    const depthSteps = Math.min(10, Math.abs(layerDepth - focusedDepth) / 100);
+    const apertureRange = 22 - 1.4;
+    const apertureWeight = (22 - aperture) / apertureRange; // 0 when stopped down, 1 when wide open
+    const blurAmount = apertureWeight * depthSteps * 12;
 
-    return Math.min(blurAmount, 20); // Cap at 20px
+    return Number(Math.min(24, blurAmount).toFixed(2));
   }, [aperture]);
 
   // ISO noise effect
@@ -417,7 +617,12 @@ export const CameraProvider = ({ children }) => {
 
     // Focus
     focusedLayer,
+    focusedLayerId,
     setFocusedLayer,
+    focusLayer,
+    registerLayer,
+    unregisterLayer,
+    closeTopLayer,
     focusPoint,
     setFocusPoint,
 
@@ -440,6 +645,8 @@ export const CameraProvider = ({ children }) => {
     whiteBalanceModes: WHITE_BALANCE_MODES,
     gestureLock,
     setGestureLock,
+    engageGestureLock,
+    releaseGestureLock,
     mobileImmersiveMode,
     setMobileImmersiveMode,
     activePreset,

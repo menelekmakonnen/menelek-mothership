@@ -10,7 +10,6 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     setCurrentSection,
     currentLens,
     shutterSpeed,
-    setFocusedLayer,
     gestureLock,
   } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
@@ -30,15 +29,13 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     if (gestureLock) return;
     setSwipeDirection(1);
     setCurrentSection((prev) => (prev + 1) % totalSections);
-    setFocusedLayer(100);
-  }, [gestureLock, setCurrentSection, totalSections, setFocusedLayer]);
+  }, [gestureLock, setCurrentSection, totalSections]);
 
   const prevSection = useCallback(() => {
     if (gestureLock) return;
     setSwipeDirection(-1);
     setCurrentSection((prev) => (prev - 1 + totalSections) % totalSections);
-    setFocusedLayer(100);
-  }, [gestureLock, setCurrentSection, totalSections, setFocusedLayer]);
+  }, [gestureLock, setCurrentSection, totalSections]);
 
   const onTouchStart = (e) => {
     if (gestureLock) return;
@@ -69,13 +66,16 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e) => {
+      if (gestureLock) return;
+      const tagName = e.target?.tagName;
+      if (tagName && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return;
       if (e.key === 'ArrowLeft') prevSection();
       if (e.key === 'ArrowRight') nextSection();
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [prevSection, nextSection]);
+  }, [prevSection, nextSection, gestureLock]);
 
   // Scroll-based arrow fade
   useEffect(() => {
@@ -96,6 +96,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   }, [currentSection]);
 
   const handlePointerDown = (e) => {
+    if (gestureLock) return;
     if (e.pointerType === 'touch' || e.button !== 0) return;
     const container = containerRef.current;
     if (!container) return;
@@ -113,7 +114,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   };
 
   const handlePointerMove = (e) => {
-    if (!isDragging) return;
+    if (gestureLock || !isDragging) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -138,7 +139,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
   };
 
   const handlePointerUp = (e) => {
-    if (e.pointerType === 'touch') return;
+    if (e.pointerType === 'touch' || gestureLock) return;
     endPointerDrag(e);
   };
 
@@ -252,7 +253,12 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
             className="w-full h-full"
             style={contentStyle}
           >
-            <BlurLayer depth={100}>
+            <BlurLayer
+              depth={400}
+              layerId={`section-${currentSection}`}
+              focusOnMount
+              className="w-full h-full"
+            >
               {sections[currentSection]}
             </BlurLayer>
           </motion.div>

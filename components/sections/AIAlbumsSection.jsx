@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import { useCameraContext } from '@/context/CameraContext';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
 import { Sparkles, Wand2, Cpu, Zap } from 'lucide-react';
+import BlurLayer from '@/components/ui/BlurLayer';
 
 // Placeholder AI-generated content albums
 const aiAlbums = [
@@ -37,44 +37,6 @@ const aiAlbums = [
 
 export default function AIAlbumsSection() {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
-  const { setGestureLock } = useCameraContext();
-
-  useEffect(() => {
-    setGestureLock(Boolean(selectedAlbum));
-    return () => setGestureLock(false);
-  }, [selectedAlbum, setGestureLock]);
-
-  if (selectedAlbum) {
-    return (
-      <div className="w-full min-h-screen p-8 pt-32 pb-32">
-        <div className="max-w-7xl mx-auto">
-          <button
-            onClick={() => setSelectedAlbum(null)}
-            className="text-green-400 hover:underline mb-6"
-          >
-            ← Back to AI Albums
-          </button>
-
-          <h2 className="text-4xl font-bold mb-2">{selectedAlbum.name}</h2>
-          <p className="text-gray-400 mb-8">{selectedAlbum.count} AI-generated images</p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: selectedAlbum.count }).map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.02 * i }}
-                className={`aspect-square bg-gradient-to-br ${selectedAlbum.gradient} rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform flex items-center justify-center text-4xl opacity-80`}
-              >
-                🤖
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
@@ -125,6 +87,59 @@ export default function AIAlbumsSection() {
           })}
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedAlbum && (
+          <BlurLayer
+            key={selectedAlbum.id}
+            layerId={`ai-album-${selectedAlbum.id}`}
+            depth={1500}
+            type="interactive"
+            focusOnMount
+            lockGestures
+            onClose={() => setSelectedAlbum(null)}
+            className="fixed inset-0 z-[1850] flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="relative w-full h-full max-w-6xl mx-auto px-6 py-10"
+            >
+              <div className="absolute inset-0 rounded-3xl bg-black/88 border border-white/10 shadow-2xl" />
+              <div className="relative z-10 h-full overflow-hidden flex flex-col gap-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <button
+                      onClick={() => setSelectedAlbum(null)}
+                      className="text-green-300 hover:text-green-100 transition-colors text-sm mono"
+                    >
+                      ← Back to AI Albums
+                    </button>
+                    <h2 className="text-4xl font-bold mt-2">{selectedAlbum.name}</h2>
+                    <p className="text-[color:var(--text-secondary)]">{selectedAlbum.count} AI-generated images</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto pr-2">
+                  {Array.from({ length: selectedAlbum.count }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.01 * i }}
+                      className={`aspect-square bg-gradient-to-br ${selectedAlbum.gradient} rounded-xl overflow-hidden cursor-pointer hover:scale-105 transition-transform flex items-center justify-center text-4xl opacity-80`}
+                    >
+                      🤖
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </BlurLayer>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

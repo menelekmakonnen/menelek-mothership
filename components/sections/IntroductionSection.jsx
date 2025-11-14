@@ -19,6 +19,41 @@ const rotatingContent = [
   { word: 'Instructor', icon: Sparkles, gradient: 'from-yellow-600 to-orange-600' },
 ];
 
+const featuredProjects = [
+  {
+    id: 'ochiyamie',
+    title: 'The Last Ochiyamie',
+    description: 'Epic fantasy saga now available in print and Kindle editions. Journey into the universe that seeded my cinematic worlds.',
+    action: 'View on Amazon',
+    href: 'https://www.amazon.com/s?k=The+Last+Ochiyamie',
+    stats: ['Novel', 'Worldbuilding', 'Amazon Release'],
+  },
+  {
+    id: 'im-alright',
+    title: "I’m Alright — Short Film",
+    description: 'Award-winning short film exploring resilience and Afro-futurist identity. Shot on location with hybrid DSLR and mirrorless rigs.',
+    action: 'Watch on YouTube',
+    href: 'https://www.youtube.com/results?search_query=I%27m+Alright+short+film',
+    stats: ['Narrative Film', 'Director', 'YouTube Premiere'],
+  },
+  {
+    id: 'loremaker',
+    title: 'The Loremaker Universe',
+    description: 'Interactive storyworld that powers my films, games, and novels. Dive into timelines, characters, and the ever-expanding lore.',
+    action: 'Explore the Universe',
+    href: 'https://loremakeruniverse.com',
+    stats: ['Worldbuilding', 'Interactive Hub', 'Transmedia'],
+  },
+  {
+    id: 'starterclass',
+    title: 'AI Starterclass by ICUNI',
+    description: 'Comprehensive AI curriculum guiding professionals from fundamentals to deployment with real-world creative applications.',
+    action: 'Join the Program',
+    href: 'https://starterclass.icuni.org',
+    stats: ['Education', 'AI Strategy', 'Mentorship'],
+  },
+];
+
 const socialLinks = [
   { name: 'LinkedIn', icon: Linkedin, url: 'https://linkedin.com/in/menelekmakonnen', gradient: 'from-blue-600 to-blue-700' },
   { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/menelekmakonnen', gradient: 'from-pink-600 to-purple-600' },
@@ -28,22 +63,28 @@ const socialLinks = [
 ];
 
 export default function IntroductionSection() {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [roleIndex, setRoleIndex] = useState(0);
+  const [projectIndex, setProjectIndex] = useState(0);
+  const [cycleCount, setCycleCount] = useState(0);
 
-  // Randomize content every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => {
-        let newIndex;
-        do {
-          newIndex = Math.floor(Math.random() * rotatingContent.length);
-        } while (newIndex === prev && rotatingContent.length > 1);
-        return newIndex;
-      });
+      setRoleIndex((prev) => (prev + 1) % rotatingContent.length);
+      setCycleCount((prev) => prev + 1);
     }, 2500);
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (cycleCount === 0) return;
+    if (cycleCount % 4 === 0) {
+      setProjectIndex((prev) => (prev + 1) % featuredProjects.length);
+    }
+  }, [cycleCount]);
+
+  const activeRole = rotatingContent[roleIndex];
+  const activeProject = featuredProjects[projectIndex];
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32">
@@ -58,7 +99,7 @@ export default function IntroductionSection() {
           <div className="aspect-square rounded-2xl overflow-hidden border-2 border-green-500/30 shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center p-12">
             <AnimatePresence mode="popLayout">
               <motion.div
-                key={currentIndex}
+                key={roleIndex}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.1 }}
@@ -66,8 +107,8 @@ export default function IntroductionSection() {
                 className="w-full h-full absolute"
               >
                 <IconBox
-                  icon={rotatingContent[currentIndex].icon}
-                  gradient={rotatingContent[currentIndex].gradient}
+                  icon={activeRole.icon}
+                  gradient={activeRole.gradient}
                   size="xl"
                   className="w-full h-full !rounded-3xl"
                 />
@@ -90,14 +131,14 @@ export default function IntroductionSection() {
             <div className="relative h-[1.2em]">
               <AnimatePresence mode="popLayout">
                 <motion.div
-                  key={currentIndex}
+                  key={roleIndex}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.4, ease: "easeInOut" }}
                   className="text-green-400 absolute"
                 >
-                  {rotatingContent[currentIndex].word}
+                  {activeRole.word}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -167,6 +208,74 @@ export default function IntroductionSection() {
                 </div>
               </motion.div>
             ))}
+          </div>
+
+          {/* Featured project slider */}
+          <div className="pt-8">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="mono text-[10px] uppercase tracking-[0.45em] text-green-400/70">Featured Project</p>
+                <h3 className="text-2xl font-semibold mt-2">Spotlight</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {featuredProjects.map((project, index) => (
+                  <button
+                    key={project.id}
+                    onClick={() => {
+                      setProjectIndex(index);
+                      setCycleCount(0);
+                    }}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                      index === projectIndex ? 'bg-green-400 w-6' : 'bg-white/25 hover:bg-white/40'
+                    }`}
+                    aria-label={`Show ${project.title}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[color:var(--bg-secondary)]/80 backdrop-blur">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeProject.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+                  className="p-6 md:p-8"
+                >
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                    <div className="space-y-3 max-w-xl">
+                      <h4 className="text-3xl font-bold">{activeProject.title}</h4>
+                      <p className="text-[color:var(--text-secondary)] leading-relaxed">
+                        {activeProject.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {activeProject.stats.map((stat) => (
+                          <span
+                            key={stat}
+                            className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] mono uppercase"
+                          >
+                            {stat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <motion.a
+                      href={activeProject.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="self-start md:self-center px-5 py-3 rounded-full border border-green-400/50 text-green-300 font-semibold hover:bg-green-500/10 transition-all"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      {activeProject.action}
+                    </motion.a>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       </div>

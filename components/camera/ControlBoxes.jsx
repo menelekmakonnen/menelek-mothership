@@ -272,6 +272,8 @@ export default function ControlBoxes() {
     ].filter((key) => mobilePanels[key]);
   }, [mobilePanels]);
 
+  const exclusiveBoxIds = useMemo(() => ['exposure', 'assist'], []);
+
   // On mobile, close all other boxes when opening one
   const handleToggle = (boxId) => {
     if (isMobile) {
@@ -284,7 +286,15 @@ export default function ControlBoxes() {
         toggleBox(boxId);
       }
     } else {
-      toggleBox(boxId);
+      const isOpen = openBoxes.includes(boxId);
+      if (isOpen) {
+        toggleBox(boxId);
+      } else {
+        exclusiveBoxIds
+          .filter((id) => id !== boxId && openBoxes.includes(id))
+          .forEach((id) => toggleBox(id));
+        toggleBox(boxId);
+      }
     }
   };
 
