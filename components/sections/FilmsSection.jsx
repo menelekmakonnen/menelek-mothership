@@ -226,13 +226,14 @@ export default function FilmsSection() {
         layerId={`film-${activeProject.id}`}
         depth={2200}
         onClose={closeProject}
+        innerClassName="p-0"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0.92, scale: 0.97 }}
           transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_55px_150px_rgba(0,0,0,0.7)]"
+          className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_55px_150px_rgba(0,0,0,0.7)]"
         >
           <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div className="space-y-1">
@@ -256,7 +257,7 @@ export default function FilmsSection() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
             <div className="grid h-full gap-6 lg:grid-cols-[2fr_1fr]">
               <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/70">
                 {embedUrl ? (

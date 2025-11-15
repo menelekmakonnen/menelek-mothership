@@ -461,13 +461,14 @@ export default function PhotographySection() {
             layerId={`album-${activeAlbum.id}`}
             depth={2100}
             onClose={closeAlbum}
+            innerClassName="p-0"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.92, scale: 0.97 }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_50px_140px_rgba(0,0,0,0.7)]"
+              className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_50px_140px_rgba(0,0,0,0.7)]"
             >
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
                 <div className="space-y-2">
@@ -494,7 +495,7 @@ export default function PhotographySection() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-hidden">{renderGalleryGrid()}</div>
+              <div className="flex-1 overflow-y-auto">{renderGalleryGrid()}</div>
             </motion.div>
           </FullscreenLightbox>
         )}
@@ -507,13 +508,14 @@ export default function PhotographySection() {
             layerId={`lightbox-${activeImage.id || activeImageIndex}`}
             depth={2300}
             onClose={() => setActiveImageIndex(null)}
+            innerClassName="p-0"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.92, scale: 0.98 }}
               transition={{ duration: 0.26, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(4,6,12,0.96)] shadow-[0_65px_160px_rgba(0,0,0,0.75)]"
+              className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(4,6,12,0.96)] shadow-[0_65px_160px_rgba(0,0,0,0.75)]"
             >
               <div className="flex flex-1 flex-col lg:flex-row">
                 <div className="relative flex-1 min-h-[320px]">

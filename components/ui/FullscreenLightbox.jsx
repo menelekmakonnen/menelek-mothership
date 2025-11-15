@@ -6,6 +6,7 @@ export default function FullscreenLightbox({
   layerId,
   depth = 2200,
   className = '',
+  innerClassName = '',
   focusOnMount = true,
   lockGestures = true,
   onClose,
@@ -29,9 +30,11 @@ export default function FullscreenLightbox({
       focusOnMount={focusOnMount}
       lockGestures={lockGestures}
       onClose={onClose}
-      className={`fixed inset-0 flex items-center justify-center p-4 sm:p-8 ${className}`.trim()}
+      className={`fixed inset-0 flex flex-col items-stretch justify-stretch overflow-hidden ${className}`.trim()}
     >
-      {children}
+      <div className={`relative flex-1 overflow-hidden ${innerClassName}`.trim()}>
+        {children}
+      </div>
     </BlurLayer>
   );
 }

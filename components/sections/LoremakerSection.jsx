@@ -227,13 +227,14 @@ export default function LoremakerSection() {
             layerId={`loremaker-${activeCharacter.id}`}
             depth={2200}
             onClose={() => setActiveCharacter(null)}
+            innerClassName="p-0"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.9, scale: 0.96 }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="relative mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(8,10,18,0.96)] shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
+              className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(8,10,18,0.96)] shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
             >
               <div className="flex flex-1 flex-col lg:flex-row">
                 <div className="relative flex-1 min-h-[320px]">

@@ -1,10 +1,10 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ArrowUpToLine } from 'lucide-react';
 import BlurLayer from './ui/BlurLayer';
 
-export default function SectionNavigation({ sections, contentStyle = {} }) {
+export default function SectionNavigation({ sections, contentStyle = {}, sectionMeta }) {
   const {
     currentSection,
     setCurrentSection,
@@ -220,6 +220,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     cursor: isDragging ? 'grabbing' : 'grab',
     paddingTop: isZoomedIn ? `calc(${navOffset} + 96px)` : navOffset,
     paddingBottom: isZoomedIn ? `calc(${baseBottomPadding} + 96px)` : baseBottomPadding,
+    minHeight: '100vh',
   };
 
   const stageBackgroundStyle = {
@@ -228,10 +229,18 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
     ...(contentStyle && contentStyle.filter ? { filter: contentStyle.filter } : {}),
   };
 
+  const resolvedSectionMeta = useMemo(() => {
+    if (!sectionMeta) return null;
+    if (Array.isArray(sectionMeta)) {
+      return sectionMeta[currentSection] ?? sectionMeta.find((entry) => entry?.id === currentSection) ?? null;
+    }
+    return null;
+  }, [currentSection, sectionMeta]);
+
   return (
     <div
       ref={containerRef}
-      className={`section-scroll-container w-full h-full relative ${scrollClasses}`}
+      className={`section-scroll-container relative w-full min-h-screen ${scrollClasses}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -285,7 +294,7 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
 
       {/* Sections with lens zoom effect */}
       <div
-        className="relative w-full h-full transition-transform duration-700 ease-out"
+        className="relative w-full min-h-screen transition-transform duration-700 ease-out"
         style={{
           transform: `scale(${currentLens.zoom})`,
           transformOrigin: 'center center',
@@ -293,7 +302,17 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
           minWidth: isZoomedIn ? 'max-content' : '100%',
         }}
       >
-        <div className="absolute inset-0 -z-10 pointer-events-none" style={stageBackgroundStyle} />
+        <div className="absolute inset-0 -z-10 pointer-events-none" style={{ ...stageBackgroundStyle, minHeight: '100%' }} />
+        {resolvedSectionMeta?.name && (
+          <div
+            className="pointer-events-none absolute left-1/2 z-[1200] -translate-x-1/2"
+            style={{ top: `calc(var(--camera-top-rail-height, 112px) + 20px)` }}
+          >
+            <div className="camera-hud rounded-full border border-white/10 px-4 py-2 text-xs mono uppercase tracking-[0.4em] text-[color:var(--text-primary)]/80">
+              {resolvedSectionMeta.name}
+            </div>
+          </div>
+        )}
         <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
           <motion.div
             key={currentSection}
@@ -305,14 +324,14 @@ export default function SectionNavigation({ sections, contentStyle = {} }) {
               duration: 0.5,
               ease: [0.4, 0, 0.2, 1],
             }}
-            className="w-full h-full"
+            className="w-full min-h-screen"
             style={contentStyle}
           >
             <BlurLayer
               depth={400}
               layerId={`section-${currentSection}`}
               focusOnMount
-              className="w-full h-full"
+              className="w-full min-h-screen"
             >
               {sections[currentSection]}
             </BlurLayer>

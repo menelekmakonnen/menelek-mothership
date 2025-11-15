@@ -1,39 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
-import {
-  Home,
-  Film,
-  BookOpen,
-  Brain,
-  Video,
-  Camera,
-  Image,
-  FileText,
-  Link2,
-  Move,
-} from 'lucide-react';
-
-const sections = [
-  { id: 0, name: 'Home', icon: Home, gradient: 'from-green-600 to-emerald-600' },
-  { id: 1, name: 'Films', icon: Film, gradient: 'from-red-600 to-orange-600' },
-  { id: 2, name: 'Loremaker', icon: BookOpen, gradient: 'from-purple-600 to-pink-600' },
-  { id: 3, name: 'AI Projects', icon: Brain, gradient: 'from-blue-600 to-cyan-600' },
-  { id: 4, name: 'Video Edits', icon: Video, gradient: 'from-indigo-600 to-purple-600' },
-  { id: 5, name: 'Photography', icon: Camera, gradient: 'from-teal-600 to-cyan-600' },
-  { id: 6, name: 'AI Albums', icon: Image, gradient: 'from-pink-600 to-rose-600' },
-  { id: 7, name: 'Blog', icon: FileText, gradient: 'from-yellow-600 to-orange-600' },
-  { id: 8, name: 'Links', icon: Link2, gradient: 'from-cyan-600 to-blue-600' },
-];
+import { Move } from 'lucide-react';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-export default function SectionNavButtons({ currentSection, onNavigate }) {
+export default function SectionNavButtons({ currentSection, onNavigate, navItems }) {
   const visibleSections = useMemo(
-    () => sections.filter((section) => section.id !== currentSection),
-    [currentSection]
+    () => (navItems || []).filter((section) => section.id !== currentSection),
+    [currentSection, navItems]
   );
-
-  const [activeLabelIndex, setActiveLabelIndex] = useState(0);
 
   const navRef = useRef(null);
   const dragControls = useDragControls();
@@ -108,22 +83,6 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
   const activeFloatY = !isCollapsed && isFloating ? floatPosition.y : 0;
 
   const navTop = `calc(var(--camera-top-rail-height, 112px) + ${12 + activeFloatY - (isCollapsed ? hiddenOffset : 0)}px)`;
-
-  useEffect(() => {
-    if (!visibleSections.length) {
-      setActiveLabelIndex(0);
-      return;
-    }
-    setActiveLabelIndex((prev) => prev % visibleSections.length);
-  }, [visibleSections.length]);
-
-  useEffect(() => {
-    if (!visibleSections.length) return undefined;
-    const interval = setInterval(() => {
-      setActiveLabelIndex((prev) => (prev + 1) % visibleSections.length);
-    }, 2400);
-    return () => clearInterval(interval);
-  }, [visibleSections.length]);
 
   useEffect(() => {
     if (
@@ -252,29 +211,9 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
                         aria-label={`Go to ${section.name}`}
                       >
                         <Icon className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 rounded-md bg-black/75 px-2 py-1 text-[10px] mono uppercase tracking-[0.35em] text-white/80 opacity-0 transition-opacity group-hover:opacity-100">
-                          {section.name}
-                        </span>
                       </motion.button>
                     );
                   })}
-                </AnimatePresence>
-              </div>
-
-              <div className="flex w-full justify-center pt-1">
-                <AnimatePresence mode="wait">
-                  {visibleSections.length > 0 && (
-                    <motion.span
-                      key={visibleSections[activeLabelIndex]?.id ?? 'nav-label'}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                      className="mono text-[10px] uppercase tracking-[0.4em] text-white/70"
-                    >
-                      {visibleSections[activeLabelIndex]?.name}
-                    </motion.span>
-                  )}
                 </AnimatePresence>
               </div>
             </div>

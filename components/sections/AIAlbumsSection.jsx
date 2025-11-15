@@ -238,13 +238,14 @@ export default function AIAlbumsSection() {
             layerId={`ai-album-${selectedAlbum.id}`}
             depth={2100}
             onClose={() => setSelectedAlbum(null)}
+            innerClassName="p-0"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.92, scale: 0.97 }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_45px_120px_rgba(0,0,0,0.65)]"
+              className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_45px_120px_rgba(0,0,0,0.65)]"
             >
               <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
                 <div className="space-y-2">
@@ -324,13 +325,14 @@ export default function AIAlbumsSection() {
             layerId={`ai-lightbox-${activeImage.id}`}
             depth={2300}
             onClose={() => setSelectedImageIndex(null)}
+            innerClassName="p-0"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.92, scale: 0.98 }}
               transition={{ duration: 0.26, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full items-center justify-center rounded-3xl border border-white/10 bg-[rgba(4,6,12,0.96)] p-6 shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
+              className="relative flex h-full w-full items-center justify-center border border-white/10 bg-[rgba(4,6,12,0.96)] p-6 shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
             >
               <img
                 src={
