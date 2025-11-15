@@ -72,17 +72,6 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
     return () => observer.disconnect();
   }, []);
 
-  useLayoutEffect(() => {
-    updateLabelMetrics();
-  }, [updateLabelMetrics, navSize.width, navSize.height, activeFloatX, activeFloatY]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const handleResize = () => updateLabelMetrics();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [updateLabelMetrics]);
-
   const readCameraRailHeight = useCallback(() => {
     if (typeof window === 'undefined') return 112;
     const raw = parseFloat(
@@ -116,6 +105,17 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   const activeFloatY = !isCollapsed && isFloating ? floatPosition.y : 0;
 
   const navTop = `calc(var(--camera-top-rail-height, 112px) + ${12 + activeFloatY - (isCollapsed ? hiddenOffset : 0)}px)`;
+
+  useLayoutEffect(() => {
+    updateLabelMetrics();
+  }, [updateLabelMetrics, navSize.width, navSize.height, activeFloatX, activeFloatY]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handleResize = () => updateLabelMetrics();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updateLabelMetrics]);
 
   const resetNavPosition = useCallback(() => {
     setIsFloating(false);
