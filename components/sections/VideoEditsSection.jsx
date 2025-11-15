@@ -1,70 +1,515 @@
-import { motion } from 'framer-motion';
-import { Play, Film } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowLeft,
+  Brain,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Play,
+  X,
+  Zap,
+  Compass,
+} from 'lucide-react';
+import IconBox from '@/components/ui/IconBox';
+import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
+import { parseMediaLink } from '@/lib/mediaLinks';
 
-// Placeholder - will be populated from Google Drive
-const videos = Array.from({ length: 12 }, (_, i) => ({
-  id: i + 1,
-  title: `Epic Edit ${i + 1}`,
-  thumbnail: ['🎬', '🎥', '🎞️', '📹'][i % 4],
-  duration: `${Math.floor(Math.random() * 5) + 2}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
-  views: `${Math.floor(Math.random() * 100)}K`,
-}));
+const editCollections = [
+  {
+    id: 'epic-edits',
+    title: 'Epic Edits',
+    description:
+      'High-energy, high-VFX, hyper-stylised reels with fast cuts, punchy transitions, and aggressive motion graphics.',
+    icon: Zap,
+    gradient: {
+      panel: 'from-[#2b1030]/85 via-[#411857]/80 to-[#09020f]/92',
+      halo: 'from-fuchsia-200/35 via-purple-200/15 to-transparent',
+      icon: 'from-fuchsia-400 to-purple-400',
+    },
+    links: [
+      'https://www.instagram.com/p/DMKpVGwoOC2/',
+      'https://www.instagram.com/p/C7TX-jlqQFB/',
+      'https://www.instagram.com/reel/C8rQp-kq5PG/',
+      'https://www.instagram.com/reel/C8kNL16KIZc/',
+      'https://www.instagram.com/reel/C8z0DAtKq8B/',
+      'https://www.instagram.com/reel/DFPiXCOo220/',
+      'https://www.instagram.com/reel/CIDASf-n6mv/',
+    ],
+  },
+  {
+    id: 'beauty-travel',
+    title: 'Beauty & Travel',
+    description:
+      'Soft-power aesthetic reels celebrating black women, glow, and cosmopolitan wanderlust across luxury cityscapes.',
+    icon: Compass,
+    gradient: {
+      panel: 'from-[#142c33]/85 via-[#1f4854]/80 to-[#03080a]/92',
+      halo: 'from-teal-200/35 via-cyan-200/15 to-transparent',
+      icon: 'from-teal-300 to-cyan-400',
+    },
+    links: [
+      'https://www.instagram.com/reel/C6YtlD2Kbd6/',
+      'https://www.instagram.com/reel/C3sDA4AqP5z/',
+      'https://www.instagram.com/reel/C-VzUiFqfkm/',
+      'https://www.instagram.com/reel/DIx8Dkao7wR/',
+      'https://www.instagram.com/reel/DJZC9tpIIOF/',
+      'https://www.instagram.com/reel/DEPpHmFIGAl/',
+      'https://www.instagram.com/reel/DLfna4ao-z-/',
+      'https://www.instagram.com/reel/C7BdCzwqgKo/',
+      'https://www.instagram.com/reel/C6JjwNGIKni/',
+      'https://www.instagram.com/reel/C5N9JhvK9to/',
+      'https://www.instagram.com/reel/C4yA5RKK0zg/',
+      'https://www.instagram.com/reel/C4YBtJdqoWr/',
+      'https://www.instagram.com/reel/C4LBUi7K9wr/',
+      'https://www.instagram.com/reel/C3igTEsqyam/',
+    ],
+  },
+  {
+    id: 'bts',
+    title: 'BTS & Documentary',
+    description:
+      'On-set receipts and documentary filmmaking proof that spotlight real clients, trust, and live production energy.',
+    icon: Play,
+    gradient: {
+      panel: 'from-[#0f1f28]/85 via-[#1b3344]/80 to-[#02070b]/92',
+      halo: 'from-blue-200/35 via-emerald-200/15 to-transparent',
+      icon: 'from-blue-300 to-emerald-400',
+    },
+    links: [
+      'https://www.instagram.com/reel/CthPmc7OKK5/',
+      'https://www.instagram.com/reel/CtjWyXJNxwY/',
+      'https://www.instagram.com/reel/Ctlc7--veax/',
+      'https://www.instagram.com/reel/Ctn4hRENjQW/',
+      'https://www.instagram.com/reel/Cttvmy2AdWU/',
+      'https://www.instagram.com/reel/Cue_nHag-QS/',
+      'https://www.instagram.com/reel/CuhtdZYMwWj/',
+      'https://www.instagram.com/reel/C69G68OPF5N/',
+      'https://www.instagram.com/reel/C7KeP-sIHBk/',
+      'https://www.instagram.com/reel/DFNRIRqoFH_/',
+      'https://www.instagram.com/reel/DFPiY-Do1z0/',
+    ],
+  },
+  {
+    id: 'ai-learning',
+    title: 'AI & Learning',
+    description:
+      'Clean demos and polished voiceovers that position you as an AI educator for corporate, schools, and consulting engagements.',
+    icon: Brain,
+    gradient: {
+      panel: 'from-[#1a1934]/85 via-[#252b57]/80 to-[#04030b]/92',
+      halo: 'from-indigo-200/35 via-blue-200/15 to-transparent',
+      icon: 'from-indigo-300 to-cyan-400',
+    },
+    links: [
+      'https://www.instagram.com/reel/DK1bY8couuK/',
+      'https://www.instagram.com/reel/DK4gIZtNB-U/',
+      'https://www.instagram.com/reel/DIvxSY9tQio/',
+      'https://www.instagram.com/reel/DLAbo5mtbC2/',
+      'https://www.instagram.com/reel/C5oZNM5KF77/',
+      'https://www.instagram.com/reel/C5fciTUqXBR/',
+      'https://www.instagram.com/reel/C5c74nYKdI2/',
+      'https://www.instagram.com/reel/DMzghyEtXu1/',
+    ],
+  },
+];
+
+const previewFallback = [
+  'linear-gradient(135deg, rgba(63,94,251,0.45) 0%, rgba(252,70,107,0.45) 100%)',
+  'linear-gradient(135deg, rgba(14,164,212,0.45) 0%, rgba(55,238,207,0.45) 100%)',
+  'linear-gradient(135deg, rgba(92,59,206,0.45) 0%, rgba(162,121,241,0.45) 100%)',
+];
 
 export default function VideoEditsSection() {
+  const [previews, setPreviews] = useState({});
+  const initiatedRef = useRef(new Set());
+  const [collapsedSections, setCollapsedSections] = useState(() => editCollections.map((collection) => collection.id));
+  const [activeSectionId, setActiveSectionId] = useState(null);
+  const [activeClipIndex, setActiveClipIndex] = useState(null);
+  const sectionRefs = useRef({});
+
+  const scrollToActiveLayer = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const urls = editCollections.flatMap((collection) => collection.links);
+    urls.forEach((url) => {
+      if (initiatedRef.current.has(url)) return;
+      initiatedRef.current.add(url);
+      setPreviews((prev) => ({ ...prev, [url]: { status: 'loading' } }));
+      (async () => {
+        try {
+          const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+          if (!response.ok) {
+            throw new Error('Failed to load preview');
+          }
+          const data = await response.json();
+          setPreviews((prev) => ({ ...prev, [url]: { status: 'ready', data } }));
+        } catch (error) {
+          console.error('Preview fetch failed for', url, error);
+          setPreviews((prev) => ({ ...prev, [url]: { status: 'error' } }));
+        }
+      })();
+    });
+  }, []);
+
+  const closeQuickView = useCallback(() => {
+    setActiveSectionId(null);
+    setActiveClipIndex(null);
+  }, []);
+
+  const toggleCollapsed = useCallback(
+    (sectionId) => {
+      setCollapsedSections((prev) => {
+        const isCollapsed = prev.includes(sectionId);
+        const next = isCollapsed ? prev.filter((id) => id !== sectionId) : [...prev, sectionId];
+        if (!isCollapsed && activeSectionId === sectionId) {
+          closeQuickView();
+        }
+        if (isCollapsed && typeof window !== 'undefined') {
+          window.requestAnimationFrame(() => {
+            const node = sectionRefs.current[sectionId];
+            if (node) {
+              try {
+                node.scrollIntoView({ behavior: 'auto', block: 'start' });
+              } catch (error) {
+                node.scrollIntoView();
+              }
+            }
+          });
+        }
+        return next;
+      });
+    },
+    [activeSectionId, closeQuickView]
+  );
+
+  const openQuickView = useCallback(
+    (sectionId, index) => {
+      setActiveSectionId(sectionId);
+      setActiveClipIndex(index);
+      scrollToActiveLayer();
+    },
+    [scrollToActiveLayer]
+  );
+
+  const activeCollection = useMemo(
+    () => editCollections.find((collection) => collection.id === activeSectionId) || null,
+    [activeSectionId]
+  );
+
+  const activeLinks = activeCollection?.links || [];
+
+  useEffect(() => {
+    if (!activeCollection) return;
+    if (activeClipIndex === null) {
+      setActiveClipIndex(0);
+      return;
+    }
+    if (activeClipIndex >= activeLinks.length) {
+      setActiveClipIndex(0);
+    }
+  }, [activeCollection, activeClipIndex, activeLinks.length]);
+
+  useEffect(() => {
+    if (activeSectionId === null || activeClipIndex === null) return;
+
+    const handleKeyDown = (event) => {
+      if (!activeCollection) return;
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        setActiveClipIndex((index) => ((index ?? 0) + 1) % activeLinks.length);
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setActiveClipIndex((index) => ((index ?? activeLinks.length) - 1 + activeLinks.length) % activeLinks.length);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeQuickView();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSectionId, activeClipIndex, activeCollection, activeLinks.length, closeQuickView]);
+
+  useEffect(() => {
+    if (activeSectionId && activeClipIndex !== null) {
+      scrollToActiveLayer();
+    }
+  }, [activeSectionId, activeClipIndex, scrollToActiveLayer]);
+
+  const getClipPreview = useCallback(
+    (url, collection, index) => {
+      const preview = previews[url];
+      const mediaMeta = parseMediaLink(url);
+      const fallbackImage = mediaMeta?.thumbnailUrl || null;
+      const title = preview?.data?.title || `${collection.title} · Clip ${index + 1}`;
+      const description =
+        preview?.data?.description || collection.description || 'Tap to explore this reel inside the camera viewer.';
+
+      return {
+        title,
+        description,
+        image: preview?.data?.image || fallbackImage,
+        status: preview?.status || (fallbackImage ? 'fallback' : 'idle'),
+        media: mediaMeta,
+      };
+    },
+    [previews]
+  );
+
+  const renderClipCard = useCallback(
+    (collection, url, index) => {
+      const { title, description, image, status } = getClipPreview(url, collection, index);
+      const fallbackStyle = previewFallback[index % previewFallback.length];
+
+      return (
+        <motion.button
+          key={url}
+          type="button"
+          onClick={() => openQuickView(collection.id, index)}
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: index * 0.03 }}
+          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,10,16,0.82)] shadow-[0_25px_70px_rgba(0,0,0,0.55)] transition-transform hover:-translate-y-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-400)]"
+        >
+          <div className="relative aspect-[4/5] w-full overflow-hidden">
+            <div
+              className="absolute inset-0"
+              style={{
+                background: image ? undefined : fallbackStyle,
+                backgroundImage: image ? `url(${image})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+            <div className="absolute top-3 right-3 flex items-center gap-2">
+              {status === 'loading' && <Loader2 className="h-5 w-5 animate-spin text-white/80" />}
+              {status === 'fallback' && (
+                <span className="rounded-full bg-black/60 px-2 py-1 text-[9px] mono uppercase tracking-[0.4em] text-white/70">
+                  Live
+                </span>
+              )}
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 space-y-2 p-4 text-left">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
+                Reel
+              </span>
+              <h4 className="text-lg font-semibold text-white line-clamp-2">{title}</h4>
+              {description && <p className="text-xs text-white/70 line-clamp-2">{description}</p>}
+            </div>
+          </div>
+        </motion.button>
+      );
+    },
+    [getClipPreview, openQuickView]
+  );
+
+  const renderQuickView = () => {
+    if (!activeCollection || activeClipIndex === null) return null;
+    const clipUrl = activeLinks[activeClipIndex];
+    const clipMeta = clipUrl ? getClipPreview(clipUrl, activeCollection, activeClipIndex) : null;
+    const embedUrl = clipMeta?.media?.embedUrl;
+    const provider = clipMeta?.media?.provider || 'unknown';
+
+    return (
+      <FullscreenLightbox
+        key={`${activeCollection.id}-clip-${activeClipIndex}`}
+        layerId={`video-edit-${activeCollection.id}`}
+        depth={2200}
+        onClose={closeQuickView}
+        innerClassName="p-0"
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0.9, scale: 0.96 }}
+          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+          className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(6,8,14,0.96)] shadow-[0_50px_140px_rgba(0,0,0,0.7)]"
+        >
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={closeQuickView}
+                className="flex items-center gap-2 text-xs mono uppercase tracking-[0.35em] text-green-300 hover:text-green-100"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to reels
+              </button>
+              <h2 className="text-2xl font-semibold text-white">{activeCollection.title}</h2>
+              <p className="text-sm text-white/65">{activeCollection.description}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeQuickView}
+              className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+              aria-label="Close quick view"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
+            <div className="grid h-full gap-6 lg:grid-cols-[2fr_1fr]">
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/70">
+                {embedUrl ? (
+                  <iframe
+                    key={embedUrl}
+                    src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                    className="h-full w-full"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title={clipMeta?.title || 'Video playback'}
+                  />
+                ) : (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                    style={{
+                      backgroundImage: clipMeta?.image ? `url(${clipMeta.image})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    {!clipMeta?.image && <Play className="h-14 w-14" />}
+                  </div>
+                )}
+              </div>
+              <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
+                    {provider === 'youtube' ? 'YouTube' : provider === 'instagram' ? 'Instagram' : 'Clip'}
+                    <span className="rounded-full bg-white/10 px-2 py-[2px] text-[9px] mono">
+                      {activeClipIndex + 1} / {activeLinks.length}
+                    </span>
+                  </span>
+                  <h3 className="text-xl font-semibold text-white">{clipMeta?.title}</h3>
+                  {clipMeta?.description && (
+                    <p className="text-sm text-white/70 leading-relaxed">{clipMeta.description}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveClipIndex((index) => ((index ?? 0) - 1 + activeLinks.length) % activeLinks.length)
+                    }
+                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Prev
+                  </button>
+                  {clipUrl && (
+                    <a
+                      href={clipUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs mono uppercase tracking-[0.35em] text-white/80 hover:text-white"
+                    >
+                      View on platform
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveClipIndex((index) => ((index ?? 0) + 1) % activeLinks.length)}
+                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </motion.div>
+      </FullscreenLightbox>
+    );
+  };
+
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          Epic Video Edits
-        </motion.h1>
+      <div className="max-w-7xl mx-auto space-y-12">
+        <header className="space-y-4">
+          <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
+            Epic Video Edits
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="text-xl text-[color:var(--text-secondary)] max-w-3xl"
+          >
+            Each category unfolds live reels from Instagram — open a set to enter the in-camera quick view, then scrub through clips with your keyboard or on-screen controls.
+          </motion.p>
+        </header>
 
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
-        >
-          Professional video editing and motion graphics
-        </motion.p>
-
-        <div className="grid md:grid-cols-4 gap-6">
-          {videos.map((video, index) => (
-            <motion.div
-              key={video.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.05 * index }}
-              className="luxury-card group cursor-pointer"
-              whileHover={{ y: -8 }}
-            >
-              {/* Video thumbnail */}
-              <div className="aspect-video bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg mb-4 flex items-center justify-center text-5xl relative overflow-hidden group-hover:scale-105 transition-transform">
-                {video.thumbnail}
-
-                {/* Play overlay */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white ml-1" />
+        <div className="space-y-10">
+          {editCollections.map((collection, sectionIndex) => {
+            const collapsed = collapsedSections.includes(collection.id);
+            return (
+              <motion.section
+                key={collection.id}
+                ref={(node) => {
+                  if (node) {
+                    sectionRefs.current[collection.id] = node;
+                  } else {
+                    delete sectionRefs.current[collection.id];
+                  }
+                }}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 * sectionIndex }}
+                className="overflow-hidden rounded-3xl border border-white/10 bg-[color:var(--surface-raised)]/85 shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleCollapsed(collection.id)}
+                  className="relative flex w-full items-center justify-between gap-3 bg-gradient-to-br from-white/5 via-white/0 to-white/5 px-6 py-5 text-left transition-colors hover:bg-white/10"
+                >
+                  <div className="flex items-center gap-4">
+                    <IconBox icon={collection.icon} gradient={collection.gradient.icon} size="sm" />
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">{collection.title}</h2>
+                      <p className="text-sm text-white/70 max-w-2xl">{collection.description}</p>
+                    </div>
                   </div>
-                </div>
+                  <motion.div animate={{ rotate: collapsed ? -90 : 0 }} transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}>
+                    <ChevronDown className="h-6 w-6 text-white/70" />
+                  </motion.div>
+                </button>
 
-                {/* Duration badge */}
-                <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs mono">
-                  {video.duration}
-                </div>
-              </div>
-
-              {/* Video info */}
-              <h3 className="font-bold mb-1">{video.title}</h3>
-              <p className="text-xs text-gray-400">{video.views} views</p>
-            </motion.div>
-          ))}
+                <AnimatePresence initial={false}>
+                  {!collapsed && (
+                    <motion.div
+                      key="section-content"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                      className="px-6 pb-6"
+                    >
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {collection.links.map((url, index) => renderClipCard(collection, url, index))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.section>
+            );
+          })}
         </div>
       </div>
+
+      <AnimatePresence>{renderQuickView()}</AnimatePresence>
     </div>
   );
 }

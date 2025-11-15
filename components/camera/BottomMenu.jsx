@@ -1,5 +1,6 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { ChevronUp, User, Film, BookOpen, Brain, Video, Camera, Sparkles, Image, Link2 } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
 
@@ -17,6 +18,14 @@ const quickNavLinks = [
 
 export default function BottomMenu() {
   const { isBottomMenuOpen, setIsBottomMenuOpen, currentSection, setCurrentSection } = useCameraContext();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const toggleMenu = () => {
     setIsBottomMenuOpen(!isBottomMenuOpen);
@@ -71,37 +80,62 @@ export default function BottomMenu() {
             className="pointer-events-auto"
           >
             <div className="camera-hud rounded-t-2xl px-4 md:px-8 py-4 md:py-6 border-t-2 border-green-500/30">
-              <div className="grid grid-cols-3 md:grid-cols-9 gap-3 md:gap-4 max-w-6xl mx-auto">
-                {quickNavLinks.map((link) => {
-                  const isActive = currentSection === link.section;
-                  return (
-                    <button
-                      key={link.section}
-                      onClick={() => handleNavClick(link.section)}
-                      className={`group relative flex flex-col items-center gap-2 hover:scale-110 transition-all ${
-                        isActive ? 'scale-110' : ''
-                      }`}
-                      title={link.name}
-                    >
-                      <IconBox
-                        icon={link.icon}
-                        gradient={link.gradient}
-                        size="sm"
-                        className={`md:w-12 md:h-12 ${isActive ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-black/50' : ''}`}
-                      />
-                      <span className={`text-[9px] md:text-xs font-mono font-bold transition-all text-center leading-tight ${
-                        isActive ? 'text-green-400 opacity-100' : 'opacity-90 group-hover:opacity-100 group-hover:text-green-400'
-                      }`}>
-                        {link.name}
-                      </span>
-                      {/* Hover tooltip for desktop */}
-                      <span className="hidden md:block absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-green-500/30 z-50">
-                        Go to {link.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              {isMobile ? (
+                <div className="flex items-center gap-3 overflow-x-auto pb-2">
+                  {quickNavLinks.map((link) => {
+                    const isActive = currentSection === link.section;
+                    return (
+                      <button
+                        key={link.section}
+                        onClick={() => handleNavClick(link.section)}
+                        className={`relative flex flex-col items-center gap-1 transition-all ${isActive ? 'scale-105' : 'scale-95 opacity-80'}`}
+                        title={link.name}
+                      >
+                        <IconBox
+                          icon={link.icon}
+                          gradient={link.gradient}
+                          size={isActive ? 'md' : 'sm'}
+                          className={`${isActive ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-black/40' : ''}`}
+                        />
+                        <span className={`text-[9px] font-mono font-semibold ${isActive ? 'text-green-400' : 'text-white/70'}`}>
+                          {link.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-9 gap-3 md:gap-4 max-w-6xl mx-auto">
+                  {quickNavLinks.map((link) => {
+                    const isActive = currentSection === link.section;
+                    return (
+                      <button
+                        key={link.section}
+                        onClick={() => handleNavClick(link.section)}
+                        className={`group relative flex flex-col items-center gap-2 hover:scale-110 transition-all ${
+                          isActive ? 'scale-110' : ''
+                        }`}
+                        title={link.name}
+                      >
+                        <IconBox
+                          icon={link.icon}
+                          gradient={link.gradient}
+                          size="sm"
+                          className={`md:w-12 md:h-12 ${isActive ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-black/50' : ''}`}
+                        />
+                        <span className={`text-[9px] md:text-xs font-mono font-bold transition-all text-center leading-tight ${
+                          isActive ? 'text-green-400 opacity-100' : 'opacity-90 group-hover:opacity-100 group-hover:text-green-400'
+                        }`}>
+                          {link.name}
+                        </span>
+                        <span className="hidden md:block absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-green-500/30 z-50">
+                          Go to {link.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
