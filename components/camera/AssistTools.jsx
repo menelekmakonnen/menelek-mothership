@@ -1,7 +1,7 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { Grid3x3, BarChart3, Focus } from 'lucide-react';
 
-export default function AssistTools() {
+export default function AssistTools({ variant = 'panel' }) {
   const {
     ruleOfThirds,
     setRuleOfThirds,
@@ -40,6 +40,118 @@ export default function AssistTools() {
     { id: 'retro', label: 'Retro HUD', description: 'Warm tungsten palette with manual focus bias.' },
     { id: 'cinema', label: 'Cinema Rig', description: 'Film-centric HUD with flash disabled and EV guard.' },
   ];
+
+  if (variant === 'inline') {
+    return (
+      <div className="flex flex-col gap-4 mono text-[11px]">
+        <div>
+          <div className="flex items-center justify-between mb-2 uppercase tracking-[0.25em] text-[10px] opacity-70">
+            <span className="flex items-center gap-2"><Grid3x3 className="w-4 h-4" /> Framing</span>
+            <span>{gridLevels.find((level) => level.id === ruleOfThirds)?.label}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {gridLevels.map((level) => (
+              <button
+                key={level.id}
+                onClick={() => setRuleOfThirds(level.id)}
+                className={`px-3 py-2 rounded-xl border transition-all ${
+                  ruleOfThirds === level.id
+                    ? 'border-green-400/60 bg-green-500/15 text-green-200 shadow-lg'
+                    : 'border-white/12 bg-white/5 hover:border-white/30'
+                }`}
+              >
+                <div className="font-semibold text-[11px] uppercase tracking-[0.2em]">{level.label}</div>
+                <div className="text-[10px] opacity-60 leading-tight">{level.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setShowHistogram(!showHistogram)}
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition-all ${
+              showHistogram ? 'border-green-400/60 bg-green-500/15 text-green-200' : 'border-white/12 bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="tracking-[0.25em] uppercase text-[10px]">Histogram</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.35em] opacity-70">Focus</span>
+            <div className="flex items-center gap-2">
+              {focusModes.map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => setFocusMode(mode.id)}
+                  className={`px-3 py-2 rounded-xl border transition-all ${
+                    focusMode === mode.id
+                      ? 'border-green-400/60 bg-green-500/15 text-green-200'
+                      : 'border-white/12 bg-white/5'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 items-start">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] opacity-70 mb-2">HUD</div>
+            <div className="flex flex-wrap gap-2">
+              {hudModes.map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => setHudVisibility(mode.id)}
+                  className={`px-3 py-2 rounded-xl border transition-all ${
+                    hudVisibility === mode.id
+                      ? 'border-green-400/60 bg-green-500/15 text-green-200'
+                      : 'border-white/12 bg-white/5'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-[240px]">
+            <div className="text-[10px] uppercase tracking-[0.3em] opacity-70 mb-2">Presets</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {presets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => applyCameraPreset(preset.id)}
+                  className={`w-full h-full text-left px-4 py-3 rounded-2xl border transition-all ${
+                    activePreset === preset.id
+                      ? 'border-green-400/60 bg-green-500/15 text-green-200 shadow-lg'
+                      : 'border-white/12 bg-white/5 hover:border-white/30'
+                  }`}
+                >
+                  <div className="font-semibold uppercase tracking-[0.25em] text-[10px]">{preset.label}</div>
+                  <div className="text-[10px] opacity-60 mt-1 leading-tight">{preset.description}</div>
+                </button>
+              ))}
+              <button
+                onClick={() => applyCameraPreset(null)}
+                className={`w-full h-full text-left px-4 py-3 rounded-2xl border transition-all ${
+                  !activePreset
+                    ? 'border-green-400/60 bg-green-500/15 text-green-200'
+                    : 'border-white/12 bg-white/5'
+                }`}
+              >
+                <div className="font-semibold uppercase tracking-[0.25em] text-[10px]">Manual Setup</div>
+                <div className="text-[10px] opacity-60 mt-1 leading-tight">Customise every module.</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 mono text-xs">

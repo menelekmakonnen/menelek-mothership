@@ -35,10 +35,10 @@ export default function Histogram() {
     <AnimatePresence>
       {showHistogram && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="fixed top-24 right-6 z-[1700] camera-hud rounded-xl p-3 w-52 cursor-move"
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-[140px] right-6 z-[1800] camera-hud rounded-xl p-3 w-52 cursor-move"
           drag
           dragMomentum={false}
           onDragStart={() => {

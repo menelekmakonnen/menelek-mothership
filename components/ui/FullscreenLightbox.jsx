@@ -4,7 +4,7 @@ import BlurLayer from './BlurLayer';
 export default function FullscreenLightbox({
   children,
   layerId,
-  depth = 2600,
+  depth = 3600,
   className = '',
   innerClassName = '',
   focusOnMount = true,

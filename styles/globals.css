@@ -123,6 +123,27 @@ body::before {
   transform: translateZ(0);
 }
 
+.content-stage {
+  width: min(100%, var(--stage-max-width, 1200px));
+  margin: 0 auto;
+  padding: var(--stage-padding-y, clamp(48px, 10vh, 96px)) clamp(16px, 6vw, 72px);
+}
+
+[data-lens-layout='wide'] {
+  --stage-max-width: min(1440px, 100vw);
+  --stage-padding-y: clamp(40px, 9vh, 88px);
+}
+
+[data-lens-layout='normal'] {
+  --stage-max-width: min(1280px, 100vw);
+  --stage-padding-y: clamp(48px, 10vh, 100px);
+}
+
+[data-lens-layout='tele'] {
+  --stage-max-width: min(1024px, 100vw);
+  --stage-padding-y: clamp(56px, 12vh, 112px);
+}
+
 #__next {
   width: 100%;
   min-height: 100%;

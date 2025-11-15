@@ -107,7 +107,7 @@ export default function BootSequence({ onComplete }) {
           initial={{ width: 0 }}
           animate={{ width: '100%' }}
           transition={{ duration: 2.5, ease: 'linear' }}
-          className="mt-8 h-1 bg-gradient-to-r from-green-600 via-green-400 to-green-600 rounded-full mx-auto max-w-md"
+          className="mt-8 h-1 bg-gradient-to-r from-green-600 via-green-400 to-green-600 rounded-full mx-auto w-[min(70vw,20rem)] sm:w-[min(60vw,22rem)]"
         />
       </div>
     </motion.div>

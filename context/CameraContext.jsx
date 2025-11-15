@@ -48,6 +48,7 @@ export const CameraProvider = ({ children }) => {
 
   // Lens system - Default to 35mm (human eye equivalent)
   const [currentLens, setCurrentLens] = useState(LENSES[2]); // 35mm lens
+  const [lensLayout, setLensLayout] = useState('normal');
   const [isChangingLens, setIsChangingLens] = useState(false);
 
   // Flash mode
@@ -416,6 +417,18 @@ export const CameraProvider = ({ children }) => {
     const nextIndex = (currentIndex + 1) % LENSES.length;
     changeLens(LENSES[nextIndex]);
   }, [currentLens, changeLens]);
+
+  useEffect(() => {
+    const zoomFactor = currentLens?.zoom ?? 1;
+    const layout = zoomFactor >= 1.25 ? 'tele' : zoomFactor <= 0.8 ? 'wide' : 'normal';
+    setLensLayout(layout);
+
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      root.style.setProperty('--lens-zoom-factor', zoomFactor.toFixed(2));
+      root.setAttribute('data-lens-layout', layout);
+    }
+  }, [currentLens]);
 
   // Change camera mode with immersive adjustments
   const setCameraMode = useCallback((mode) => {
@@ -807,6 +820,8 @@ export const CameraProvider = ({ children }) => {
     applyCameraPreset,
     interfaceModules,
     hasInteractiveLayer,
+    performFullReset,
+    lensLayout,
   };
 
   return (

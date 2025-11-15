@@ -13,6 +13,7 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
     gestureLock,
     closeTopLayer,
     hasInteractiveLayer,
+    lensLayout,
   } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -210,16 +211,15 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
   // Enable scrolling when zoomed in significantly
   const isZoomedIn = currentLens.zoom > 1;
 
-  const scrollClasses = isZoomedIn
-    ? 'overflow-x-auto overflow-y-auto'
-    : 'overflow-y-auto overflow-x-hidden';
+  const scrollClasses = 'overflow-y-auto overflow-x-hidden';
+  const lensClass = lensLayout ? ` lens-${lensLayout}` : '';
 
   const navOffset = 'calc(var(--camera-top-rail-height, 112px) + var(--camera-nav-safe-zone, 96px))';
   const baseBottomPadding = '140px';
   const containerStyle = {
     cursor: isDragging ? 'grabbing' : 'auto',
-    paddingTop: isZoomedIn ? `calc(${navOffset} + 96px)` : navOffset,
-    paddingBottom: isZoomedIn ? `calc(${baseBottomPadding} + 96px)` : baseBottomPadding,
+    paddingTop: isZoomedIn ? `calc(${navOffset} + 64px)` : navOffset,
+    paddingBottom: baseBottomPadding,
     minHeight: '100vh',
   };
 
@@ -285,15 +285,7 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
       </div>
 
       {/* Sections with lens zoom effect */}
-      <div
-        className="relative w-full min-h-screen transition-transform duration-700 ease-out"
-        style={{
-          transform: `scale(${currentLens.zoom})`,
-          transformOrigin: 'center center',
-          minHeight: isZoomedIn ? 'max-content' : '100%',
-          minWidth: isZoomedIn ? 'max-content' : '100%',
-        }}
-      >
+      <div className={`relative w-full min-h-screen transition-all duration-500 ease-out${lensClass}`}>
         <div className="absolute inset-0 -z-10 pointer-events-none" style={{ ...stageBackgroundStyle, minHeight: '100%' }} />
         <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
           <motion.div
@@ -306,7 +298,7 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
               duration: 0.5,
               ease: [0.4, 0, 0.2, 1],
             }}
-            className="w-full min-h-screen"
+            className="w-full min-h-screen content-stage"
             style={contentStyle}
           >
             <BlurLayer

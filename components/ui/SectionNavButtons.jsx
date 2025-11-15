@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { Move } from 'lucide-react';
+import { useCameraContext } from '@/context/CameraContext';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 export default function SectionNavButtons({ currentSection, onNavigate, navItems }) {
   const visibleSections = useMemo(() => navItems || [], [navItems]);
+  const { performFullReset } = useCameraContext();
 
   const navRef = useRef(null);
   const dragControls = useDragControls();
@@ -21,6 +23,7 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   const [activeLabelIndex, setActiveLabelIndex] = useState(0);
   const iconRefs = useRef({});
   const [labelCenters, setLabelCenters] = useState({});
+  const lastTapRef = useRef(0);
 
   const markInteraction = useCallback(() => {
     setIsCollapsed(false);
@@ -114,6 +117,15 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
 
   const navTop = `calc(var(--camera-top-rail-height, 112px) + ${12 + activeFloatY - (isCollapsed ? hiddenOffset : 0)}px)`;
 
+  const resetNavPosition = useCallback(() => {
+    setIsFloating(false);
+    setFloatPosition({ x: 0, y: 0 });
+    setIsCollapsed(false);
+    markInteraction();
+    scheduleLabelUpdate();
+    performFullReset();
+  }, [markInteraction, performFullReset, scheduleLabelUpdate]);
+
   useEffect(() => {
     if (!labelItems.length) return undefined;
     setActiveLabelIndex((index) => (index >= labelItems.length ? 0 : index));
@@ -183,6 +195,13 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   const handleHandlePointerDown = useCallback(
     (event) => {
       event.preventDefault();
+      const now = Date.now();
+      if (now - lastTapRef.current < 320) {
+        lastTapRef.current = 0;
+        resetNavPosition();
+        return;
+      }
+      lastTapRef.current = now;
       if (isCollapsed) {
         markInteraction();
         requestAnimationFrame(() => {
@@ -193,7 +212,7 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
         dragControls.start(event);
       }
     },
-    [dragControls, isCollapsed, markInteraction]
+    [dragControls, isCollapsed, markInteraction, resetNavPosition]
   );
 
   const handleNavigate = useCallback(

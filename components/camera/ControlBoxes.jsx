@@ -1,11 +1,10 @@
 import { useCameraContext } from '@/context/CameraContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Aperture,
   Camera,
   CameraOff,
-  ChevronDown,
   Gamepad2,
   Maximize2,
   Minimize2,
@@ -24,8 +23,6 @@ import PowerControls from './PowerControls';
 
 export default function ControlBoxes() {
   const {
-    openBoxes,
-    toggleBox,
     flashMode,
     setFlashMode,
     cameraMode,
@@ -41,24 +38,12 @@ export default function ControlBoxes() {
     setMobileImmersiveMode,
     applyCameraPreset,
     activePreset,
+    hudVisibility,
   } = useCameraContext();
+
   const [isMobile, setIsMobile] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
   const containerRef = useRef(null);
-  const buttonRefs = useRef({});
-  const [panelPositions, setPanelPositions] = useState({});
-
-  const scrollButtonIntoView = useCallback((boxId) => {
-    if (typeof window === 'undefined') return;
-    const node = buttonRefs.current[boxId];
-    if (node) {
-      try {
-        node.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
-      } catch (error) {
-        node.scrollIntoView();
-      }
-    }
-  }, []);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -70,7 +55,7 @@ export default function ControlBoxes() {
   const updateRailHeight = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const height = Math.max(72, Math.ceil(el.getBoundingClientRect().height));
+    const height = Math.max(88, Math.ceil(el.getBoundingClientRect().height));
     document.documentElement.style.setProperty('--camera-top-rail-height', `${height}px`);
   }, []);
 
@@ -82,68 +67,7 @@ export default function ControlBoxes() {
 
   useEffect(() => {
     updateRailHeight();
-  }, [updateRailHeight, isMobile, openBoxes, activeMobilePanel, hasModifiedSettings]);
-
-  const updatePanelPositions = useCallback(() => {
-    if (typeof window === 'undefined' || isMobile) {
-      setPanelPositions({});
-      return;
-    }
-
-    const margin = 16;
-    const panelWidth = 320;
-    const next = {};
-
-    openBoxes.forEach((boxId) => {
-      const host = buttonRefs.current[boxId];
-      if (!host) return;
-      const trigger = host.querySelector('button');
-      const rect = (trigger || host).getBoundingClientRect();
-      let left = rect.left;
-      if (rect.left + panelWidth + margin > window.innerWidth) {
-        left = Math.max(margin, rect.right - panelWidth);
-      } else {
-        left = Math.max(margin, rect.left);
-      }
-      const top = rect.bottom + 12;
-      next[boxId] = { top, left };
-    });
-
-    setPanelPositions(next);
-  }, [isMobile, openBoxes]);
-
-  useLayoutEffect(() => {
-    updatePanelPositions();
-  }, [updatePanelPositions]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || isMobile) return undefined;
-    const handleResize = () => updatePanelPositions();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isMobile, updatePanelPositions]);
-
-  const schedulePanelReflow = useCallback(() => {
-    if (typeof window === 'undefined' || isMobile) return;
-    window.requestAnimationFrame(() => updatePanelPositions());
-  }, [isMobile, updatePanelPositions]);
-
-  const boxes = [
-    {
-      id: 'exposure',
-      title: 'EXPOSURE',
-      icon: Aperture,
-      component: ExposureControls,
-      type: 'expandable',
-    },
-    {
-      id: 'assist',
-      title: 'ASSIST',
-      icon: Wrench,
-      component: AssistTools,
-      type: 'expandable',
-    },
-  ];
+  }, [updateRailHeight, isMobile, activeMobilePanel, hasModifiedSettings]);
 
   const getFlashIcon = () => {
     if (flashMode === 'on') return Zap;
@@ -153,21 +77,28 @@ export default function ControlBoxes() {
 
   const FlashIcon = getFlashIcon();
 
-  const closeMobilePanel = () => {
+  const closeMobilePanel = useCallback(() => {
     setActiveMobilePanel(null);
     setGestureLock(false);
-  };
+    ensurePartialReset();
+  }, [ensurePartialReset, setGestureLock]);
 
   useEffect(() => {
-    if (!isMobile) {
-      setActiveMobilePanel(null);
-      setGestureLock(false);
+    const hasPanel = Boolean(activeMobilePanel);
+    setGestureLock(hasPanel);
+    if (hasPanel) {
+      setHasModifiedSettings(true);
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          try {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } catch (error) {
+            window.scrollTo(0, 0);
+          }
+        });
+      }
     }
-  }, [isMobile, setGestureLock]);
-
-  useEffect(() => {
-    setGestureLock(Boolean(activeMobilePanel));
-  }, [activeMobilePanel, setGestureLock]);
+  }, [activeMobilePanel, setGestureLock, setHasModifiedSettings]);
 
   const mobilePanels = useMemo(() => {
     const flashModes = [
@@ -200,9 +131,7 @@ export default function ControlBoxes() {
                   setHasModifiedSettings(true);
                 }}
                 className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
-                  flashMode === id
-                    ? 'border-green-400/60 bg-green-500/10 text-green-300'
-                    : 'border-white/10 bg-white/5'
+                  flashMode === id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -221,29 +150,26 @@ export default function ControlBoxes() {
         content: (
           <div className="space-y-3">
             <p className="text-[13px] text-[color:var(--text-secondary)]">
-              Swap between a rugged DSLR interface and the streamlined mirrorless layout. Mirrorless mode unlocks continuous focus and expanded HUD telemetry.
+              Swap between DSLR heft and the lightweight mirrorless body. Mirrorless unlocks expanded HUD telemetry.
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'dslr', label: 'DSLR', description: 'Optical feel, classic HUD' },
-                { id: 'mirrorless', label: 'Mirrorless', description: 'Electronic viewfinder with live data' },
-              ].map(({ id, label, description }) => (
-                <button
-                  key={id}
-                  onClick={() => setCameraMode(id)}
-                  className={`rounded-lg px-4 py-3 text-left border transition-all ${
-                    cameraMode === id
-                      ? 'border-green-400/60 bg-green-500/10 text-green-300'
-                      : 'border-white/10 bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="mono text-xs font-bold uppercase">{label}</span>
-                    {cameraMode === id && <Sparkles className="w-4 h-4 text-green-300" />}
-                  </div>
-                  <p className="text-[11px] mt-2 opacity-70 leading-snug">{description}</p>
-                </button>
-              ))}
+              {[{ id: 'dslr', label: 'DSLR', description: 'Optical view, classic HUD' }, { id: 'mirrorless', label: 'Mirrorless', description: 'Electronic viewfinder with live data' }].map(
+                ({ id, label, description }) => (
+                  <button
+                    key={id}
+                    onClick={() => setCameraMode(id)}
+                    className={`rounded-lg px-4 py-3 text-left border transition-all ${
+                      cameraMode === id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="mono text-xs font-bold uppercase">{label}</span>
+                      {cameraMode === id && <Sparkles className="w-4 h-4 text-green-300" />}
+                    </div>
+                    <p className="text-[11px] mt-2 opacity-70 leading-snug">{description}</p>
+                  </button>
+                )
+              )}
             </div>
           </div>
         ),
@@ -259,19 +185,15 @@ export default function ControlBoxes() {
         content: (
           <div className="space-y-3">
             <p className="text-[13px] text-[color:var(--text-secondary)]">
-              Expand the interface into a full-screen control rig. Buttons reposition to the screen edges for a video game style cockpit.
+              Expand the interface into a game-like control rig. Buttons reposition to the screen edges.
             </p>
             <button
               onClick={() => setMobileImmersiveMode(!mobileImmersiveMode)}
               className={`w-full rounded-lg px-4 py-3 flex items-center justify-between border transition-all ${
-                mobileImmersiveMode
-                  ? 'border-green-400/60 bg-green-500/10 text-green-300'
-                  : 'border-white/10 bg-white/5'
+                mobileImmersiveMode ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
               }`}
             >
-              <span className="mono text-xs uppercase">
-                {mobileImmersiveMode ? 'Exit Immersive' : 'Enter Immersive'}
-              </span>
+              <span className="mono text-xs uppercase">{mobileImmersiveMode ? 'Exit Immersive' : 'Enter Immersive'}</span>
               {mobileImmersiveMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           </div>
@@ -282,32 +204,30 @@ export default function ControlBoxes() {
         icon: Gamepad2,
         content: (
           <div className="space-y-3">
-            {[{ id: 'modern', name: 'Modern Hybrid', desc: 'Clean mirrorless telemetry and auto flash logic.' },
-              { id: 'retro', name: 'Retro HUD', desc: 'Amber overlays, tungsten balance, manual focus.' },
-              { id: 'cinema', name: 'Cinema Rig', desc: 'Cloudy WB, flash disabled, negative EV for highlight roll-off.' }].map((preset) => (
-              <button
-                key={preset.id}
-                onClick={() => applyCameraPreset(preset.id)}
-                className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
-                  activePreset === preset.id
-                    ? 'border-green-400/60 bg-green-500/10 text-green-300'
-                    : 'border-white/10 bg-white/5'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="mono text-xs font-bold uppercase">{preset.name}</span>
-                  {activePreset === preset.id && <Sparkles className="w-4 h-4" />}
-                </div>
-                <p className="text-[11px] mt-2 opacity-70 leading-snug">{preset.desc}</p>
-              </button>
-            ))}
+            {[{ id: 'modern', name: 'Modern Hybrid', desc: 'Clean mirrorless telemetry with adaptive flash logic.' }, { id: 'retro', name: 'Retro HUD', desc: 'Amber overlays, tungsten balance, manual focus.' }, { id: 'cinema', name: 'Cinema Rig', desc: 'Waveform scopes, film matte, audio meters.' }].map(
+              (preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => applyCameraPreset(preset.id)}
+                  className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
+                    activePreset === preset.id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="mono text-xs font-bold uppercase">{preset.name}</span>
+                    {activePreset === preset.id && <Sparkles className="w-4 h-4" />}
+                  </div>
+                  <p className="text-[11px] mt-2 opacity-70 leading-snug">{preset.desc}</p>
+                </button>
+              )
+            )}
             <button
               onClick={() => applyCameraPreset(null)}
               className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                 !activePreset ? 'border-green-400/40 text-green-300 bg-green-500/5' : 'border-white/10 bg-white/5'
               }`}
             >
-              <span className="mono text-xs uppercase">Default Layout</span>
+              <span className="mono text-xs uppercase">Manual Setup</span>
               <p className="text-[11px] mt-2 opacity-70 leading-snug">Return to your manual configuration.</p>
             </button>
           </div>
@@ -320,7 +240,7 @@ export default function ControlBoxes() {
             content: (
               <div className="space-y-3">
                 <p className="text-[13px] text-[color:var(--text-secondary)]">
-                  Restore default camera parameters, clear HUD tweaks, and close active boxes.
+                  First tap clears overlays, second tap restores the factory layout.
                 </p>
                 <button
                   onClick={() => {
@@ -336,223 +256,139 @@ export default function ControlBoxes() {
           }
         : null,
     };
-  }, [FlashIcon, activePreset, applyCameraPreset, cameraMode, currentLens.name, flashMode, hasModifiedSettings, mobileImmersiveMode, resetCamera, setCameraMode, setFlashMode, setHasModifiedSettings, setMobileImmersiveMode]);
+  }, [FlashIcon, activePreset, applyCameraPreset, cameraMode, closeMobilePanel, currentLens.name, flashMode, hasModifiedSettings, mobileImmersiveMode, resetCamera, setCameraMode, setFlashMode, setHasModifiedSettings, setMobileImmersiveMode]);
 
-  const mobilePanelOrder = useMemo(() => {
-    return [
-      'exposure',
-      'assist',
-      'lens',
-      'flash',
-      'mode',
-      'immersive',
-      'presets',
-      'reset',
-    ].filter((key) => mobilePanels[key]);
-  }, [mobilePanels]);
+  const mobilePanelOrder = useMemo(
+    () =>
+      ['exposure', 'assist', 'lens', 'flash', 'mode', 'immersive', 'presets', 'reset'].filter((key) => mobilePanels[key]),
+    [mobilePanels]
+  );
 
-  const exclusiveBoxIds = useMemo(() => ['exposure', 'assist'], []);
-
-  // On mobile, close all other boxes when opening one
-  const handleToggle = (boxId) => {
-    if (isMobile) {
-      if (openBoxes.includes(boxId)) {
-        toggleBox(boxId);
-        ensurePartialReset();
-        schedulePanelReflow();
-      } else {
-        let closedOther = false;
-        openBoxes.forEach((id) => {
-          if (id !== boxId) {
-            toggleBox(id);
-            closedOther = true;
-          }
-        });
-        if (closedOther) {
-          ensurePartialReset();
-        }
-        toggleBox(boxId);
-        scrollButtonIntoView(boxId);
-        schedulePanelReflow();
-      }
-    } else {
-      const isOpen = openBoxes.includes(boxId);
-      if (isOpen) {
-        toggleBox(boxId);
-        ensurePartialReset();
-        schedulePanelReflow();
-      } else {
-        let closedOther = false;
-        exclusiveBoxIds
-          .filter((id) => id !== boxId && openBoxes.includes(id))
-          .forEach((id) => {
-            toggleBox(id);
-            closedOther = true;
-          });
-        if (closedOther) {
-          ensurePartialReset();
-        }
-        toggleBox(boxId);
-        scrollButtonIntoView(boxId);
-        schedulePanelReflow();
-      }
-    }
-  };
-
-  // Desktop layout - horizontal scroll
   if (!isMobile) {
-    const renderRailButton = ({ onClick, icon: Icon, label, sublabel, accent }) => (
-      <motion.button
-        onClick={onClick}
-        whileTap={{ scale: 0.96 }}
-        whileHover={{ scale: 1.02 }}
-        className={`camera-hud h-12 px-4 rounded-xl border border-white/10 flex items-center gap-3 transition-all ${accent || ''}`}
-      >
-        <Icon className="w-4 h-4" />
-        <div className="flex flex-col leading-none text-left">
-          <span className="mono text-[10px] uppercase tracking-[0.35em] opacity-70">{sublabel}</span>
-          <span className="mono text-xs font-semibold tracking-wider">{label}</span>
-        </div>
-      </motion.button>
-    );
-
     const flashLabel = flashMode === 'auto' ? 'AUTO' : flashMode === 'on' ? 'FLASH ON' : 'FLASH OFF';
-    const flashAccent = flashMode === 'on' ? 'text-amber-200 border-amber-400/40' : flashMode === 'off' ? 'text-slate-200' : '';
+    const flashAccent =
+      flashMode === 'on' ? 'border-amber-400/40 text-amber-200' : flashMode === 'off' ? 'border-white/15 text-slate-200' : '';
+    const BodyIcon = cameraMode === 'dslr' ? Camera : CameraOff;
 
     return (
-      <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1700]">
+      <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[2000]">
         <div className="camera-top-rail pointer-events-none">
-          <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-3 pointer-events-auto">
-            <div className="flex items-center gap-3 overflow-x-auto overflow-y-visible pb-1 scrollbar-hide pointer-events-auto">
-              <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-4 pointer-events-auto space-y-4">
+            <div className="flex items-start gap-3 flex-wrap">
+              <div className="flex-shrink-0">
                 <PowerControls orientation="horizontal" variant="inline" />
               </div>
-
-              {boxes.map((box) => {
-                const isOpen = openBoxes.includes(box.id);
-                const Icon = box.icon;
-                const Component = box.component;
-                const panelPosition = panelPositions[box.id];
-                const panelStyle = panelPosition
-                  ? { top: panelPosition.top, left: panelPosition.left }
-                  : { top: 120, left: '50%', transform: 'translateX(-50%)' };
-
-                return (
-                  <div
-                    key={box.id}
-                    className="relative flex-shrink-0"
-                    ref={(node) => {
-                      if (node) {
-                        buttonRefs.current[box.id] = node;
-                      } else {
-                        delete buttonRefs.current[box.id];
-                      }
-                    }}
-                  >
-                    <motion.button
-                      onClick={() => handleToggle(box.id)}
-                      className={`camera-hud h-12 px-4 rounded-xl border border-white/10 flex items-center gap-3 transition-all whitespace-nowrap ${
-                        isOpen ? 'bg-green-500/10 border-green-400/40 text-green-200' : ''
-                      }`}
-                      whileTap={{ scale: 0.96 }}
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <div className="flex flex-col text-left leading-none">
-                        <span className="mono text-[10px] uppercase tracking-[0.35em] opacity-70">Control</span>
-                        <span className="mono text-xs font-semibold tracking-wider">{box.title}</span>
-                      </div>
-                      <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                        <ChevronDown className="w-4 h-4" />
-                      </motion.div>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -12 }}
-                          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                          className="fixed z-[2600] w-[320px] pointer-events-auto"
-                          style={panelStyle}
-                        >
-                          <div className="camera-hud rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                              <div className="flex items-center gap-3">
-                                <Icon className="w-4 h-4" />
-                                <span className="mono text-xs tracking-[0.3em]">{box.title}</span>
-                              </div>
-                              <button
-                                onClick={() => handleToggle(box.id)}
-                                className="rounded-full p-1.5 hover:bg-white/10"
-                                aria-label={`Close ${box.title}`}
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                            <div className="p-4 max-h-[60vh] overflow-y-auto">
-                              <Component />
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+              <div className="flex-1 min-w-[320px] camera-hud rounded-3xl border border-white/10 p-4 shadow-2xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Aperture className="w-4 h-4" />
+                    <span className="mono text-xs tracking-[0.35em] uppercase">Exposure</span>
                   </div>
-                );
-              })}
-
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {renderRailButton({
-                  onClick: () => {
-                    setHasModifiedSettings(true);
-                    const modes = ['auto', 'on', 'off'];
-                    const currentIndex = modes.indexOf(flashMode);
-                    const nextIndex = (currentIndex + 1) % modes.length;
-                    setFlashMode(modes[nextIndex]);
-                  },
-                  icon: getFlashIcon(),
-                  label: flashLabel,
-                  sublabel: 'Flash',
-                  accent: flashAccent,
-                })}
-                {renderRailButton({
-                  onClick: () => {
-                    setHasModifiedSettings(true);
-                    setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr');
-                  },
-                  icon: cameraMode === 'dslr' ? Camera : CameraOff,
-                  label: cameraMode === 'dslr' ? 'DSLR' : 'MIRRORLESS',
-                  sublabel: 'Body',
-                  accent: cameraMode === 'mirrorless' ? 'text-cyan-200 border-cyan-400/40' : '',
-                })}
-                {renderRailButton({
-                  onClick: () => {
-                    setHasModifiedSettings(true);
-                    cycleLens();
-                  },
-                  icon: RefreshCw,
-                  label: currentLens.id.toUpperCase(),
-                  sublabel: 'Lens',
-                  accent: 'text-green-200',
-                })}
-                <AnimatePresence>
-                  {hasModifiedSettings && (
-                    <motion.button
-                      key="reset"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.2 }}
-                      onClick={resetCamera}
-                      className="camera-hud h-12 px-4 rounded-xl border border-green-400/50 flex items-center gap-2 mono text-xs font-bold text-green-300 hover:bg-green-500/10"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      <span className="tracking-wider">RESET</span>
-                    </motion.button>
-                  )}
-                </AnimatePresence>
+                  <span className="mono text-[10px] uppercase tracking-[0.35em] text-green-300/80">{currentLens.name}</span>
+                </div>
+                <ExposureControls variant="inline" />
               </div>
+              <div className="flex-1 min-w-[320px] camera-hud rounded-3xl border border-white/10 p-4 shadow-2xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    <span className="mono text-xs tracking-[0.35em] uppercase">Assist</span>
+                  </div>
+                  <span className="mono text-[10px] uppercase tracking-[0.35em] text-white/60">{hudVisibility.toUpperCase()}</span>
+                </div>
+                <AssistTools variant="inline" />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 justify-end">
+              <motion.button
+                onClick={() => {
+                  setHasModifiedSettings(true);
+                  const modes = ['auto', 'on', 'off'];
+                  const currentIndex = modes.indexOf(flashMode);
+                  const nextIndex = (currentIndex + 1) % modes.length;
+                  setFlashMode(modes[nextIndex]);
+                }}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${flashAccent}`}
+              >
+                <FlashIcon className="w-4 h-4" />
+                <div className="flex flex-col leading-none text-left">
+                  <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Flash</span>
+                  <span className="mono text-xs font-semibold tracking-[0.35em]">{flashLabel}</span>
+                </div>
+              </motion.button>
+
+              <motion.button
+                onClick={() => {
+                  setHasModifiedSettings(true);
+                  setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr');
+                }}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
+                  cameraMode === 'mirrorless' ? 'text-cyan-200 border-cyan-400/40' : ''
+                }`}
+              >
+                <BodyIcon className="w-4 h-4" />
+                <div className="flex flex-col leading-none text-left">
+                  <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Body</span>
+                  <span className="mono text-xs font-semibold tracking-[0.35em]">
+                    {cameraMode === 'dslr' ? 'DSLR' : 'MIRRORLESS'}
+                  </span>
+                </div>
+              </motion.button>
+
+              <motion.button
+                onClick={() => {
+                  setHasModifiedSettings(true);
+                  cycleLens();
+                }}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                className="camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all text-green-200"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <div className="flex flex-col leading-none text-left">
+                  <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Lens</span>
+                  <span className="mono text-xs font-semibold tracking-[0.35em]">{currentLens.id.toUpperCase()}</span>
+                </div>
+              </motion.button>
+
+              <motion.button
+                onClick={() => applyCameraPreset(activePreset ? null : 'modern')}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
+                  activePreset ? 'border-green-400/60 text-green-200' : 'text-white/80'
+                }`}
+              >
+                <Gamepad2 className="w-4 h-4" />
+                <div className="flex flex-col leading-none text-left">
+                  <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Preset</span>
+                  <span className="mono text-xs font-semibold tracking-[0.35em]">
+                    {activePreset ? activePreset.toUpperCase() : 'MANUAL'}
+                  </span>
+                </div>
+              </motion.button>
+
+              <AnimatePresence>
+                {hasModifiedSettings && (
+                  <motion.button
+                    key="reset"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={resetCamera}
+                    className="camera-hud h-12 px-4 rounded-2xl border border-green-400/50 flex items-center gap-2 mono text-xs font-bold text-green-300 hover:bg-green-500/10"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span className="tracking-wider">RESET</span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -560,7 +396,6 @@ export default function ControlBoxes() {
     );
   }
 
-  // Mobile layout - icon strip with expandable panels
   return (
     <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[1700] pointer-events-none">
       <div className="px-3 pt-4">
@@ -587,6 +422,25 @@ export default function ControlBoxes() {
               );
             })}
             <PowerControls variant="inline" />
+            <AnimatePresence>
+              {(hasModifiedSettings || activeMobilePanel) && (
+                <motion.button
+                  key="mobile-reset"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => {
+                    resetCamera();
+                    closeMobilePanel();
+                  }}
+                  className="camera-hud w-12 h-12 rounded-full border border-green-400/60 flex items-center justify-center text-green-300"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  <span className="sr-only">Reset camera</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
