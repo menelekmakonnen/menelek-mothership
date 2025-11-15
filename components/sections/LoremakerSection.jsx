@@ -131,7 +131,7 @@ export default function LoremakerSection() {
   }, [activeCharacter, scrollToActiveLayer]);
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-7xl mx-auto space-y-12">
         <header className="space-y-4">
           <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">

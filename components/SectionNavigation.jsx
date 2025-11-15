@@ -28,6 +28,19 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
 
   const totalSections = sections.length;
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    try {
+      container.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch (error) {
+      container.scrollTop = 0;
+      container.scrollLeft = 0;
+    }
+    setScrollOpacity(1);
+    setShowBackToTop(false);
+  }, [currentSection]);
+
   const nextSection = useCallback(() => {
     if (gestureLock) return;
     setSwipeDirection(1);

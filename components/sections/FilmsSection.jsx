@@ -219,6 +219,7 @@ export default function FilmsSection() {
     const mediaMeta = parseMediaLink(activeProject.link);
     const embedUrl = mediaMeta?.embedUrl;
     const provider = mediaMeta?.provider || 'unknown';
+    const siblingProjects = filteredVideos.filter((project) => project.id !== activeProject.id);
 
     return (
       <FullscreenLightbox
@@ -226,7 +227,7 @@ export default function FilmsSection() {
         layerId={`film-${activeProject.id}`}
         depth={2650}
         onClose={closeProject}
-        innerClassName="p-0"
+        innerClassName="p-0 overflow-hidden"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -257,32 +258,34 @@ export default function FilmsSection() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
-            <div className="grid h-full gap-6 lg:grid-cols-[2fr_1fr]">
-              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/70">
-                {embedUrl ? (
-                  <iframe
-                    key={embedUrl}
-                    src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
-                    className="h-full w-full"
-                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    title={activeProject.title}
-                  />
-                ) : (
-                  <div
-                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
-                    style={{
-                      backgroundImage: preview.image ? `url(${preview.image})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}
-                  >
-                    {!preview.image && <Play className="h-14 w-14" />}
-                  </div>
-                )}
+          <div className="flex-1 overflow-hidden">
+            <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
+              <div className="flex flex-1 items-center justify-center">
+                <div className="relative w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_45px_120px_rgba(0,0,0,0.6)]">
+                  {embedUrl ? (
+                    <iframe
+                      key={embedUrl}
+                      src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                      className="h-full w-full"
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      title={activeProject.title}
+                    />
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                      style={{
+                        backgroundImage: preview.image ? `url(${preview.image})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    >
+                      {!preview.image && <Play className="h-14 w-14" />}
+                    </div>
+                  )}
+                </div>
               </div>
-              <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+              <aside className="flex w-full flex-col gap-6 border-t border-white/10 bg-[rgba(10,12,20,0.88)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
                 <div className="space-y-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
                     {provider === 'youtube' ? 'YouTube' : provider === 'instagram' ? 'Instagram' : 'Media'}
@@ -294,7 +297,41 @@ export default function FilmsSection() {
                     <span className="rounded-full bg-white/10 px-3 py-1">{activeProject.category}</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-3">
+                  <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">More Films</h3>
+                  <div className="flex flex-col gap-3">
+                    {siblingProjects.length ? (
+                      siblingProjects.slice(0, 6).map((project) => {
+                        const siblingPreview = resolvePreview(project);
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => setActiveProjectId(project.id)}
+                            className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 text-left transition-all hover:border-white/35"
+                          >
+                            <div className="relative h-16 w-24 overflow-hidden rounded-xl bg-black/35">
+                              {siblingPreview.image ? (
+                                <img src={siblingPreview.image} alt={project.title} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-white/60">
+                                  <Play className="h-5 w-5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="mono text-[10px] uppercase tracking-[0.35em] text-white/60">{project.category}</p>
+                              <p className="text-sm font-semibold text-white/85 truncate">{project.title}</p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-white/60">No other films in this view yet.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
                     onClick={closeProject}
@@ -309,7 +346,7 @@ export default function FilmsSection() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs mono uppercase tracking-[0.35em] text-white/80 hover:text-white"
                     >
-                      View externally
+                      Watch Source
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   )}
@@ -323,7 +360,7 @@ export default function FilmsSection() {
   };
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-7xl mx-auto">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}

@@ -1,12 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Aperture,
   ArrowLeft,
   Camera,
   ChevronLeft,
   ChevronRight,
-  Focus,
   Image as ImageIcon,
   Loader2,
   Sparkles,
@@ -52,11 +50,6 @@ export default function PhotographySection() {
   const [activeAlbum, setActiveAlbum] = useState(null);
   const [activeGallery, setActiveGallery] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(null);
-  const [lightboxSettings, setLightboxSettings] = useState({
-    focusDepth: 48,
-    clarity: 0,
-    overlays: { peaking: false, waveform: false, zebra: false },
-  });
 
   const scrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -174,12 +167,20 @@ export default function PhotographySection() {
 
   const preparedGalleryImages = useMemo(() => {
     const galleryTitle = activeGallery?.title || activeAlbum?.title || 'Photography Gallery';
-    return galleryImages.map((image, index) => ({
-      ...image,
-      displayTitle: galleryTitle,
-      alt: `${galleryTitle} shot by Menelek Makonnen`,
-      frameIndex: index,
-    }));
+    return galleryImages.map((image, index) => {
+      const previewSrc = resolveItemImage(image);
+      const fullSrc = resolveItemImage(image, 'full') || previewSrc;
+      const thumbSrc = resolveItemImage(image, 'thumb') || previewSrc;
+      return {
+        ...image,
+        displayTitle: galleryTitle,
+        alt: `${galleryTitle} shot by Menelek Makonnen`,
+        frameIndex: index,
+        previewSrc,
+        fullSrc,
+        thumbSrc,
+      };
+    });
   }, [activeAlbum?.title, activeGallery?.title, galleryImages]);
 
   useEffect(() => {
@@ -200,15 +201,6 @@ export default function PhotographySection() {
   }, [activeGallery, activeImageIndex, scrollToActiveLayer]);
 
   const activeImage = activeImageIndex !== null ? preparedGalleryImages[activeImageIndex] : null;
-
-  useEffect(() => {
-    if (!activeImage) return;
-    setLightboxSettings({
-      focusDepth: 48,
-      clarity: 0,
-      overlays: { peaking: false, waveform: false, zebra: false },
-    });
-  }, [activeImage]);
 
   useEffect(() => {
     if (activeImageIndex === null) return;
@@ -413,15 +405,17 @@ export default function PhotographySection() {
   const activeAlbumMeta = activeAlbum ? albumMeta[activeAlbum.title] || null : null;
   const activeImageSrc = activeImage
     ?
-        resolveItemImage(activeImage, 'full') ||
+        activeImage.fullSrc ||
         activeImage.imageVariants?.full ||
+        activeImage.imageVariants?.preview ||
         activeImage.viewUrl ||
         activeImage.downloadUrl ||
+        activeImage.previewSrc ||
         resolveItemImage(activeImage)
     : null;
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-7xl mx-auto space-y-12">
         <header className="space-y-4">
           <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
@@ -508,7 +502,7 @@ export default function PhotographySection() {
             layerId={`lightbox-${activeImage.id || activeImageIndex}`}
             depth={2750}
             onClose={() => setActiveImageIndex(null)}
-            innerClassName="p-0"
+            innerClassName="p-0 overflow-hidden"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -517,112 +511,105 @@ export default function PhotographySection() {
               transition={{ duration: 0.26, ease: [0.4, 0, 0.2, 1] }}
               className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(4,6,12,0.96)] shadow-[0_65px_160px_rgba(0,0,0,0.75)]"
             >
-              <div className="flex flex-1 flex-col lg:flex-row">
-                <div className="relative flex-1 min-h-[320px]">
-                  <div className="absolute inset-0 flex flex-col gap-6 p-6 lg:p-10">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-3xl font-semibold text-white/95">{activeImage.displayTitle}</h3>
-                        <p className="text-sm text-white/70">
-                          {activeGallery?.title || 'Gallery'} · Album {activeAlbum?.title || ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px] mono uppercase tracking-[0.35em] text-white/70">
-                        <span className="rounded-full bg-white/10 px-3 py-1">
-                          Frame {activeImageIndex + 1} / {preparedGalleryImages.length}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/60">
-                      <img src={activeImageSrc} alt={activeImage.alt} className="h-full w-full object-contain" />
-                      {lightboxSettings.overlays.peaking && (
-                        <div
-                          className="pointer-events-none absolute inset-0"
-                          style={{
-                            backgroundImage:
-                              'repeating-linear-gradient(135deg, rgba(0,255,184,0.55) 0px, rgba(0,255,184,0.55) 6px, transparent 6px, transparent 14px)',
-                          }}
-                        />
-                      )}
-                      {lightboxSettings.overlays.zebra && (
-                        <div
-                          className="pointer-events-none absolute inset-0"
-                          style={{
-                            backgroundImage:
-                              'repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0px, rgba(255,255,255,0.12) 10px, transparent 10px, transparent 20px)',
-                          }}
-                        />
-                      )}
-                    </div>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="mono text-[11px] uppercase tracking-[0.4em] text-white/55">Gallery Lightbox</p>
+                  <h2 className="text-3xl font-semibold text-white/90">
+                    {activeGallery?.title || activeAlbum?.title || 'Photography Gallery'}
+                  </h2>
+                  <p className="text-sm text-white/65">
+                    Frame {activeImageIndex + 1} of {preparedGalleryImages.length} · {activeAlbum?.title || 'MMM Media'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex(null)}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close lightbox"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
+                <div className="flex flex-1 items-center justify-center bg-black/80 px-4 py-6 md:px-10">
+                  <div className="relative flex max-h-full w-full items-center justify-center">
+                    <img
+                      src={activeImageSrc}
+                      alt={activeImage.alt}
+                      className="max-h-full max-w-full rounded-[28px] object-contain shadow-[0_35px_90px_rgba(0,0,0,0.65)]"
+                    />
                   </div>
                 </div>
-                <aside className="relative w-full border-t border-white/10 bg-black/45 p-6 lg:w-[340px] lg:border-l lg:border-t-0">
-                  <div className="space-y-6">
+                <aside className="w-full overflow-y-auto border-t border-white/10 bg-[rgba(8,10,16,0.9)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
+                  <div className="space-y-4">
                     <div>
-                      <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Focus Suite</h4>
-                      <label className="flex flex-col gap-1 text-xs">
-                        <span className="mono uppercase tracking-[0.3em] text-white/60">Focus Depth</span>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={lightboxSettings.focusDepth}
-                          onChange={(event) =>
-                            setLightboxSettings((prev) => ({ ...prev, focusDepth: Number(event.target.value) }))
-                          }
-                          className="camera-slider"
-                        />
-                      </label>
-                      <label className="mt-3 flex flex-col gap-1 text-xs">
-                        <span className="mono uppercase tracking-[0.3em] text-white/60">Clarity</span>
-                        <input
-                          type="range"
-                          min={-4}
-                          max={4}
-                          value={lightboxSettings.clarity}
-                          onChange={(event) =>
-                            setLightboxSettings((prev) => ({ ...prev, clarity: Number(event.target.value) }))
-                          }
-                          className="camera-slider"
-                        />
-                      </label>
+                      <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Frames</h3>
+                      <p className="text-sm text-white/65">Select another perspective</p>
                     </div>
-
-                    <div>
-                      <h4 className="mono text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Assist Modules</h4>
-                      {[{ key: 'peaking', label: 'Focus Peaking' }, { key: 'waveform', label: 'Waveform Monitor' }, { key: 'zebra', label: 'Zebra Warning' }].map((overlay) => (
-                        <button
-                          key={overlay.key}
-                          type="button"
-                          onClick={() =>
-                            setLightboxSettings((prev) => ({
-                              ...prev,
-                              overlays: { ...prev.overlays, [overlay.key]: !prev.overlays[overlay.key] },
-                            }))
-                          }
-                          className={`mb-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs mono tracking-[0.3em] transition-all ${
-                            lightboxSettings.overlays[overlay.key]
-                              ? 'border-green-400/50 bg-green-500/15 text-green-200'
-                              : 'border-white/10 bg-white/5 text-white/65 hover:text-white'
-                          }`}
-                        >
-                          <span>{overlay.label}</span>
-                          {lightboxSettings.overlays[overlay.key] ? <Focus className="h-4 w-4" /> : <Aperture className="h-4 w-4" />}
-                        </button>
-                      ))}
+                    <div className="flex flex-col gap-3">
+                      {preparedGalleryImages.map((image, index) => {
+                        const isCurrent = index === activeImageIndex;
+                        return (
+                          <button
+                            key={image.id || `${image.frameIndex}-${index}`}
+                            type="button"
+                            onClick={() => setActiveImageIndex(index)}
+                            className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
+                              isCurrent
+                                ? 'border-white/45 bg-white/12 text-white'
+                                : 'border-white/12 bg-white/5 text-white/70 hover:border-white/35'
+                            }`}
+                          >
+                            <div className="relative h-16 w-20 overflow-hidden rounded-xl bg-black/35">
+                              {image.thumbSrc ? (
+                                <img src={image.thumbSrc} alt={image.alt} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-white/60">
+                                  <Camera className="h-5 w-5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-left">
+                              <p className="mono text-[10px] uppercase tracking-[0.35em] text-white/60">Frame {index + 1}</p>
+                              <p className="text-sm font-semibold text-white/85 truncate">{image.displayTitle}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </aside>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveImageIndex(null)}
-                className="absolute top-6 right-6 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                aria-label="Close lightbox"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="border-t border-white/10 bg-[rgba(4,6,12,0.88)] px-5 py-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="mono text-[10px] uppercase tracking-[0.45em] text-white/55">Other Galleries</span>
+                  {galleryFolders.length ? (
+                    galleryFolders.map((gallery) => (
+                      <button
+                        key={gallery.id}
+                        type="button"
+                        onClick={() => {
+                          if (gallery.id === activeGallery?.id) return;
+                          setActiveImageIndex(null);
+                          setActiveGallery(gallery);
+                          scrollToActiveLayer();
+                        }}
+                        className={`rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em] transition-all ${
+                          gallery.id === activeGallery?.id
+                            ? 'border border-white/45 bg-white/15 text-white'
+                            : 'border border-white/15 bg-white/6 text-white/70 hover:border-white/35'
+                        }`}
+                      >
+                        {gallery.title}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-white/60">No additional galleries available.</span>
+                  )}
+                </div>
+              </div>
 
               {preparedGalleryImages.length > 1 && (
                 <>

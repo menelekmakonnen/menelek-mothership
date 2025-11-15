@@ -24,6 +24,8 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   const iconRefs = useRef({});
   const [labelCenters, setLabelCenters] = useState({});
   const lastTapRef = useRef(0);
+  const [hoveredId, setHoveredId] = useState(null);
+  const [isNavActive, setIsNavActive] = useState(false);
 
   const markInteraction = useCallback(() => {
     setIsCollapsed(false);
@@ -129,17 +131,37 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   useEffect(() => {
     if (!labelItems.length) return undefined;
     setActiveLabelIndex((index) => (index >= labelItems.length ? 0 : index));
+    return undefined;
+  }, [labelItems]);
+
+  useEffect(() => {
+    if (!labelItems.length || isNavActive || hoveredId) return undefined;
     const interval = setInterval(() => {
       setActiveLabelIndex((index) => (index + 1) % labelItems.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, [labelItems]);
+  }, [hoveredId, isNavActive, labelItems]);
 
-  const activeLabel = labelItems.length ? labelItems[activeLabelIndex % labelItems.length] : null;
+  useEffect(() => {
+    if (!labelItems.length) return;
+    setActiveLabelIndex((index) => {
+      if (!labelItems.length) return 0;
+      if (hoveredId) return index;
+      return currentSection % labelItems.length;
+    });
+  }, [currentSection, hoveredId, labelItems.length]);
+
+  const hoveredLabel = hoveredId ? labelItems.find((item) => item.id === hoveredId) : null;
+  const currentLabel = labelItems.find((item) => item.id === currentSection) || null;
+  const cyclingLabel =
+    labelItems.length && activeLabelIndex < labelItems.length
+      ? labelItems[activeLabelIndex % labelItems.length]
+      : currentLabel;
+  const effectiveLabel = hoveredLabel || (isNavActive ? currentLabel : cyclingLabel);
   const fallbackLeft = navSize.width ? navSize.width / 2 : undefined;
   const computedLeft =
-    activeLabel && labelCenters[activeLabel.id] !== undefined
-      ? labelCenters[activeLabel.id]
+    effectiveLabel && labelCenters[effectiveLabel.id] !== undefined
+      ? labelCenters[effectiveLabel.id]
       : fallbackLeft;
   const labelPositionStyle =
     computedLeft !== undefined ? { left: computedLeft } : { left: '50%' };
@@ -240,8 +262,28 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
           dragMomentum={false}
           dragElastic={0.18}
           onDragEnd={handleDragEnd}
-          onPointerEnter={markInteraction}
-          onFocusCapture={markInteraction}
+          onPointerEnter={(event) => {
+            markInteraction();
+            setIsNavActive(true);
+          }}
+          onFocusCapture={(event) => {
+            markInteraction();
+            setIsNavActive(true);
+          }}
+          onPointerLeave={(event) => {
+            setIsNavActive(false);
+            setHoveredId(null);
+            if (!navRef.current) return;
+            if (!navRef.current.contains(event.relatedTarget)) {
+              scheduleLabelUpdate();
+            }
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setIsNavActive(false);
+              setHoveredId(null);
+            }
+          }}
           onPointerDownCapture={() => {
             if (isCollapsed) {
               markInteraction();
@@ -266,6 +308,7 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                   {visibleSections.map((section, index) => {
                     const Icon = section.icon;
                     const isActive = section.id === currentSection;
+                    const labelIndex = labelItems.findIndex((item) => item.id === section.id);
                     return (
                       <motion.button
                         key={section.id}
@@ -283,6 +326,27 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                           } else {
                             markInteraction();
                           }
+                        }}
+                        onPointerEnter={() => {
+                          setHoveredId(section.id);
+                          setIsNavActive(true);
+                          if (labelIndex >= 0) {
+                            setActiveLabelIndex(labelIndex);
+                          }
+                          scheduleLabelUpdate();
+                        }}
+                        onPointerLeave={() => {
+                          setHoveredId((prev) => (prev === section.id ? null : prev));
+                        }}
+                        onFocus={() => {
+                          setHoveredId(section.id);
+                          setIsNavActive(true);
+                          if (labelIndex >= 0) {
+                            setActiveLabelIndex(labelIndex);
+                          }
+                        }}
+                        onBlur={() => {
+                          setHoveredId((prev) => (prev === section.id ? null : prev));
                         }}
                         className={`group relative flex ${
                           isActive ? 'h-12 w-12 border-white/40' : 'h-11 w-11 border-white/15'
@@ -308,9 +372,9 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
             </div>
             <div className="pointer-events-none relative mt-3 h-5">
               <AnimatePresence mode="wait">
-                {activeLabel && (
+                {effectiveLabel && (
                   <motion.span
-                    key={activeLabel.id}
+                    key={effectiveLabel.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
@@ -318,7 +382,7 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                     style={labelPositionStyle}
                     className="absolute -translate-x-1/2 mono text-[10px] uppercase tracking-[0.45em] text-white/85"
                   >
-                    {activeLabel.name}
+                    {effectiveLabel.name}
                   </motion.span>
                 )}
               </AnimatePresence>

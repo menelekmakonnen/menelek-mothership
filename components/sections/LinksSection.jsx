@@ -139,7 +139,7 @@ const isExternalLink = (href) => /^https?:/i.test(href);
 
 export default function LinksSection() {
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="mx-auto flex max-w-4xl flex-col items-center text-center gap-6">
         <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
           Connect With Me

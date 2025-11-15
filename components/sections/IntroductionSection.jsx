@@ -238,7 +238,7 @@ export default function IntroductionSection() {
   const personaTheme = personaThemes[activeRole.theme];
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen flex items-center justify-center px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-6xl w-full space-y-10">
         <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 items-stretch">
         {/* Left - Spotlight slider */}

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Loader2, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Sparkles, X } from 'lucide-react';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
@@ -100,11 +100,20 @@ export default function AIAlbumsSection() {
 
   const preparedAlbumImages = useMemo(() => {
     const albumTitle = selectedAlbum?.title || 'AI Collection';
-    return selectedAlbumImages.map((image) => ({
-      ...image,
-      displayTitle: albumTitle,
-      alt: `${albumTitle} created by Menelek Makonnen`,
-    }));
+    return selectedAlbumImages.map((image, index) => {
+      const previewSrc = getPreviewSrc(image);
+      const fullSrc = getPreviewSrc(image, 'full') || previewSrc;
+      const thumbSrc = getPreviewSrc(image, 'thumb') || previewSrc;
+      return {
+        ...image,
+        displayTitle: albumTitle,
+        alt: `${albumTitle} created by Menelek Makonnen`,
+        previewSrc,
+        fullSrc,
+        thumbSrc,
+        frameIndex: index,
+      };
+    });
   }, [selectedAlbum?.title, selectedAlbumImages]);
 
   useEffect(() => {
@@ -151,7 +160,7 @@ export default function AIAlbumsSection() {
   }, [preparedAlbumImages.length, selectedImageIndex]);
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-7xl mx-auto space-y-12">
         <header className="space-y-4">
           <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
@@ -321,39 +330,151 @@ export default function AIAlbumsSection() {
       <AnimatePresence>
         {activeImage && (
           <FullscreenLightbox
-            key={`ai-lightbox-${activeImage.id}`}
-            layerId={`ai-lightbox-${activeImage.id}`}
+            key={`ai-lightbox-${activeImage.id || activeImageIndex}`}
+            layerId={`ai-lightbox-${activeImage.id || activeImageIndex}`}
             depth={2700}
             onClose={() => setSelectedImageIndex(null)}
-            innerClassName="p-0"
+            innerClassName="p-0 overflow-hidden"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.92, scale: 0.98 }}
               transition={{ duration: 0.26, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full items-center justify-center border border-white/10 bg-[rgba(4,6,12,0.96)] p-6 shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
+              className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(4,6,12,0.96)] shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
             >
-              <img
-                src={
-                  resolveDriveImage(activeImage.imageVariants || activeImage.variants, 'full') ||
-                  activeImage.imageVariants?.full ||
-                  activeImage.imageVariants?.preview ||
-                  activeImage.viewUrl ||
-                  activeImage.downloadUrl ||
-                  getPreviewSrc(activeImage)
-                }
-                alt={activeImage.alt}
-                className="max-h-full max-w-full object-contain"
-              />
-              <button
-                type="button"
-                onClick={() => setSelectedImageIndex(null)}
-                className="absolute top-6 right-6 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                aria-label="Close lightbox"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="mono text-[11px] uppercase tracking-[0.4em] text-white/55">AI Album Lightbox</p>
+                  <h2 className="text-3xl font-semibold text-white/90">{selectedAlbum?.title || 'AI Collection'}</h2>
+                  <p className="text-sm text-white/65">
+                    Frame {selectedImageIndex + 1} of {preparedAlbumImages.length}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedImageIndex(null)}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close lightbox"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
+                <div className="flex flex-1 items-center justify-center bg-black/80 px-4 py-6 md:px-10">
+                  <div className="relative flex max-h-full w-full items-center justify-center">
+                    <img
+                      src={
+                        activeImage.fullSrc ||
+                        getPreviewSrc(activeImage, 'full') ||
+                        activeImage.previewSrc ||
+                        activeImage.viewUrl ||
+                        activeImage.downloadUrl
+                      }
+                      alt={activeImage.alt}
+                      className="max-h-full max-w-full rounded-[28px] object-contain shadow-[0_30px_80px_rgba(0,0,0,0.65)]"
+                    />
+                  </div>
+                </div>
+                <aside className="w-full overflow-y-auto border-t border-white/10 bg-[rgba(10,12,20,0.9)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Generated Frames</h3>
+                      <p className="text-sm text-white/65">Navigate through the AI sequence</p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {preparedAlbumImages.map((image, index) => {
+                        const isCurrent = index === selectedImageIndex;
+                        return (
+                          <button
+                            key={image.id || `${image.frameIndex}-${index}`}
+                            type="button"
+                            onClick={() => setSelectedImageIndex(index)}
+                            className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
+                              isCurrent
+                                ? 'border-white/45 bg-white/12 text-white'
+                                : 'border-white/12 bg-white/5 text-white/70 hover:border-white/35'
+                            }`}
+                          >
+                            <div className="relative h-16 w-20 overflow-hidden rounded-xl bg-black/40">
+                              {image.thumbSrc ? (
+                                <img src={image.thumbSrc} alt={image.alt} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-white/60">
+                                  <Sparkles className="h-5 w-5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-left">
+                              <p className="mono text-[10px] uppercase tracking-[0.35em] text-white/60">Frame {index + 1}</p>
+                              <p className="text-sm font-semibold text-white/85 truncate">{image.displayTitle}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </aside>
+              </div>
+
+              <div className="border-t border-white/10 bg-[rgba(6,8,14,0.88)] px-5 py-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="mono text-[10px] uppercase tracking-[0.45em] text-white/55">Other Albums</span>
+                  {albumEntries.length ? (
+                    albumEntries.map((album) => (
+                      <button
+                        key={album.id}
+                        type="button"
+                        onClick={() => {
+                          if (album.id === selectedAlbum?.id) return;
+                          setSelectedImageIndex(null);
+                          setSelectedAlbum(album);
+                          autoScrollToActiveLayer();
+                        }}
+                        className={`rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em] transition-all ${
+                          album.id === selectedAlbum?.id
+                            ? 'border border-white/45 bg-white/15 text-white'
+                            : 'border border-white/15 bg-white/5 text-white/70 hover:border-white/35'
+                        }`}
+                      >
+                        {album.title}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-white/60">No other albums available.</span>
+                  )}
+                </div>
+              </div>
+
+              {preparedAlbumImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedImageIndex((index) =>
+                        index === null ? index : (index - 1 + preparedAlbumImages.length) % preparedAlbumImages.length
+                      )
+                    }
+                    className="absolute left-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedImageIndex((index) =>
+                        index === null ? index : (index + 1) % preparedAlbumImages.length
+                      )
+                    }
+                    className="absolute right-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </>
+              )}
             </motion.div>
           </FullscreenLightbox>
         )}

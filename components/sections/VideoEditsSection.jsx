@@ -323,13 +323,19 @@ export default function VideoEditsSection() {
     const embedUrl = clipMeta?.media?.embedUrl;
     const provider = clipMeta?.media?.provider || 'unknown';
 
+    const clipEntries = activeLinks.map((url, index) => ({
+      url,
+      index,
+      meta: getClipPreview(url, activeCollection, index),
+    }));
+
     return (
       <FullscreenLightbox
         key={`${activeCollection.id}-clip-${activeClipIndex}`}
         layerId={`video-edit-${activeCollection.id}`}
         depth={2650}
         onClose={closeQuickView}
-        innerClassName="p-0"
+        innerClassName="p-0 overflow-hidden"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -360,32 +366,34 @@ export default function VideoEditsSection() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
-            <div className="grid h-full gap-6 lg:grid-cols-[2fr_1fr]">
-              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/70">
-                {embedUrl ? (
-                  <iframe
-                    key={embedUrl}
-                    src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
-                    className="h-full w-full"
-                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    title={clipMeta?.title || 'Video playback'}
-                  />
-                ) : (
-                  <div
-                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
-                    style={{
-                      backgroundImage: clipMeta?.image ? `url(${clipMeta.image})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}
-                  >
-                    {!clipMeta?.image && <Play className="h-14 w-14" />}
-                  </div>
-                )}
+          <div className="flex-1 overflow-hidden">
+            <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
+              <div className="flex flex-1 items-center justify-center">
+                <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_40px_110px_rgba(0,0,0,0.6)]">
+                  {embedUrl ? (
+                    <iframe
+                      key={embedUrl}
+                      src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                      className="h-full w-full"
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      title={clipMeta?.title || 'Video playback'}
+                    />
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                      style={{
+                        backgroundImage: clipMeta?.image ? `url(${clipMeta.image})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    >
+                      {!clipMeta?.image && <Play className="h-14 w-14" />}
+                    </div>
+                  )}
+                </div>
               </div>
-              <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+              <aside className="flex w-full flex-col gap-6 border-t border-white/10 bg-[rgba(10,12,20,0.88)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
                 <div className="space-y-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
                     {provider === 'youtube' ? 'YouTube' : provider === 'instagram' ? 'Instagram' : 'Clip'}
@@ -398,15 +406,48 @@ export default function VideoEditsSection() {
                     <p className="text-sm text-white/70 leading-relaxed">{clipMeta.description}</p>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-3">
+                  <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Collection Clips</h3>
+                  <div className="flex flex-col gap-3">
+                    {clipEntries.map((entry) => {
+                      const isCurrent = entry.index === activeClipIndex;
+                      const entryThumb = entry.meta?.image;
+                      return (
+                        <button
+                          key={entry.index}
+                          type="button"
+                          onClick={() => setActiveClipIndex(entry.index)}
+                          className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
+                            isCurrent
+                              ? 'border-white/45 bg-white/12 text-white'
+                              : 'border-white/12 bg-white/5 text-white/70 hover:border-white/35'
+                          }`}
+                        >
+                          <div className="relative h-16 w-24 overflow-hidden rounded-xl bg-black/35">
+                            {entryThumb ? (
+                              <img src={entryThumb} alt={entry.meta?.title || `Clip ${entry.index + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-white/60">
+                                <Play className="h-5 w-5" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <p className="mono text-[10px] uppercase tracking-[0.35em] text-white/60">Clip {entry.index + 1}</p>
+                            <p className="text-sm font-semibold text-white/85 truncate">{entry.meta?.title || activeCollection.title}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
-                    onClick={() =>
-                      setActiveClipIndex((index) => ((index ?? 0) - 1 + activeLinks.length) % activeLinks.length)
-                    }
+                    onClick={closeQuickView}
                     className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
                   >
-                    <ChevronLeft className="h-4 w-4" /> Prev
+                    Close
                   </button>
                   {clipUrl && (
                     <a
@@ -419,13 +460,6 @@ export default function VideoEditsSection() {
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setActiveClipIndex((index) => ((index ?? 0) + 1) % activeLinks.length)}
-                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
-                  >
-                    Next <ChevronRight className="h-4 w-4" />
-                  </button>
                 </div>
               </aside>
             </div>
@@ -436,7 +470,7 @@ export default function VideoEditsSection() {
   };
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-7xl mx-auto space-y-12">
         <header className="space-y-4">
           <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
