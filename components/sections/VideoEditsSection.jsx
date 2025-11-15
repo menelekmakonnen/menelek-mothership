@@ -14,7 +14,7 @@ import {
   Compass,
 } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
-import BlurLayer from '@/components/ui/BlurLayer';
+import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { parseMediaLink } from '@/lib/mediaLinks';
 
 const editCollections = [
@@ -128,6 +128,18 @@ export default function VideoEditsSection() {
   const [collapsedSections, setCollapsedSections] = useState(() => editCollections.map((collection) => collection.id));
   const [activeSectionId, setActiveSectionId] = useState(null);
   const [activeClipIndex, setActiveClipIndex] = useState(null);
+  const sectionRefs = useRef({});
+
+  const scrollToActiveLayer = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const urls = editCollections.flatMap((collection) => collection.links);
@@ -164,16 +176,32 @@ export default function VideoEditsSection() {
         if (!isCollapsed && activeSectionId === sectionId) {
           closeQuickView();
         }
+        if (isCollapsed && typeof window !== 'undefined') {
+          window.requestAnimationFrame(() => {
+            const node = sectionRefs.current[sectionId];
+            if (node) {
+              try {
+                node.scrollIntoView({ behavior: 'auto', block: 'start' });
+              } catch (error) {
+                node.scrollIntoView();
+              }
+            }
+          });
+        }
         return next;
       });
     },
     [activeSectionId, closeQuickView]
   );
 
-  const openQuickView = useCallback((sectionId, index) => {
-    setActiveSectionId(sectionId);
-    setActiveClipIndex(index);
-  }, []);
+  const openQuickView = useCallback(
+    (sectionId, index) => {
+      setActiveSectionId(sectionId);
+      setActiveClipIndex(index);
+      scrollToActiveLayer();
+    },
+    [scrollToActiveLayer]
+  );
 
   const activeCollection = useMemo(
     () => editCollections.find((collection) => collection.id === activeSectionId) || null,
@@ -213,6 +241,12 @@ export default function VideoEditsSection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeSectionId, activeClipIndex, activeCollection, activeLinks.length, closeQuickView]);
+
+  useEffect(() => {
+    if (activeSectionId && activeClipIndex !== null) {
+      scrollToActiveLayer();
+    }
+  }, [activeSectionId, activeClipIndex, scrollToActiveLayer]);
 
   const getClipPreview = useCallback(
     (url, collection, index) => {
@@ -290,22 +324,18 @@ export default function VideoEditsSection() {
     const provider = clipMeta?.media?.provider || 'unknown';
 
     return (
-      <BlurLayer
+      <FullscreenLightbox
         key={`${activeCollection.id}-clip-${activeClipIndex}`}
         layerId={`video-edit-${activeCollection.id}`}
-        depth={1700}
-        type="interactive"
-        focusOnMount
-        lockGestures
+        depth={2200}
         onClose={closeQuickView}
-        className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1880] flex items-center justify-center p-6"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0.9, scale: 0.96 }}
           transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,14,0.94)] shadow-[0_35px_100px_rgba(0,0,0,0.65)]"
+          className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,14,0.96)] shadow-[0_50px_140px_rgba(0,0,0,0.7)]"
         >
           <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div className="space-y-1">
@@ -400,7 +430,7 @@ export default function VideoEditsSection() {
             </div>
           </div>
         </motion.div>
-      </BlurLayer>
+      </FullscreenLightbox>
     );
   };
 
@@ -427,6 +457,13 @@ export default function VideoEditsSection() {
             return (
               <motion.section
                 key={collection.id}
+                ref={(node) => {
+                  if (node) {
+                    sectionRefs.current[collection.id] = node;
+                  } else {
+                    delete sectionRefs.current[collection.id];
+                  }
+                }}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 * sectionIndex }}

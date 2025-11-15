@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, X } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
+import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { resolveDriveImage } from '@/lib/googleDrive';
 
 const LOREMAKER_URL = 'https://loremaker.cloud';
@@ -22,6 +23,17 @@ export default function LoremakerSection() {
   const [error, setError] = useState(null);
   const [activeCharacter, setActiveCharacter] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const scrollToActiveLayer = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -103,10 +115,20 @@ export default function LoremakerSection() {
     );
   }, [activeCharacter, activeImageIndex]);
 
-  const openCharacter = useCallback((character) => {
-    setActiveCharacter(character);
-    setActiveImageIndex(0);
-  }, []);
+  const openCharacter = useCallback(
+    (character) => {
+      setActiveCharacter(character);
+      setActiveImageIndex(0);
+      scrollToActiveLayer();
+    },
+    [scrollToActiveLayer]
+  );
+
+  useEffect(() => {
+    if (activeCharacter) {
+      scrollToActiveLayer();
+    }
+  }, [activeCharacter, scrollToActiveLayer]);
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
@@ -200,22 +222,18 @@ export default function LoremakerSection() {
 
       <AnimatePresence>
         {activeCharacter && (
-          <BlurLayer
+          <FullscreenLightbox
             key={activeCharacter.id}
             layerId={`loremaker-${activeCharacter.id}`}
-            depth={1700}
-            type="interactive"
-            lockGestures
-            focusOnMount
+            depth={2200}
             onClose={() => setActiveCharacter(null)}
-            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1850]"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0.9, scale: 0.96 }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="relative mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(8,10,18,0.92)] shadow-[0_45px_110px_rgba(0,0,0,0.65)]"
+              className="relative mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(8,10,18,0.96)] shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
             >
               <div className="flex flex-1 flex-col lg:flex-row">
                 <div className="relative flex-1 min-h-[320px]">
@@ -338,7 +356,7 @@ export default function LoremakerSection() {
                 </>
               )}
             </motion.div>
-          </BlurLayer>
+          </FullscreenLightbox>
         )}
       </AnimatePresence>
     </div>

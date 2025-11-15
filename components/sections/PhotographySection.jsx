@@ -12,7 +12,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import BlurLayer from '@/components/ui/BlurLayer';
+import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
 
@@ -55,8 +55,19 @@ export default function PhotographySection() {
   const [lightboxSettings, setLightboxSettings] = useState({
     focusDepth: 48,
     clarity: 0,
-    overlays: { peaking: true, waveform: true, zebra: false },
+    overlays: { peaking: false, waveform: false, zebra: false },
   });
+
+  const scrollToActiveLayer = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     loadFolder(MMM_MEDIA_ROOT);
@@ -114,11 +125,15 @@ export default function PhotographySection() {
     [findFirstImage, getFolder]
   );
 
-  const openAlbum = useCallback((album) => {
-    setActiveAlbum(album);
-    setActiveGallery(null);
-    setActiveImageIndex(null);
-  }, []);
+  const openAlbum = useCallback(
+    (album) => {
+      setActiveAlbum(album);
+      setActiveGallery(null);
+      setActiveImageIndex(null);
+      scrollToActiveLayer();
+    },
+    [scrollToActiveLayer]
+  );
 
   const closeAlbum = useCallback(() => {
     setActiveAlbum(null);
@@ -157,44 +172,60 @@ export default function PhotographySection() {
     return activeGalleryData.items.filter((item) => item.type === 'file');
   }, [activeGalleryData]);
 
+  const preparedGalleryImages = useMemo(() => {
+    const galleryTitle = activeGallery?.title || activeAlbum?.title || 'Photography Gallery';
+    return galleryImages.map((image, index) => ({
+      ...image,
+      displayTitle: galleryTitle,
+      alt: `${galleryTitle} shot by Menelek Makonnen`,
+      frameIndex: index,
+    }));
+  }, [activeAlbum?.title, activeGallery?.title, galleryImages]);
+
   useEffect(() => {
     if (activeImageIndex === null) return;
-    if (!galleryImages.length) {
+    if (!preparedGalleryImages.length) {
       setActiveImageIndex(null);
       return;
     }
-    if (activeImageIndex >= galleryImages.length) {
+    if (activeImageIndex >= preparedGalleryImages.length) {
       setActiveImageIndex(0);
     }
-  }, [activeImageIndex, galleryImages]);
+  }, [activeImageIndex, preparedGalleryImages]);
 
-  const activeImage = activeImageIndex !== null ? galleryImages[activeImageIndex] : null;
+  useEffect(() => {
+    if (activeGallery || activeImageIndex !== null) {
+      scrollToActiveLayer();
+    }
+  }, [activeGallery, activeImageIndex, scrollToActiveLayer]);
+
+  const activeImage = activeImageIndex !== null ? preparedGalleryImages[activeImageIndex] : null;
 
   useEffect(() => {
     if (!activeImage) return;
     setLightboxSettings({
       focusDepth: 48,
       clarity: 0,
-      overlays: { peaking: true, waveform: true, zebra: false },
+      overlays: { peaking: false, waveform: false, zebra: false },
     });
   }, [activeImage]);
 
   useEffect(() => {
     if (activeImageIndex === null) return;
     const handleKeyDown = (event) => {
-      if (!galleryImages.length) return;
+      if (!preparedGalleryImages.length) return;
       if (event.key === 'ArrowRight') {
         event.preventDefault();
-        setActiveImageIndex((index) => (index === null ? null : (index + 1) % galleryImages.length));
+        setActiveImageIndex((index) => (index === null ? null : (index + 1) % preparedGalleryImages.length));
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        setActiveImageIndex((index) => (index === null ? null : (index - 1 + galleryImages.length) % galleryImages.length));
+        setActiveImageIndex((index) => (index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length));
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeImageIndex, galleryImages.length]);
+  }, [activeImageIndex, preparedGalleryImages.length]);
 
   const renderAlbumCard = (album) => {
     const meta = albumMeta[album.title] || {
@@ -254,6 +285,7 @@ export default function PhotographySection() {
         onClick={() => {
           setActiveGallery(gallery);
           setActiveImageIndex(null);
+          scrollToActiveLayer();
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -316,7 +348,7 @@ export default function PhotographySection() {
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] mono uppercase tracking-[0.35em] text-white/70">
-              {galleryImages.length} Frames
+              {preparedGalleryImages.length} Frames
             </span>
             <button
               type="button"
@@ -332,13 +364,16 @@ export default function PhotographySection() {
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {galleryImages.map((image, index) => {
-                const preview = resolveItemImage(image);
+            {preparedGalleryImages.map((image, index) => {
+              const preview = resolveItemImage(image);
               return (
                 <motion.button
                   key={image.id || image.title || index}
                   type="button"
-                  onClick={() => setActiveImageIndex(index)}
+                  onClick={() => {
+                    setActiveImageIndex(index);
+                    scrollToActiveLayer();
+                  }}
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.015 * index }}
@@ -346,7 +381,7 @@ export default function PhotographySection() {
                 >
                   <div className="relative aspect-square w-full">
                     {preview ? (
-                      <img src={preview} alt={image.title} className="h-full w-full object-cover" loading="lazy" />
+                      <img src={preview} alt={image.alt} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-600 to-slate-900 text-white/70">
                         <Camera className="h-10 w-10" />
@@ -354,14 +389,14 @@ export default function PhotographySection() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
                     <div className="absolute bottom-3 left-3 right-3 text-left">
-                      <p className="text-sm font-semibold text-white/90 truncate">{image.title || 'Untitled Frame'}</p>
+                      <p className="text-sm font-semibold text-white/90 truncate">{image.displayTitle}</p>
                     </div>
                   </div>
                 </motion.button>
               );
             })}
           </div>
-          {!galleryImages.length && (
+          {!preparedGalleryImages.length && (
             <div className="flex h-48 items-center justify-center rounded-2xl border border-white/10 bg-black/45">
               {isLoading(activeGallery.id) ? (
                 <Loader2 className="h-7 w-7 animate-spin text-green-300" />
@@ -421,101 +456,89 @@ export default function PhotographySection() {
 
       <AnimatePresence>
         {activeAlbum && (
-          <BlurLayer
+          <FullscreenLightbox
             key={activeAlbum.id}
             layerId={`album-${activeAlbum.id}`}
-            depth={1680}
-            type="interactive"
-            focusOnMount
-            lockGestures
+            depth={2100}
             onClose={closeAlbum}
-            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1850] flex items-center justify-center p-6"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0.9, scale: 0.96 }}
+              exit={{ opacity: 0.92, scale: 0.97 }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="relative h-full w-full max-w-6xl"
+              className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_50px_140px_rgba(0,0,0,0.7)]"
             >
-              <div className="absolute inset-0 rounded-3xl bg-[rgba(8,10,18,0.94)] border border-white/10 shadow-[0_40px_110px_rgba(0,0,0,0.65)]" />
-              <div className="relative z-10 flex h-full flex-col gap-6 overflow-hidden p-6 md:p-8">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={closeAlbum}
-                      className="flex items-center gap-2 text-sm mono text-green-300 hover:text-green-100"
-                    >
-                      <ArrowLeft className="h-4 w-4" /> Back to albums
-                    </button>
-                    <h2 className="text-4xl font-bold text-white/90">{activeAlbum.title}</h2>
-                    {activeAlbumMeta && (
-                      <p className="text-sm text-white/70 max-w-xl">{activeAlbumMeta.tagline}</p>
-                    )}
-                    {getError(activeAlbum.id) && (
-                      <p className="text-sm text-rose-300">Unable to load this album. Please try again shortly.</p>
-                    )}
-                  </div>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div className="space-y-2">
                   <button
                     type="button"
                     onClick={closeAlbum}
-                    className="camera-hud rounded-full w-11 h-11 flex items-center justify-center"
-                    aria-label="Close album"
+                    className="flex items-center gap-2 text-sm mono text-green-300 hover:text-green-100"
                   >
-                    <X className="w-4 h-4" />
+                    <ArrowLeft className="h-4 w-4" /> Back to albums
                   </button>
+                  <h2 className="text-4xl font-bold text-white/90">{activeAlbum.title}</h2>
+                  {activeAlbumMeta && <p className="text-sm text-white/70 max-w-xl">{activeAlbumMeta.tagline}</p>}
+                  {getError(activeAlbum.id) && (
+                    <p className="text-sm text-rose-300">Unable to load this album. Please try again shortly.</p>
+                  )}
                 </div>
-
-                <div className="flex-1 overflow-hidden">{renderGalleryGrid()}</div>
+                <button
+                  type="button"
+                  onClick={closeAlbum}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close album"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+
+              <div className="flex-1 overflow-hidden">{renderGalleryGrid()}</div>
             </motion.div>
-          </BlurLayer>
+          </FullscreenLightbox>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {activeImage && activeImageSrc && (
-          <BlurLayer
+          <FullscreenLightbox
             key={`lightbox-${activeImage.id || activeImageIndex}`}
             layerId={`lightbox-${activeImage.id || activeImageIndex}`}
-            depth={1880}
-            type="interactive"
-            lockGestures
+            depth={2300}
             onClose={() => setActiveImageIndex(null)}
-            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1900]"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0.9, scale: 0.98 }}
+              exit={{ opacity: 0.92, scale: 0.98 }}
               transition={{ duration: 0.26, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full flex-col overflow-hidden bg-[rgba(4,6,12,0.94)] shadow-[0_45px_120px_rgba(0,0,0,0.65)]"
+              className="relative flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(4,6,12,0.96)] shadow-[0_65px_160px_rgba(0,0,0,0.75)]"
             >
               <div className="flex flex-1 flex-col lg:flex-row">
                 <div className="relative flex-1 min-h-[320px]">
                   <div className="absolute inset-0 flex flex-col gap-6 p-6 lg:p-10">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <h3 className="text-3xl font-semibold text-white/95">{activeImage.title || 'Untitled Frame'}</h3>
+                        <h3 className="text-3xl font-semibold text-white/95">{activeImage.displayTitle}</h3>
                         <p className="text-sm text-white/70">
                           {activeGallery?.title || 'Gallery'} · Album {activeAlbum?.title || ''}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 text-[11px] mono uppercase tracking-[0.35em] text-white/70">
                         <span className="rounded-full bg-white/10 px-3 py-1">
-                          Frame {activeImageIndex + 1} / {galleryImages.length}
+                          Frame {activeImageIndex + 1} / {preparedGalleryImages.length}
                         </span>
                       </div>
                     </div>
                     <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/60">
-                      <img src={activeImageSrc} alt={activeImage.title} className="h-full w-full object-contain" />
+                      <img src={activeImageSrc} alt={activeImage.alt} className="h-full w-full object-contain" />
                       {lightboxSettings.overlays.peaking && (
                         <div
                           className="pointer-events-none absolute inset-0"
                           style={{
                             backgroundImage:
-                              'repeating-linear-gradient(90deg, rgba(255,80,80,0.18) 0px, rgba(255,80,80,0.18) 6px, transparent 6px, transparent 14px)',
+                              'repeating-linear-gradient(135deg, rgba(0,255,184,0.55) 0px, rgba(0,255,184,0.55) 6px, transparent 6px, transparent 14px)',
                           }}
                         />
                       )}
@@ -599,12 +622,14 @@ export default function PhotographySection() {
                 <X className="h-4 w-4" />
               </button>
 
-              {galleryImages.length > 1 && (
+              {preparedGalleryImages.length > 1 && (
                 <>
                   <button
                     type="button"
                     onClick={() =>
-                      setActiveImageIndex((index) => (index === null ? null : (index - 1 + galleryImages.length) % galleryImages.length))
+                      setActiveImageIndex((index) =>
+                        index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length
+                      )
                     }
                     className="absolute left-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="Previous image"
@@ -614,7 +639,9 @@ export default function PhotographySection() {
                   <button
                     type="button"
                     onClick={() =>
-                      setActiveImageIndex((index) => (index === null ? null : (index + 1) % galleryImages.length))
+                      setActiveImageIndex((index) =>
+                        index === null ? null : (index + 1) % preparedGalleryImages.length
+                      )
                     }
                     className="absolute right-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="Next image"
@@ -624,7 +651,7 @@ export default function PhotographySection() {
                 </>
               )}
             </motion.div>
-          </BlurLayer>
+          </FullscreenLightbox>
         )}
       </AnimatePresence>
     </div>

@@ -1,9 +1,10 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Play, Film, Music, Clapperboard, Orbit, Loader2 } from 'lucide-react';
+import { Play, Film, Music, Clapperboard, Orbit, Loader2, ArrowLeft, ExternalLink, X } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
 import { useCameraContext } from '@/context/CameraContext';
 import { parseMediaLink } from '@/lib/mediaLinks';
+import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 
 const projects = [
   {
@@ -91,22 +92,22 @@ const projects = [
 
 const filmThemes = {
   film: {
-    panel: 'from-[#1f1632]/85 via-[#271d3e]/75 to-[#06040c]/90',
-    halo: 'from-purple-300/35 via-indigo-200/15 to-transparent',
+    panel: 'from-[#1f1632]/65 via-[#271d3e]/55 to-[#06040c]/70',
+    halo: 'from-purple-300/25 via-indigo-200/12 to-transparent',
     icon: 'from-purple-400 to-fuchsia-400',
     iconComponent: Clapperboard,
     badge: 'Feature & Narrative',
   },
   music: {
-    panel: 'from-[#2c1224]/85 via-[#4a1f3e]/75 to-[#09030f]/90',
-    halo: 'from-amber-200/40 via-rose-200/15 to-transparent',
+    panel: 'from-[#2c1224]/65 via-[#4a1f3e]/55 to-[#09030f]/70',
+    halo: 'from-amber-200/28 via-rose-200/12 to-transparent',
     icon: 'from-amber-400 to-rose-400',
     iconComponent: Music,
     badge: 'Music Video',
   },
   doc: {
-    panel: 'from-[#0f1f1f]/85 via-[#14363c]/75 to-[#04090c]/90',
-    halo: 'from-cyan-200/40 via-emerald-200/15 to-transparent',
+    panel: 'from-[#0f1f1f]/65 via-[#14363c]/55 to-[#04090c]/70',
+    halo: 'from-cyan-200/28 via-emerald-200/12 to-transparent',
     icon: 'from-cyan-300 to-emerald-400',
     iconComponent: Orbit,
     badge: 'Documentary',
@@ -125,6 +126,18 @@ export default function FilmsSection() {
   const { currentLens } = useCameraContext();
   const [previews, setPreviews] = useState({});
   const initiatedRef = useRef(new Set());
+  const [activeProjectId, setActiveProjectId] = useState(null);
+
+  const scrollToActiveLayer = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     projects.forEach((project) => {
@@ -147,10 +160,21 @@ export default function FilmsSection() {
     });
   }, []);
 
+  useEffect(() => {
+    if (activeProjectId) {
+      scrollToActiveLayer();
+    }
+  }, [activeProjectId, scrollToActiveLayer]);
+
   const filteredVideos = useMemo(() => {
     if (filter === 'all') return projects;
     return projects.filter((project) => project.category === filter);
   }, [filter]);
+
+  const activeProject = useMemo(
+    () => projects.find((project) => project.id === activeProjectId) || null,
+    [activeProjectId]
+  );
 
   const resolvePreview = useCallback(
     (project) => {
@@ -167,6 +191,18 @@ export default function FilmsSection() {
     [previews]
   );
 
+  const openProject = useCallback(
+    (projectId) => {
+      setActiveProjectId(projectId);
+      scrollToActiveLayer();
+    },
+    [scrollToActiveLayer]
+  );
+
+  const closeProject = useCallback(() => {
+    setActiveProjectId(null);
+  }, []);
+
   // Calculate grid columns based on lens zoom
   // zoom: 0.7 (widest) -> 4 cols, 0.85 -> 3 cols, 0.9-1.0 -> 3 cols, 1.2+ -> 2 cols
   const getGridCols = () => {
@@ -175,6 +211,114 @@ export default function FilmsSection() {
     if (zoom <= 0.9) return 'grid-cols-2 md:grid-cols-3'; // Normal-wide: 2 mobile, 3 desktop
     if (zoom <= 1.0) return 'grid-cols-2 md:grid-cols-3'; // Normal: 2 mobile, 3 desktop
     return 'grid-cols-2 md:grid-cols-2'; // Telephoto: 2 mobile, 2 desktop
+  };
+
+  const renderProjectLightbox = () => {
+    if (!activeProject) return null;
+    const preview = resolvePreview(activeProject);
+    const mediaMeta = parseMediaLink(activeProject.link);
+    const embedUrl = mediaMeta?.embedUrl;
+    const provider = mediaMeta?.provider || 'unknown';
+
+    return (
+      <FullscreenLightbox
+        key={`film-${activeProject.id}`}
+        layerId={`film-${activeProject.id}`}
+        depth={2200}
+        onClose={closeProject}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0.92, scale: 0.97 }}
+          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+          className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_55px_150px_rgba(0,0,0,0.7)]"
+        >
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={closeProject}
+                className="flex items-center gap-2 text-xs mono uppercase tracking-[0.35em] text-green-300 hover:text-green-100"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to films
+              </button>
+              <h2 className="text-3xl font-semibold text-white">{activeProject.title}</h2>
+              <p className="text-sm text-white/65">{activeProject.description}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeProject}
+              className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+              aria-label="Close project"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+            <div className="grid h-full gap-6 lg:grid-cols-[2fr_1fr]">
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/70">
+                {embedUrl ? (
+                  <iframe
+                    key={embedUrl}
+                    src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                    className="h-full w-full"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title={activeProject.title}
+                  />
+                ) : (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                    style={{
+                      backgroundImage: preview.image ? `url(${preview.image})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    {!preview.image && <Play className="h-14 w-14" />}
+                  </div>
+                )}
+              </div>
+              <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
+                    {provider === 'youtube' ? 'YouTube' : provider === 'instagram' ? 'Instagram' : 'Media'}
+                    <span className="rounded-full bg-white/10 px-2 py-[2px] text-[9px] mono">{activeProject.runtime}</span>
+                  </span>
+                  <p className="text-sm text-white/70 leading-relaxed">{preview.description}</p>
+                  <div className="flex flex-wrap gap-2 text-xs mono uppercase tracking-[0.35em] text-white/60">
+                    <span className="rounded-full bg-white/10 px-3 py-1">{activeProject.role}</span>
+                    <span className="rounded-full bg-white/10 px-3 py-1">{activeProject.category}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={closeProject}
+                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em]"
+                  >
+                    Close
+                  </button>
+                  {activeProject.link && (
+                    <a
+                      href={activeProject.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs mono uppercase tracking-[0.35em] text-white/80 hover:text-white"
+                    >
+                      View externally
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+              </aside>
+            </div>
+          </div>
+        </motion.div>
+      </FullscreenLightbox>
+    );
   };
 
   return (
@@ -225,15 +369,14 @@ export default function FilmsSection() {
             const { image, status, description: summary } = resolvePreview(project);
 
             return (
-              <motion.a
+              <motion.button
                 key={project.id}
-                href={project.link}
-                target="_blank"
-                rel="noopener noreferrer"
+                type="button"
+                onClick={() => openProject(project.id)}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 * index }}
-                className="group block rounded-3xl overflow-hidden border border-white/10 hover:border-white/30 transition-all shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+                className="group block rounded-3xl overflow-hidden border border-white/10 hover:border-white/30 transition-all shadow-[0_25px_60px_rgba(0,0,0,0.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40 focus-visible:ring-[color:var(--accent-400)]"
               >
                 <div className="relative aspect-video overflow-hidden">
                   {image && (
@@ -248,7 +391,7 @@ export default function FilmsSection() {
                   )}
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.panel}`} />
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.halo}`} />
-                  <div className="absolute inset-0 bg-black/35" />
+                  <div className="absolute inset-0 bg-black/15" />
                   <div className="relative z-10 h-full w-full p-6 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <IconBox icon={Icon} gradient={theme.icon} size="md" className="shadow-xl" />
@@ -295,11 +438,13 @@ export default function FilmsSection() {
                     <span>{project.runtime}</span>
                   </div>
                 </div>
-              </motion.a>
+              </motion.button>
             );
           })}
         </div>
       </div>
+
+      <AnimatePresence>{renderProjectLightbox()}</AnimatePresence>
     </div>
   );
 }

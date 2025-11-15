@@ -33,6 +33,8 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
     [currentSection]
   );
 
+  const [activeLabelIndex, setActiveLabelIndex] = useState(0);
+
   const navRef = useRef(null);
   const dragControls = useDragControls();
   const [navSize, setNavSize] = useState({ width: 0, height: 0 });
@@ -106,6 +108,22 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
   const activeFloatY = !isCollapsed && isFloating ? floatPosition.y : 0;
 
   const navTop = `calc(var(--camera-top-rail-height, 112px) + ${12 + activeFloatY - (isCollapsed ? hiddenOffset : 0)}px)`;
+
+  useEffect(() => {
+    if (!visibleSections.length) {
+      setActiveLabelIndex(0);
+      return;
+    }
+    setActiveLabelIndex((prev) => prev % visibleSections.length);
+  }, [visibleSections.length]);
+
+  useEffect(() => {
+    if (!visibleSections.length) return undefined;
+    const interval = setInterval(() => {
+      setActiveLabelIndex((prev) => (prev + 1) % visibleSections.length);
+    }, 2400);
+    return () => clearInterval(interval);
+  }, [visibleSections.length]);
 
   useEffect(() => {
     if (
@@ -211,7 +229,6 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
                 aria-label="Move navigation bar"
               >
                 <Move className="w-4 h-4" />
-                <span className="hidden sm:inline">Nav</span>
               </button>
 
               <div className="h-6 w-px bg-white/10" aria-hidden="true" />
@@ -241,6 +258,23 @@ export default function SectionNavButtons({ currentSection, onNavigate }) {
                       </motion.button>
                     );
                   })}
+                </AnimatePresence>
+              </div>
+
+              <div className="flex w-full justify-center pt-1">
+                <AnimatePresence mode="wait">
+                  {visibleSections.length > 0 && (
+                    <motion.span
+                      key={visibleSections[activeLabelIndex]?.id ?? 'nav-label'}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className="mono text-[10px] uppercase tracking-[0.4em] text-white/70"
+                    >
+                      {visibleSections[activeLabelIndex]?.name}
+                    </motion.span>
+                  )}
                 </AnimatePresence>
               </div>
             </div>

@@ -185,28 +185,28 @@ export default function LinksSection() {
                       href={item.href}
                       target={external ? '_blank' : undefined}
                       rel={external ? 'noopener noreferrer' : undefined}
-                    className="group flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-5 py-4 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-white/40 hover:bg-white/10"
+                      className="group flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-5 py-4 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-white/40 hover:bg-white/10"
                     >
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-[rgba(10,12,18,0.55)] shadow-[0_12px_30px_rgba(0,0,0,0.45)] transition-colors group-hover:border-white/40">
-                      <Icon className="h-5 w-5 text-white/85" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-white/95">{item.label}</p>
-                          {item.meta && (
-                            <p className="mono text-[10px] uppercase tracking-[0.4em] text-white/60">{item.meta}</p>
-                          )}
-                        </div>
-                        <ArrowUpRight className="h-4 w-4 text-white/60 transition-colors group-hover:text-white" />
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-[rgba(10,12,18,0.55)] shadow-[0_12px_30px_rgba(0,0,0,0.45)] transition-colors group-hover:border-white/40">
+                        <Icon className="h-5 w-5 text-white/85" />
                       </div>
-                      {item.description && (
-                        <p className="mt-2 text-sm text-white/75 leading-relaxed">{item.description}</p>
-                      )}
-                    </div>
-                  </motion.a>
-                );
-              })}
+                      <div className="flex-1 text-left space-y-2">
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-semibold text-white/95">{item.label}</p>
+                            {item.meta && (
+                              <p className="mono text-[10px] uppercase tracking-[0.4em] text-white/60">{item.meta}</p>
+                            )}
+                          </div>
+                          <ArrowUpRight className="h-4 w-4 text-white/60 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                        </div>
+                        {item.description && (
+                          <p className="text-sm text-white/75 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
+                    </motion.a>
+                  );
+                })}
               </div>
             </div>
           </motion.section>

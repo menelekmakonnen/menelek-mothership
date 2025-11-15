@@ -1,11 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Loader2, Sparkles, X } from 'lucide-react';
-import BlurLayer from '@/components/ui/BlurLayer';
+import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
 
-const AI_ALBUM_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
+const AI_ALBUM_ROOT = '1LflEx48azcfu_EBnLv12SOYWhUMXYoBj';
 
 const getPreviewSrc = (item, intent = 'preview') => {
   if (!item) return null;
@@ -27,6 +27,17 @@ export default function AIAlbumsSection() {
   const { loadFolder, getFolder, isLoading, getError } = useDriveFolderCache();
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+
+  const autoScrollToActiveLayer = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     loadFolder(AI_ALBUM_ROOT);
@@ -87,32 +98,47 @@ export default function AIAlbumsSection() {
     return albumData.items.filter((item) => item.type === 'file');
   }, [getFolder, selectedAlbum]);
 
+  const preparedAlbumImages = useMemo(() => {
+    const albumTitle = selectedAlbum?.title || 'AI Collection';
+    return selectedAlbumImages.map((image) => ({
+      ...image,
+      displayTitle: albumTitle,
+      alt: `${albumTitle} created by Menelek Makonnen`,
+    }));
+  }, [selectedAlbum?.title, selectedAlbumImages]);
+
   useEffect(() => {
     if (selectedImageIndex === null) return;
-    if (!selectedAlbumImages.length) {
+    if (!preparedAlbumImages.length) {
       setSelectedImageIndex(null);
-    } else if (selectedImageIndex >= selectedAlbumImages.length) {
+    } else if (selectedImageIndex >= preparedAlbumImages.length) {
       setSelectedImageIndex(0);
     }
-  }, [selectedAlbumImages, selectedImageIndex]);
+  }, [preparedAlbumImages, selectedImageIndex]);
 
-  const activeImage = selectedImageIndex !== null ? selectedAlbumImages[selectedImageIndex] : null;
+  const activeImage = selectedImageIndex !== null ? preparedAlbumImages[selectedImageIndex] : null;
 
   useEffect(() => {
-    if (selectedImageIndex === null || !selectedAlbumImages.length) return;
+    if (selectedAlbum || selectedImageIndex !== null) {
+      autoScrollToActiveLayer();
+    }
+  }, [autoScrollToActiveLayer, selectedAlbum, selectedImageIndex]);
+
+  useEffect(() => {
+    if (selectedImageIndex === null || !preparedAlbumImages.length) return;
 
     const handleKeyDown = (event) => {
       if (event.key === 'ArrowRight') {
         event.preventDefault();
         setSelectedImageIndex((index) => {
           if (index === null) return index;
-          return (index + 1) % selectedAlbumImages.length;
+          return (index + 1) % preparedAlbumImages.length;
         });
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         setSelectedImageIndex((index) => {
           if (index === null) return index;
-          return (index - 1 + selectedAlbumImages.length) % selectedAlbumImages.length;
+          return (index - 1 + preparedAlbumImages.length) % preparedAlbumImages.length;
         });
       } else if (event.key === 'Escape') {
         event.preventDefault();
@@ -122,7 +148,7 @@ export default function AIAlbumsSection() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedAlbumImages.length, selectedImageIndex]);
+  }, [preparedAlbumImages.length, selectedImageIndex]);
 
   return (
     <div className="w-full min-h-screen p-8 pt-32 pb-32">
@@ -155,7 +181,11 @@ export default function AIAlbumsSection() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ y: -8 }}
-                onClick={() => setSelectedAlbum(album)}
+                onClick={() => {
+                  setSelectedAlbum(album);
+                  setSelectedImageIndex(null);
+                  autoScrollToActiveLayer();
+                }}
                 className="group rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.8)] p-6 text-left transition-colors hover:border-white/25"
               >
                 <div className="relative mb-5 aspect-square overflow-hidden rounded-2xl">
@@ -203,49 +233,44 @@ export default function AIAlbumsSection() {
 
       <AnimatePresence>
         {selectedAlbum && (
-          <BlurLayer
+          <FullscreenLightbox
             key={selectedAlbum.id}
             layerId={`ai-album-${selectedAlbum.id}`}
-            depth={1580}
-            type="interactive"
-            focusOnMount
-            lockGestures
+            depth={2100}
             onClose={() => setSelectedAlbum(null)}
-            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1850] flex items-center justify-center p-6"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0.9, scale: 0.96 }}
+              exit={{ opacity: 0.92, scale: 0.97 }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="relative w-full h-full max-w-6xl mx-auto px-6 py-10 max-h-[calc(100%-2rem)]"
+              className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[rgba(6,8,16,0.96)] shadow-[0_45px_120px_rgba(0,0,0,0.65)]"
             >
-              <div className="absolute inset-0 rounded-3xl bg-[rgba(8,10,18,0.94)] border border-white/10 shadow-[0_35px_90px_rgba(0,0,0,0.65)]" />
-              <div className="relative z-10 flex h-full flex-col gap-6 overflow-hidden">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setSelectedAlbum(null)}
-                      className="flex items-center gap-2 text-sm mono text-green-300 hover:text-green-100"
-                    >
-                      <ArrowLeft className="h-4 w-4" /> Back to AI Albums
-                    </button>
-                    <h2 className="text-4xl font-bold">{selectedAlbum.title}</h2>
-                    {getError(selectedAlbum.id) && (
-                      <p className="text-sm text-rose-300">Unable to load this album. Please try again shortly.</p>
-                    )}
-                  </div>
+              <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div className="space-y-2">
                   <button
                     onClick={() => setSelectedAlbum(null)}
-                    className="camera-hud rounded-full w-11 h-11 flex items-center justify-center text-sm"
-                    aria-label="Close album"
+                    className="flex items-center gap-2 text-sm mono text-green-300 hover:text-green-100"
                   >
-                    <X className="w-4 h-4" />
+                    <ArrowLeft className="h-4 w-4" /> Back to AI Albums
                   </button>
+                  <h2 className="text-4xl font-bold text-white">{selectedAlbum.title}</h2>
+                  {getError(selectedAlbum.id) && (
+                    <p className="text-sm text-rose-300">Unable to load this album. Please try again shortly.</p>
+                  )}
                 </div>
+                <button
+                  onClick={() => setSelectedAlbum(null)}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close album"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto pr-2">
-                  {selectedAlbumImages.map((image, index) => (
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  {preparedAlbumImages.map((image, index) => (
                     <motion.button
                       key={image.id}
                       type="button"
@@ -253,12 +278,19 @@ export default function AIAlbumsSection() {
                       initial={{ opacity: 0, scale: 0.85 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.01 * index }}
-                      className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/50"
+                      className="relative aspect-square overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_16px_40px_rgba(0,0,0,0.45)]"
                     >
                       {(() => {
                         const preview = getPreviewSrc(image);
                         if (preview) {
-                          return <img src={preview} alt={image.title} className="h-full w-full object-cover" loading="lazy" />;
+                          return (
+                            <img
+                              src={preview}
+                              alt={image.alt}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          );
                         }
                         return (
                           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 text-white/80">
@@ -266,42 +298,39 @@ export default function AIAlbumsSection() {
                           </div>
                         );
                       })()}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-70" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white/85 truncate">
-                        {image.title}
+                        {image.displayTitle}
                       </div>
                     </motion.button>
                   ))}
                 </div>
 
-                {!selectedAlbumImages.length && isLoading(selectedAlbum.id) && (
-                  <div className="flex flex-1 items-center justify-center rounded-3xl border border-white/10 bg-black/40">
+                {!preparedAlbumImages.length && isLoading(selectedAlbum.id) && (
+                  <div className="mt-10 flex items-center justify-center rounded-3xl border border-white/10 bg-black/40 py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-green-300" />
                   </div>
                 )}
               </div>
             </motion.div>
-          </BlurLayer>
+          </FullscreenLightbox>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {activeImage && (
-          <BlurLayer
+          <FullscreenLightbox
             key={`ai-lightbox-${activeImage.id}`}
             layerId={`ai-lightbox-${activeImage.id}`}
-            depth={1880}
-            type="interactive"
-            lockGestures
+            depth={2300}
             onClose={() => setSelectedImageIndex(null)}
-            className="fixed left-0 right-0 bottom-0 top-[calc(var(--camera-top-rail-height,112px)+var(--camera-nav-safe-zone,96px))] z-[1900]"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0.9, scale: 0.97 }}
+              exit={{ opacity: 0.92, scale: 0.98 }}
               transition={{ duration: 0.26, ease: [0.4, 0, 0.2, 1] }}
-              className="relative flex h-full w-full items-center justify-center bg-[rgba(4,6,12,0.94)]"
+              className="relative flex h-full w-full items-center justify-center rounded-3xl border border-white/10 bg-[rgba(4,6,12,0.96)] p-6 shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
             >
               <img
                 src={
@@ -312,7 +341,7 @@ export default function AIAlbumsSection() {
                   activeImage.downloadUrl ||
                   getPreviewSrc(activeImage)
                 }
-                alt={activeImage.title}
+                alt={activeImage.alt}
                 className="max-h-full max-w-full object-contain"
               />
               <button
@@ -324,7 +353,7 @@ export default function AIAlbumsSection() {
                 <X className="h-4 w-4" />
               </button>
             </motion.div>
-          </BlurLayer>
+          </FullscreenLightbox>
         )}
       </AnimatePresence>
     </div>

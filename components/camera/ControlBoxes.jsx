@@ -48,6 +48,18 @@ export default function ControlBoxes() {
   const buttonRefs = useRef({});
   const [boxAlignment, setBoxAlignment] = useState({});
 
+  const scrollButtonIntoView = useCallback((boxId) => {
+    if (typeof window === 'undefined') return;
+    const node = buttonRefs.current[boxId];
+    if (node) {
+      try {
+        node.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+      } catch (error) {
+        node.scrollIntoView();
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -332,6 +344,7 @@ export default function ControlBoxes() {
           ensurePartialReset();
         }
         toggleBox(boxId);
+        scrollButtonIntoView(boxId);
       }
     } else {
       const isOpen = openBoxes.includes(boxId);
@@ -350,6 +363,7 @@ export default function ControlBoxes() {
           ensurePartialReset();
         }
         toggleBox(boxId);
+        scrollButtonIntoView(boxId);
       }
     }
   };
