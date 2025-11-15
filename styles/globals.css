@@ -19,6 +19,8 @@
   --hud-bg: rgba(0, 0, 0, 0.85);
   --hud-text: #00ff88;
   --hud-border: rgba(0, 255, 136, 0.3);
+  --hud-gradient-mid: rgba(12, 16, 28, 0.82);
+  --hud-gradient-end: rgba(2, 4, 10, 0.9);
   --overlay: rgba(0, 0, 0, 0.6);
   --glass: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
@@ -46,6 +48,8 @@
   --hud-bg: rgba(255, 255, 255, 0.85);
   --hud-text: #0066ff;
   --hud-border: rgba(0, 102, 255, 0.3);
+  --hud-gradient-mid: rgba(220, 228, 248, 0.82);
+  --hud-gradient-end: rgba(236, 240, 248, 0.9);
   --overlay: rgba(255, 255, 255, 0.6);
   --glass: rgba(0, 0, 0, 0.05);
   --glass-border: rgba(0, 0, 0, 0.1);
@@ -99,8 +103,10 @@
 html,
 body {
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -119,7 +125,8 @@ body::before {
 
 #__next {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
 }
 
 /* Custom scrollbar */
@@ -172,7 +179,12 @@ body,
 /* Camera HUD styling */
 .camera-hud {
   background: var(--hud-bg);
-  background-image: linear-gradient(145deg, rgba(var(--accent-rgb), 0.18) 0%, rgba(12, 16, 28, 0.82) 35%, rgba(2, 4, 10, 0.9) 100%);
+  background-image: linear-gradient(
+    145deg,
+    rgba(var(--accent-rgb), 0.18) 0%,
+    var(--hud-gradient-mid) 35%,
+    var(--hud-gradient-end) 100%
+  );
   backdrop-filter: blur(14px) saturate(130%);
   -webkit-backdrop-filter: blur(14px) saturate(130%);
   border: 1px solid var(--hud-border);

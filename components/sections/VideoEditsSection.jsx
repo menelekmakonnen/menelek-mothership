@@ -327,7 +327,7 @@ export default function VideoEditsSection() {
       <FullscreenLightbox
         key={`${activeCollection.id}-clip-${activeClipIndex}`}
         layerId={`video-edit-${activeCollection.id}`}
-        depth={2200}
+        depth={2650}
         onClose={closeQuickView}
         innerClassName="p-0"
       >

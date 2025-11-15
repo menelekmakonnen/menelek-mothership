@@ -46,7 +46,7 @@ export default function ControlBoxes() {
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
   const containerRef = useRef(null);
   const buttonRefs = useRef({});
-  const [boxAlignment, setBoxAlignment] = useState({});
+  const [panelPositions, setPanelPositions] = useState({});
 
   const scrollButtonIntoView = useCallback((boxId) => {
     if (typeof window === 'undefined') return;
@@ -84,22 +84,49 @@ export default function ControlBoxes() {
     updateRailHeight();
   }, [updateRailHeight, isMobile, openBoxes, activeMobilePanel, hasModifiedSettings]);
 
-  const computeBoxAlignment = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  const updatePanelPositions = useCallback(() => {
+    if (typeof window === 'undefined' || isMobile) {
+      setPanelPositions({});
+      return;
+    }
+
+    const margin = 16;
+    const panelWidth = 320;
     const next = {};
-    Object.entries(buttonRefs.current).forEach(([id, node]) => {
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      next[id] = rect.left + 320 > window.innerWidth;
+
+    openBoxes.forEach((boxId) => {
+      const host = buttonRefs.current[boxId];
+      if (!host) return;
+      const trigger = host.querySelector('button');
+      const rect = (trigger || host).getBoundingClientRect();
+      let left = rect.left;
+      if (rect.left + panelWidth + margin > window.innerWidth) {
+        left = Math.max(margin, rect.right - panelWidth);
+      } else {
+        left = Math.max(margin, rect.left);
+      }
+      const top = rect.bottom + 12;
+      next[boxId] = { top, left };
     });
-    setBoxAlignment(next);
-  }, []);
+
+    setPanelPositions(next);
+  }, [isMobile, openBoxes]);
 
   useLayoutEffect(() => {
-    computeBoxAlignment();
-    window.addEventListener('resize', computeBoxAlignment);
-    return () => window.removeEventListener('resize', computeBoxAlignment);
-  }, [computeBoxAlignment, openBoxes, isMobile]);
+    updatePanelPositions();
+  }, [updatePanelPositions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || isMobile) return undefined;
+    const handleResize = () => updatePanelPositions();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobile, updatePanelPositions]);
+
+  const schedulePanelReflow = useCallback(() => {
+    if (typeof window === 'undefined' || isMobile) return;
+    window.requestAnimationFrame(() => updatePanelPositions());
+  }, [isMobile, updatePanelPositions]);
 
   const boxes = [
     {
@@ -332,6 +359,7 @@ export default function ControlBoxes() {
       if (openBoxes.includes(boxId)) {
         toggleBox(boxId);
         ensurePartialReset();
+        schedulePanelReflow();
       } else {
         let closedOther = false;
         openBoxes.forEach((id) => {
@@ -345,12 +373,14 @@ export default function ControlBoxes() {
         }
         toggleBox(boxId);
         scrollButtonIntoView(boxId);
+        schedulePanelReflow();
       }
     } else {
       const isOpen = openBoxes.includes(boxId);
       if (isOpen) {
         toggleBox(boxId);
         ensurePartialReset();
+        schedulePanelReflow();
       } else {
         let closedOther = false;
         exclusiveBoxIds
@@ -364,6 +394,7 @@ export default function ControlBoxes() {
         }
         toggleBox(boxId);
         scrollButtonIntoView(boxId);
+        schedulePanelReflow();
       }
     }
   };
@@ -401,7 +432,10 @@ export default function ControlBoxes() {
                 const isOpen = openBoxes.includes(box.id);
                 const Icon = box.icon;
                 const Component = box.component;
-                const alignRight = boxAlignment[box.id];
+                const panelPosition = panelPositions[box.id];
+                const panelStyle = panelPosition
+                  ? { top: panelPosition.top, left: panelPosition.left }
+                  : { top: 120, left: '50%', transform: 'translateX(-50%)' };
 
                 return (
                   <div
@@ -440,8 +474,8 @@ export default function ControlBoxes() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -12 }}
                           transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                          className="absolute z-[2000] mt-3 w-[320px] pointer-events-auto"
-                          style={{ left: alignRight ? 'auto' : 0, right: alignRight ? 0 : 'auto' }}
+                          className="fixed z-[2600] w-[320px] pointer-events-auto"
+                          style={panelStyle}
                         >
                           <div className="camera-hud rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
                             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">

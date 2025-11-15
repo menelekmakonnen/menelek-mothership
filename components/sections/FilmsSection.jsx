@@ -92,21 +92,21 @@ const projects = [
 
 const filmThemes = {
   film: {
-    panel: 'from-[#1f1632]/65 via-[#271d3e]/55 to-[#06040c]/70',
+    panel: 'from-[#1f1632]/35 via-[#271d3e]/28 to-[#06040c]/38',
     halo: 'from-purple-300/25 via-indigo-200/12 to-transparent',
     icon: 'from-purple-400 to-fuchsia-400',
     iconComponent: Clapperboard,
     badge: 'Feature & Narrative',
   },
   music: {
-    panel: 'from-[#2c1224]/65 via-[#4a1f3e]/55 to-[#09030f]/70',
+    panel: 'from-[#2c1224]/35 via-[#4a1f3e]/28 to-[#09030f]/38',
     halo: 'from-amber-200/28 via-rose-200/12 to-transparent',
     icon: 'from-amber-400 to-rose-400',
     iconComponent: Music,
     badge: 'Music Video',
   },
   doc: {
-    panel: 'from-[#0f1f1f]/65 via-[#14363c]/55 to-[#04090c]/70',
+    panel: 'from-[#0f1f1f]/35 via-[#14363c]/28 to-[#04090c]/38',
     halo: 'from-cyan-200/28 via-emerald-200/12 to-transparent',
     icon: 'from-cyan-300 to-emerald-400',
     iconComponent: Orbit,
@@ -224,7 +224,7 @@ export default function FilmsSection() {
       <FullscreenLightbox
         key={`film-${activeProject.id}`}
         layerId={`film-${activeProject.id}`}
-        depth={2200}
+        depth={2650}
         onClose={closeProject}
         innerClassName="p-0"
       >
@@ -392,7 +392,7 @@ export default function FilmsSection() {
                   )}
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.panel}`} />
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.halo}`} />
-                  <div className="absolute inset-0 bg-black/15" />
+                  <div className="absolute inset-0 bg-black/6" />
                   <div className="relative z-10 h-full w-full p-6 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <IconBox icon={Icon} gradient={theme.icon} size="md" className="shadow-xl" />

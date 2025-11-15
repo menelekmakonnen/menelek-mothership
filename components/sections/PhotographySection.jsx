@@ -459,7 +459,7 @@ export default function PhotographySection() {
           <FullscreenLightbox
             key={activeAlbum.id}
             layerId={`album-${activeAlbum.id}`}
-            depth={2100}
+            depth={2600}
             onClose={closeAlbum}
             innerClassName="p-0"
           >
@@ -506,7 +506,7 @@ export default function PhotographySection() {
           <FullscreenLightbox
             key={`lightbox-${activeImage.id || activeImageIndex}`}
             layerId={`lightbox-${activeImage.id || activeImageIndex}`}
-            depth={2300}
+            depth={2750}
             onClose={() => setActiveImageIndex(null)}
             innerClassName="p-0"
           >

@@ -236,7 +236,7 @@ export default function AIAlbumsSection() {
           <FullscreenLightbox
             key={selectedAlbum.id}
             layerId={`ai-album-${selectedAlbum.id}`}
-            depth={2100}
+            depth={2600}
             onClose={() => setSelectedAlbum(null)}
             innerClassName="p-0"
           >
@@ -323,7 +323,7 @@ export default function AIAlbumsSection() {
           <FullscreenLightbox
             key={`ai-lightbox-${activeImage.id}`}
             layerId={`ai-lightbox-${activeImage.id}`}
-            depth={2300}
+            depth={2700}
             onClose={() => setSelectedImageIndex(null)}
             innerClassName="p-0"
           >

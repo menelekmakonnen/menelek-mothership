@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { Move } from 'lucide-react';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 export default function SectionNavButtons({ currentSection, onNavigate, navItems }) {
-  const visibleSections = useMemo(
-    () => (navItems || []).filter((section) => section.id !== currentSection),
-    [currentSection, navItems]
-  );
+  const visibleSections = useMemo(() => navItems || [], [navItems]);
 
   const navRef = useRef(null);
   const dragControls = useDragControls();
@@ -20,10 +17,32 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [floatPosition, setFloatPosition] = useState({ x: 0, y: 0 });
+  const labelItems = useMemo(() => navItems || [], [navItems]);
+  const [activeLabelIndex, setActiveLabelIndex] = useState(0);
+  const iconRefs = useRef({});
+  const [labelCenters, setLabelCenters] = useState({});
 
   const markInteraction = useCallback(() => {
     setIsCollapsed(false);
   }, []);
+
+  const updateLabelMetrics = useCallback(() => {
+    if (!navRef.current) return;
+    const navRect = navRef.current.getBoundingClientRect();
+    const next = {};
+    (navItems || []).forEach((section) => {
+      const node = iconRefs.current[section.id];
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      next[section.id] = rect.left + rect.width / 2 - navRect.left;
+    });
+    setLabelCenters(next);
+  }, [navItems]);
+
+  const scheduleLabelUpdate = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => updateLabelMetrics());
+  }, [updateLabelMetrics]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -49,6 +68,17 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
     observer.observe(navRef.current);
     return () => observer.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    updateLabelMetrics();
+  }, [updateLabelMetrics, navSize.width, navSize.height, activeFloatX, activeFloatY]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handleResize = () => updateLabelMetrics();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updateLabelMetrics]);
 
   const readCameraRailHeight = useCallback(() => {
     if (typeof window === 'undefined') return 112;
@@ -83,6 +113,24 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
   const activeFloatY = !isCollapsed && isFloating ? floatPosition.y : 0;
 
   const navTop = `calc(var(--camera-top-rail-height, 112px) + ${12 + activeFloatY - (isCollapsed ? hiddenOffset : 0)}px)`;
+
+  useEffect(() => {
+    if (!labelItems.length) return undefined;
+    setActiveLabelIndex((index) => (index >= labelItems.length ? 0 : index));
+    const interval = setInterval(() => {
+      setActiveLabelIndex((index) => (index + 1) % labelItems.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [labelItems]);
+
+  const activeLabel = labelItems.length ? labelItems[activeLabelIndex % labelItems.length] : null;
+  const fallbackLeft = navSize.width ? navSize.width / 2 : undefined;
+  const computedLeft =
+    activeLabel && labelCenters[activeLabel.id] !== undefined
+      ? labelCenters[activeLabel.id]
+      : fallbackLeft;
+  const labelPositionStyle =
+    computedLeft !== undefined ? { left: computedLeft } : { left: '50%' };
 
   useEffect(() => {
     if (
@@ -127,8 +175,9 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
 
       setFloatPosition(clamped);
       markInteraction();
+      scheduleLabelUpdate();
     },
-    [clampFloatPosition, floatPosition, isFloating, markInteraction]
+    [clampFloatPosition, floatPosition, isFloating, markInteraction, scheduleLabelUpdate]
   );
 
   const handleHandlePointerDown = useCallback(
@@ -151,8 +200,9 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
     (id) => {
       markInteraction();
       onNavigate(id);
+      scheduleLabelUpdate();
     },
-    [markInteraction, onNavigate]
+    [markInteraction, onNavigate, scheduleLabelUpdate]
   );
 
   return (
@@ -196,11 +246,30 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                 <AnimatePresence mode="popLayout">
                   {visibleSections.map((section, index) => {
                     const Icon = section.icon;
+                    const isActive = section.id === currentSection;
                     return (
                       <motion.button
                         key={section.id}
-                        onClick={() => handleNavigate(section.id)}
-                        className={`group relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-gradient-to-br ${section.gradient} text-white shadow-lg transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30`}
+                        ref={(node) => {
+                          if (node) {
+                            iconRefs.current[section.id] = node;
+                          } else {
+                            delete iconRefs.current[section.id];
+                          }
+                          scheduleLabelUpdate();
+                        }}
+                        onClick={() => {
+                          if (section.id !== currentSection) {
+                            handleNavigate(section.id);
+                          } else {
+                            markInteraction();
+                          }
+                        }}
+                        className={`group relative flex ${
+                          isActive ? 'h-12 w-12 border-white/40' : 'h-11 w-11 border-white/15'
+                        } items-center justify-center rounded-2xl border bg-gradient-to-br ${section.gradient} text-white shadow-lg transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30 ${
+                          isActive ? 'ring-2 ring-white/30' : ''
+                        }`}
                         whileHover={{ scale: 1.06 }}
                         whileTap={{ scale: 0.94 }}
                         initial={{ opacity: 0, scale: 0.85, y: 12 }}
@@ -209,6 +278,7 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                         transition={{ delay: index * 0.04, duration: 0.24 }}
                         title={section.name}
                         aria-label={`Go to ${section.name}`}
+                        aria-current={isActive ? 'page' : undefined}
                       >
                         <Icon className="w-5 h-5" />
                       </motion.button>
@@ -216,6 +286,23 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                   })}
                 </AnimatePresence>
               </div>
+            </div>
+            <div className="pointer-events-none relative mt-3 h-5">
+              <AnimatePresence mode="wait">
+                {activeLabel && (
+                  <motion.span
+                    key={activeLabel.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.25 }}
+                    style={labelPositionStyle}
+                    className="absolute -translate-x-1/2 mono text-[10px] uppercase tracking-[0.45em] text-white/85"
+                  >
+                    {activeLabel.name}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </motion.div>

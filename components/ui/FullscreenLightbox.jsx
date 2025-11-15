@@ -4,7 +4,7 @@ import BlurLayer from './BlurLayer';
 export default function FullscreenLightbox({
   children,
   layerId,
-  depth = 2200,
+  depth = 2600,
   className = '',
   innerClassName = '',
   focusOnMount = true,
@@ -32,7 +32,7 @@ export default function FullscreenLightbox({
       onClose={onClose}
       className={`fixed inset-0 flex flex-col items-stretch justify-stretch overflow-hidden ${className}`.trim()}
     >
-      <div className={`relative flex-1 overflow-hidden ${innerClassName}`.trim()}>
+      <div className={`relative flex-1 overflow-y-auto overflow-x-hidden ${innerClassName}`.trim()}>
         {children}
       </div>
     </BlurLayer>

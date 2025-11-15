@@ -1,6 +1,6 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ArrowUpToLine } from 'lucide-react';
 import BlurLayer from './ui/BlurLayer';
 
@@ -217,7 +217,7 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
   const navOffset = 'calc(var(--camera-top-rail-height, 112px) + var(--camera-nav-safe-zone, 96px))';
   const baseBottomPadding = '140px';
   const containerStyle = {
-    cursor: isDragging ? 'grabbing' : 'grab',
+    cursor: isDragging ? 'grabbing' : 'auto',
     paddingTop: isZoomedIn ? `calc(${navOffset} + 96px)` : navOffset,
     paddingBottom: isZoomedIn ? `calc(${baseBottomPadding} + 96px)` : baseBottomPadding,
     minHeight: '100vh',
@@ -228,14 +228,6 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
     backgroundSize: '160% 160%',
     ...(contentStyle && contentStyle.filter ? { filter: contentStyle.filter } : {}),
   };
-
-  const resolvedSectionMeta = useMemo(() => {
-    if (!sectionMeta) return null;
-    if (Array.isArray(sectionMeta)) {
-      return sectionMeta[currentSection] ?? sectionMeta.find((entry) => entry?.id === currentSection) ?? null;
-    }
-    return null;
-  }, [currentSection, sectionMeta]);
 
   return (
     <div
@@ -303,16 +295,6 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
         }}
       >
         <div className="absolute inset-0 -z-10 pointer-events-none" style={{ ...stageBackgroundStyle, minHeight: '100%' }} />
-        {resolvedSectionMeta?.name && (
-          <div
-            className="pointer-events-none absolute left-1/2 z-[1200] -translate-x-1/2"
-            style={{ top: `calc(var(--camera-top-rail-height, 112px) + 20px)` }}
-          >
-            <div className="camera-hud rounded-full border border-white/10 px-4 py-2 text-xs mono uppercase tracking-[0.4em] text-[color:var(--text-primary)]/80">
-              {resolvedSectionMeta.name}
-            </div>
-          </div>
-        )}
         <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
           <motion.div
             key={currentSection}

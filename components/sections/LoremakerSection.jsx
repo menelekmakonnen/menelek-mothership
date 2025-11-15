@@ -225,7 +225,7 @@ export default function LoremakerSection() {
           <FullscreenLightbox
             key={activeCharacter.id}
             layerId={`loremaker-${activeCharacter.id}`}
-            depth={2200}
+            depth={2650}
             onClose={() => setActiveCharacter(null)}
             innerClassName="p-0"
           >
