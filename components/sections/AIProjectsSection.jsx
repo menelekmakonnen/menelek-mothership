@@ -57,7 +57,7 @@ export default function AIProjectsSection() {
           Innovation in artificial intelligence and education
         </motion.p>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-8">
           {projects.map((project, index) => {
             const Icon = project.icon;
             return (

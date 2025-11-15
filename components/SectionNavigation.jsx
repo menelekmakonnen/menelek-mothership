@@ -8,8 +8,18 @@ export default function SectionNavigation({ sections }) {
   const { currentSection, setCurrentSection, currentLens, shutterSpeed } = useCameraContext();
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [lastClickTime, setLastClickTime] = useState(0);
 
   const minSwipeDistance = 50;
+
+  const handleDoubleClick = (e) => {
+    const now = Date.now();
+    if (now - lastClickTime < 300) {
+      // Double click detected - reset page
+      window.location.reload();
+    }
+    setLastClickTime(now);
+  };
 
   const nextSection = () => {
     setCurrentSection((prev) => (prev + 1) % sections.length);
@@ -68,30 +78,38 @@ export default function SectionNavigation({ sections }) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Navigation arrows */}
+      {/* Navigation arrows - Double-click to reset */}
       <button
-        onClick={prevSection}
-        className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+        onClick={(e) => {
+          prevSection();
+          handleDoubleClick(e);
+        }}
+        className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-3 rounded-full hover:scale-110 transition-transform pointer-events-auto"
+        title="Double-click to reset page"
       >
         <ChevronLeft className="w-6 h-6" />
       </button>
 
       <button
-        onClick={nextSection}
-        className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+        onClick={(e) => {
+          nextSection();
+          handleDoubleClick(e);
+        }}
+        className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300] camera-hud p-3 rounded-full hover:scale-110 transition-transform pointer-events-auto"
+        title="Double-click to reset page"
       >
         <ChevronRight className="w-6 h-6" />
       </button>
 
       {/* Section indicator dots */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[1300] flex gap-2">
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[1300] flex gap-2 pointer-events-auto max-w-[90vw] flex-wrap justify-center px-4">
         {sections.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSection(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
+            className={`w-2 h-2 md:w-2 md:h-2 rounded-full transition-all ${
               index === currentSection
-                ? 'bg-green-400 w-8'
+                ? 'bg-green-400 w-6 md:w-8'
                 : 'bg-white/30 hover:bg-white/50'
             }`}
           />
@@ -109,8 +127,11 @@ export default function SectionNavigation({ sections }) {
             duration: 0.5,
             ease: [0.4, 0, 0.2, 1],
           }}
-          className="w-full h-full"
-          style={{ transform: `scale(${currentLens.zoom})` }}
+          className="w-full h-full overflow-y-auto overflow-x-hidden"
+          style={{
+            transform: `scale(${currentLens.zoom})`,
+            transformOrigin: 'center center'
+          }}
         >
           <BlurLayer depth={100}>
             {sections[currentSection]}

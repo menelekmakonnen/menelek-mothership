@@ -32,10 +32,10 @@ export default function Histogram() {
     <AnimatePresence>
       {showHistogram && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="fixed top-20 right-4 z-[1400] camera-hud rounded-lg p-3 w-48"
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-20 right-4 z-[1400] camera-hud rounded-lg p-3 w-48 md:w-64 pointer-events-auto"
         >
           <div className="mono text-[10px] mb-2 opacity-75 tracking-wider">
             HISTOGRAM

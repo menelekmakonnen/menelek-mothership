@@ -238,7 +238,7 @@ export default function PhotographySection() {
                 <Loader className="w-8 h-8 animate-spin text-green-400" />
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {albums.map((album, index) => (
                   <motion.div
                     key={album.id}

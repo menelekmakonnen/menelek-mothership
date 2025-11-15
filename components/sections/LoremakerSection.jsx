@@ -179,7 +179,7 @@ export default function LoremakerSection() {
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="grid md:grid-cols-2 gap-6 p-8">
+                <div className="grid grid-cols-2 gap-6 p-8">
                   {/* Character image */}
                   <div className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl overflow-hidden">
                     {getCharacterImage(selectedCharacter) ? (

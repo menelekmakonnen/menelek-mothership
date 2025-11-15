@@ -112,13 +112,20 @@ export default function FilmsSection() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (selectedVideoIndex === null) return;
+
+      // Stop propagation to prevent page navigation
+      e.stopPropagation();
+      e.preventDefault();
+
       if (e.key === 'ArrowRight') navigateVideo('next');
       if (e.key === 'ArrowLeft') navigateVideo('prev');
       if (e.key === 'Escape') setSelectedVideoIndex(null);
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (selectedVideoIndex !== null) {
+      window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+      return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }
   }, [selectedVideoIndex, filteredVideos]);
 
   return (
@@ -167,7 +174,7 @@ export default function FilmsSection() {
         </div>
 
         {/* Video grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
           {filteredVideos.map((video, index) => {
             const videoInfo = getVideoInfo(video.url);
             const Icon = video.type === 'film' ? Film : Music;
@@ -248,14 +255,24 @@ export default function FilmsSection() {
           })}
         </div>
 
-        {/* Video Lightbox */}
+        {/* Video Lightbox - Above nav bar but below camera features */}
         <AnimatePresence>
           {selectedVideoIndex !== null && filteredVideos[selectedVideoIndex] && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4"
+              className="bg-black/95 flex items-center justify-center p-4"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 1700
+              }}
               onClick={() => setSelectedVideoIndex(null)}
             >
               {/* Close button */}
