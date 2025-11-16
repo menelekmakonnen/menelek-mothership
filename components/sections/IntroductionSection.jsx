@@ -19,6 +19,7 @@ import {
   Globe,
 } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
+import { useCameraContext } from '@/context/CameraContext';
 
 const personaThemes = {
   kin: {
@@ -193,6 +194,7 @@ export default function IntroductionSection() {
   const [cycleCount, setCycleCount] = useState(0);
   const [projectPreviews, setProjectPreviews] = useState({});
   const previewInitiatedRef = useRef(new Set());
+  const { openGalleriaHome } = useCameraContext();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -343,17 +345,28 @@ export default function IntroductionSection() {
                       </span>
                     ))}
                   </div>
-                  <motion.a
-                    href={activeProject.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-3 self-start rounded-full border border-white/25 bg-white/10 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/90 shadow-[0_20px_44px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/15"
-                    whileHover={{ scale: 1.04, translateY: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <span>{activeProject.action}</span>
-                    <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-1" />
-                  </motion.a>
+                  <div className="flex flex-wrap gap-3">
+                    <motion.a
+                      href={activeProject.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-3 rounded-full border border-white/25 bg-white/10 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/90 shadow-[0_20px_44px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/15"
+                      whileHover={{ scale: 1.04, translateY: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      <span>{activeProject.action}</span>
+                      <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-1" />
+                    </motion.a>
+                    <motion.button
+                      type="button"
+                      onClick={openGalleriaHome}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/85 transition hover:border-white/40 hover:text-white"
+                      whileHover={{ scale: 1.03, translateY: -1 }}
+                      whileTap={{ scale: 0.96 }}
+                    >
+                      Launch Galleria
+                    </motion.button>
+                  </div>
                 </motion.div>
               </div>
             </div>

@@ -77,29 +77,26 @@ export default function FullscreenLightbox({
       <div className={`relative flex-1 overflow-y-auto overflow-x-hidden ${innerClassName}`.trim()}>
         {children}
         {showGalleriaNav && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
-            <div className="flex items-center justify-between px-6 pt-6 text-white/80">
-              <button
-                type="button"
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/60 px-4 py-2 text-xs mono uppercase tracking-[0.35em] hover:border-white/60 hover:text-white"
-                onClick={() => navigateGalleriaSection('prev')}
-              >
-                <ChevronLeft className="h-4 w-4" /> Prev Section
-              </button>
-              <div className="rounded-full bg-black/50 px-4 py-2 text-[11px] mono uppercase tracking-[0.5em] text-white/70">
-                Galleria · {galleriaMeta?.label || 'Gallery'}
-              </div>
-              <button
-                type="button"
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/60 px-4 py-2 text-xs mono uppercase tracking-[0.35em] hover:border-white/60 hover:text-white"
-                onClick={() => navigateGalleriaSection('next')}
-              >
-                Next Section <ChevronRight className="h-4 w-4" />
-              </button>
+          <div className="pointer-events-none absolute inset-0">
+            <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-[11px] mono uppercase tracking-[0.45em] text-white/80">
+              Galleria · {galleriaMeta?.label || 'Gallery'}
             </div>
-            <div className="px-6 pb-6 text-right text-[11px] mono uppercase tracking-[0.45em] text-white/60">
-              Arrow keys stay inside the Galleria
-            </div>
+            <button
+              type="button"
+              className="pointer-events-auto absolute left-6 top-1/2 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-black/65 text-white shadow-lg transition hover:border-white/60"
+              aria-label="Previous section"
+              onClick={() => navigateGalleriaSection('prev')}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              className="pointer-events-auto absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-black/65 text-white shadow-lg transition hover:border-white/60"
+              aria-label="Next section"
+              onClick={() => navigateGalleriaSection('next')}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
           </div>
         )}
       </div>

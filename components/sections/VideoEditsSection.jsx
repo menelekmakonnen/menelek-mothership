@@ -175,6 +175,15 @@ export default function VideoEditsSection() {
     setActiveClipIndex(null);
   }, []);
 
+  const openQuickView = useCallback(
+    (sectionId, index) => {
+      setActiveSectionId(sectionId);
+      setActiveClipIndex(index);
+      scrollToActiveLayer();
+    },
+    [scrollToActiveLayer]
+  );
+
   const openDefaultCollection = useCallback(() => {
     const defaultCollection = editCollections[0];
     if (defaultCollection) {
@@ -197,15 +206,6 @@ export default function VideoEditsSection() {
     }
     return undefined;
   }, [activeSectionId, closeQuickView, engageGalleriaSection, releaseGalleriaSection]);
-
-  const openQuickView = useCallback(
-    (sectionId, index) => {
-      setActiveSectionId(sectionId);
-      setActiveClipIndex(index);
-      scrollToActiveLayer();
-    },
-    [scrollToActiveLayer]
-  );
 
   const activeCollection = useMemo(
     () => editCollections.find((collection) => collection.id === activeSectionId) || null,

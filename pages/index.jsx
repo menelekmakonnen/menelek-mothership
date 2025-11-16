@@ -39,6 +39,7 @@ import SectionNavButtons from '@/components/ui/SectionNavButtons';
 import SectionNavigation from '@/components/SectionNavigation';
 import IntroductionSection from '@/components/sections/IntroductionSection';
 import LinksSection from '@/components/sections/LinksSection';
+import GalleriaHome from '@/components/GalleriaHome';
 
 const SECTION_NAV_ITEMS = [
   { id: 0, name: 'Home', icon: HomeIcon, gradient: 'from-green-600 to-emerald-600' },
@@ -204,6 +205,7 @@ export default function Home() {
 
       {/* Bottom navigation menu */}
       <BottomMenu />
+      <GalleriaHome />
     </div>
   );
 }

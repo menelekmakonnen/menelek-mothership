@@ -69,8 +69,9 @@ export const CameraProvider = ({ children }) => {
 
   // Galleria linking across sections
   const galleriaRegistryRef = useRef({});
-  const [, setGalleriaVersion] = useState(0);
+  const [galleriaVersion, setGalleriaVersion] = useState(0);
   const [activeGalleriaSection, setActiveGalleriaSectionState] = useState(null);
+  const [isGalleriaHomeOpen, setGalleriaHomeOpen] = useState(false);
   const galleriaSessionRef = useRef({ id: null, closeHandler: null });
 
   // Focus system
@@ -758,6 +759,7 @@ export const CameraProvider = ({ children }) => {
     if (!sectionId) return;
     galleriaSessionRef.current = { id: sectionId, closeHandler: closeHandler || null };
     setActiveGalleriaSectionState(sectionId);
+    setGalleriaHomeOpen(false);
   }, []);
 
   const releaseGalleriaSection = useCallback((sectionId) => {
@@ -770,9 +772,25 @@ export const CameraProvider = ({ children }) => {
     });
   }, []);
 
+  const listGalleriaSections = useCallback(() => {
+    return GALLERIA_SEQUENCE.map((id) => {
+      const entry = galleriaRegistryRef.current[id];
+      if (!entry) return null;
+      return { id, label: entry.label || id };
+    }).filter(Boolean);
+  }, [galleriaVersion]);
+
   const getGalleriaSectionMeta = useCallback((sectionId) => {
     if (!sectionId) return null;
     return galleriaRegistryRef.current[sectionId] || null;
+  }, []);
+
+  const openGalleriaSection = useCallback((sectionId, options = {}) => {
+    if (!sectionId) return;
+    const entry = galleriaRegistryRef.current[sectionId];
+    if (entry && typeof entry.openDefault === 'function') {
+      entry.openDefault({ viaGalleria: true, ...options });
+    }
   }, []);
 
   const navigateGalleriaSection = useCallback((direction = 'next') => {
@@ -789,10 +807,15 @@ export const CameraProvider = ({ children }) => {
     if (typeof galleriaSessionRef.current.closeHandler === 'function') {
       galleriaSessionRef.current.closeHandler();
     }
-    const entry = galleriaRegistryRef.current[nextId];
-    if (entry && typeof entry.openDefault === 'function') {
-      entry.openDefault({ viaGalleria: true });
-    }
+    openGalleriaSection(nextId, { viaGalleria: true });
+  }, [openGalleriaSection]);
+
+  const openGalleriaHome = useCallback(() => {
+    setGalleriaHomeOpen(true);
+  }, []);
+
+  const closeGalleriaHome = useCallback(() => {
+    setGalleriaHomeOpen(false);
   }, []);
 
   const value = {
@@ -900,6 +923,11 @@ export const CameraProvider = ({ children }) => {
     releaseGalleriaSection,
     navigateGalleriaSection,
     getGalleriaSectionMeta,
+    listGalleriaSections,
+    openGalleriaSection,
+    openGalleriaHome,
+    closeGalleriaHome,
+    isGalleriaHomeOpen,
     activeGalleriaSection,
   };
 
