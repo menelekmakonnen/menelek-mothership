@@ -225,10 +225,13 @@ export default function VideoEditsSection() {
 
   const handleSectionToggle = useCallback(
     (sectionId) => {
-      setOpenSectionId((prev) => (prev === sectionId ? prev : sectionId));
-      if (activeSectionId && activeSectionId !== sectionId) {
-        closeQuickView();
-      }
+      setOpenSectionId((prev) => {
+        const next = prev === sectionId ? null : sectionId;
+        if (next === null || (activeSectionId && activeSectionId !== next)) {
+          closeQuickView();
+        }
+        return next;
+      });
     },
     [activeSectionId, closeQuickView]
   );

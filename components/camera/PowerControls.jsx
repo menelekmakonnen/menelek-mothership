@@ -1,6 +1,6 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion } from 'framer-motion';
-import { Power, Moon } from 'lucide-react';
+import { Power, PauseCircle } from 'lucide-react';
 
 export default function PowerControls({ orientation = 'horizontal', variant = 'panel' }) {
   const { powerOff, setStandby } = useCameraContext();
@@ -8,7 +8,7 @@ export default function PowerControls({ orientation = 'horizontal', variant = 'p
   const controls = [
     {
       id: 'standby',
-      icon: Moon,
+      icon: PauseCircle,
       title: 'Standby',
       onClick: setStandby,
       accent: 'text-amber-300 border-amber-400/60 hover:bg-amber-500/10',

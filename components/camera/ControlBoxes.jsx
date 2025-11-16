@@ -335,25 +335,6 @@ export default function ControlBoxes() {
                 <motion.button
                   onClick={() => {
                     setHasModifiedSettings(true);
-                    const modes = ['auto', 'on', 'off'];
-                    const currentIndex = modes.indexOf(flashMode);
-                    const nextIndex = (currentIndex + 1) % modes.length;
-                    setFlashMode(modes[nextIndex]);
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${flashAccent}`}
-                >
-                  <FlashIcon className="w-4 h-4" />
-                  <div className="flex flex-col leading-none text-left">
-                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Flash</span>
-                    <span className="mono text-xs font-semibold tracking-[0.35em]">{flashLabel}</span>
-                  </div>
-                </motion.button>
-
-                <motion.button
-                  onClick={() => {
-                    setHasModifiedSettings(true);
                     setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr');
                   }}
                   whileTap={{ scale: 0.95 }}
@@ -401,6 +382,25 @@ export default function ControlBoxes() {
                     <span className="mono text-xs font-semibold tracking-[0.35em]">
                       {activePreset ? activePreset.toUpperCase() : 'MANUAL'}
                     </span>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  onClick={() => {
+                    setHasModifiedSettings(true);
+                    const modes = ['auto', 'on', 'off'];
+                    const currentIndex = modes.indexOf(flashMode);
+                    const nextIndex = (currentIndex + 1) % modes.length;
+                    setFlashMode(modes[nextIndex]);
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${flashAccent}`}
+                >
+                  <FlashIcon className="w-4 h-4" />
+                  <div className="flex flex-col leading-none text-left">
+                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Flash</span>
+                    <span className="mono text-xs font-semibold tracking-[0.35em]">{flashLabel}</span>
                   </div>
                 </motion.button>
 

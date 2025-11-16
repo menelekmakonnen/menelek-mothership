@@ -113,6 +113,11 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
+body.galleria-open {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
 body::before {
   content: '';
   position: fixed;

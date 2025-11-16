@@ -93,6 +93,11 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
             return;
           }
         }
+        if (
+          ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)
+        ) {
+          return;
+        }
       }
 
       if (gestureLock) return;

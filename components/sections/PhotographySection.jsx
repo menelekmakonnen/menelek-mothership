@@ -165,6 +165,16 @@ export default function PhotographySection() {
     return activeGalleryData.items.filter((item) => item.type === 'file');
   }, [activeGalleryData]);
 
+  const galleryQuickLook = useMemo(
+    () =>
+      galleryFolders.map((gallery) => ({
+        id: gallery.id,
+        title: gallery.title,
+        cover: resolveCoverImage(gallery),
+      })),
+    [galleryFolders, resolveCoverImage]
+  );
+
   const preparedGalleryImages = useMemo(() => {
     const galleryTitle = activeGallery?.title || activeAlbum?.title || 'Photography Gallery';
     return galleryImages.map((image, index) => {
@@ -218,10 +228,10 @@ export default function PhotographySection() {
     if (activeImageIndex === null) return;
     const handleKeyDown = (event) => {
       if (!preparedGalleryImages.length) return;
-      if (event.key === 'ArrowRight') {
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
         event.preventDefault();
         setActiveImageIndex((index) => (index === null ? null : (index + 1) % preparedGalleryImages.length));
-      } else if (event.key === 'ArrowLeft') {
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
         event.preventDefault();
         setActiveImageIndex((index) => (index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length));
       }
@@ -544,12 +554,12 @@ export default function PhotographySection() {
               </div>
 
               <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-                <div className="relative flex flex-1 items-center justify-center bg-black/80 px-4 py-6 md:px-10">
-                  <div className="relative flex max-h-full w-full items-center justify-center">
+                <div className="relative flex flex-1 items-center justify-center bg-black/85 px-4 py-6 md:px-10">
+                  <div className="relative mx-auto flex max-h-[80vh] w-auto max-w-full items-center justify-center">
                     <img
                       src={activeImageSrc}
                       alt={activeImage.alt}
-                      className="max-h-full max-w-full rounded-[28px] object-contain shadow-[0_35px_90px_rgba(0,0,0,0.65)]"
+                      className="max-h-[80vh] max-w-[90vw] rounded-[28px] object-contain shadow-[0_35px_90px_rgba(0,0,0,0.65)]"
                     />
                   </div>
                   {preparedGalleryImages.length > 1 && (
@@ -561,7 +571,7 @@ export default function PhotographySection() {
                             index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length
                           )
                         }
-                        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white transition hover:bg-black/80 md:left-6"
+                        className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 rounded-full bg-black/70 p-3 text-white transition hover:bg-black/80"
                         aria-label="Previous image"
                       >
                         <ChevronLeft className="h-5 w-5" />
@@ -573,7 +583,7 @@ export default function PhotographySection() {
                             index === null ? null : (index + 1) % preparedGalleryImages.length
                           )
                         }
-                        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white transition hover:bg-black/80 md:right-6"
+                        className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 rounded-full bg-black/70 p-3 text-white transition hover:bg-black/80"
                         aria-label="Next image"
                       >
                         <ChevronRight className="h-5 w-5" />
@@ -622,29 +632,42 @@ export default function PhotographySection() {
                 </aside>
               </div>
 
-              <div className="border-t border-white/10 bg-[rgba(4,6,12,0.88)] px-5 py-4">
-                <div className="flex flex-wrap items-center gap-3">
+              <div className="border-t border-white/10 bg-[rgba(4,6,12,0.92)] px-5 py-4">
+                <div className="flex flex-col gap-3">
                   <span className="mono text-[10px] uppercase tracking-[0.45em] text-white/55">Other Galleries</span>
-                  {galleryFolders.length ? (
-                    galleryFolders.map((gallery) => (
-                      <button
-                        key={gallery.id}
-                        type="button"
-                        onClick={() => {
-                          if (gallery.id === activeGallery?.id) return;
-                          setActiveImageIndex(null);
-                          setActiveGallery(gallery);
-                          scrollToActiveLayer();
-                        }}
-                        className={`rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em] transition-all ${
-                          gallery.id === activeGallery?.id
-                            ? 'border border-white/45 bg-white/15 text-white'
-                            : 'border border-white/15 bg-white/6 text-white/70 hover:border-white/35'
-                        }`}
-                      >
-                        {gallery.title}
-                      </button>
-                    ))
+                  {galleryQuickLook.length ? (
+                    <div className="flex gap-3 overflow-x-auto pb-1">
+                      {galleryQuickLook.map((gallery) => {
+                        const isCurrent = gallery.id === activeGallery?.id;
+                        return (
+                          <button
+                            key={gallery.id}
+                            type="button"
+                            onClick={() => {
+                              if (gallery.id === activeGallery?.id) return;
+                              const nextGallery = galleryFolders.find((item) => item.id === gallery.id) || null;
+                              setActiveImageIndex(null);
+                              setActiveGallery(nextGallery);
+                              scrollToActiveLayer();
+                            }}
+                            className={`flex min-w-[140px] flex-col rounded-2xl border bg-white/5 px-2 pb-3 pt-2 text-left transition-all ${
+                              isCurrent ? 'border-white/50 text-white' : 'border-white/15 text-white/80 hover:border-white/35'
+                            }`}
+                          >
+                            <div className="relative mb-2 h-16 w-full overflow-hidden rounded-xl bg-black/40">
+                              {gallery.cover ? (
+                                <img src={gallery.cover} alt={`${gallery.title} cover`} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-white/60">
+                                  <ImageIcon className="h-5 w-5" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="mono text-[10px] uppercase tracking-[0.35em] truncate">{gallery.title}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <span className="text-xs text-white/60">No additional galleries available.</span>
                   )}

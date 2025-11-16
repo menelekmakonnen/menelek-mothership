@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import BlurLayer from './BlurLayer';
 
+let activeLightboxCount = 0;
+
 export default function FullscreenLightbox({
   children,
   layerId,
-  depth = 5200,
+  depth = 9200,
   className = '',
   innerClassName = '',
   focusOnMount = true,
@@ -34,6 +36,18 @@ export default function FullscreenLightbox({
         window.scrollTo(0, 0);
       }
     });
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    activeLightboxCount += 1;
+    document.body.classList.add('galleria-open');
+    return () => {
+      activeLightboxCount = Math.max(0, activeLightboxCount - 1);
+      if (activeLightboxCount === 0) {
+        document.body.classList.remove('galleria-open');
+      }
+    };
   }, []);
 
   if (!portalElement) {
