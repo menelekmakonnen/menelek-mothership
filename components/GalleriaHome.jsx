@@ -16,7 +16,16 @@ export default function GalleriaHome() {
     batteryLevel,
   } = useCameraContext();
 
-  const sections = listGalleriaSections();
+  const sections = useMemo(() => {
+    try {
+      const registered = typeof listGalleriaSections === 'function' ? listGalleriaSections() : [];
+      return Array.isArray(registered) ? registered : [];
+    } catch (error) {
+      console.error('Unable to enumerate Galleria sections', error);
+      return [];
+    }
+  }, [listGalleriaSections]);
+
   const cards = useMemo(() => {
     if (!sections.length) return [];
     return sections.map((section) => {

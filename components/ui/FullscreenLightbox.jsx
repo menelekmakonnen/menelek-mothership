@@ -78,11 +78,18 @@ export default function FullscreenLightbox({
 
   const galleriaSections = useMemo(() => {
     if (!showGalleriaNav) return [];
-    const sections = listGalleriaSections();
-    return sections.map((section) => {
-      const detail = getGalleriaSectionDetail(section.id);
-      return { ...section, ...detail };
-    });
+    try {
+      const sections =
+        typeof listGalleriaSections === 'function' ? listGalleriaSections() : [];
+      if (!Array.isArray(sections) || !sections.length) return [];
+      return sections.map((section) => {
+        const detail = getGalleriaSectionDetail(section.id);
+        return { ...section, ...detail };
+      });
+    } catch (error) {
+      console.error('Unable to render Galleria chrome', error);
+      return [];
+    }
   }, [listGalleriaSections, showGalleriaNav]);
 
   const ActiveIcon = galleriaDetail?.icon || GalleryHorizontalEnd;

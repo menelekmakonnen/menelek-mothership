@@ -361,16 +361,17 @@ export default function IntroductionSection() {
                     <motion.button
                       type="button"
                       onClick={openGalleriaHome}
-                      className="group inline-flex items-center gap-3 rounded-full border border-white/25 bg-gradient-to-r from-emerald-500/30 via-cyan-500/25 to-blue-500/30 px-5 py-3 text-left text-white/90 shadow-[0_18px_45px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-                      whileHover={{ scale: 1.04, translateY: -1 }}
+                      className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-left text-white/90 shadow-[0_18px_40px_rgba(0,0,0,0.4)] backdrop-blur-2xl"
+                      whileHover={{ scale: 1.05, translateY: -2 }}
                       whileTap={{ scale: 0.97 }}
                     >
-                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black/35 border border-white/30">
-                        <GalleryHorizontalEnd className="h-5 w-5" />
+                      <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/15 via-cyan-300/10 to-blue-400/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true" />
+                      <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-white/30 bg-black/40">
+                        <GalleryHorizontalEnd className="h-4 w-4" />
                       </span>
-                      <span className="flex flex-col leading-tight">
-                        <span className="text-[10px] mono uppercase tracking-[0.55em] text-white/70">Immersive</span>
-                        <span className="text-base font-semibold uppercase tracking-[0.35em]">Launch Galleria</span>
+                      <span className="relative flex flex-col leading-tight">
+                        <span className="text-[10px] mono uppercase tracking-[0.55em] text-white/60">Galleria</span>
+                        <span className="text-sm font-semibold uppercase tracking-[0.4em]">Enter Vault</span>
                       </span>
                     </motion.button>
                   </div>
