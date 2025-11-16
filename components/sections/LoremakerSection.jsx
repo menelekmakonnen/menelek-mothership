@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, Loader2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Sparkles, X } from 'lucide-react';
 import BlurLayer from '@/components/ui/BlurLayer';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { resolveDriveImage } from '@/lib/googleDrive';
@@ -23,6 +23,12 @@ export default function LoremakerSection() {
   const [error, setError] = useState(null);
   const [activeCharacter, setActiveCharacter] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const rosterList = useMemo(() => {
+    if (!characters.length) return [];
+    return characters
+      .filter((character) => character.coverImage || character.coverVariants)
+      .slice(0, 30);
+  }, [characters]);
 
   const scrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -150,58 +156,106 @@ export default function LoremakerSection() {
 
         {error && <div className="rounded-3xl border border-rose-400/40 bg-rose-500/10 p-4 text-rose-200">{error}</div>}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {displayedCharacters.map((character, index) => (
-            <motion.button
-              key={`${character.id}-${index}`}
-              type="button"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.05 * index }}
-              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(8,10,16,0.78)] text-left shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
-              onClick={() => openCharacter(character)}
-            >
-              {(() => {
-                const cover =
+        <div className="grid gap-8 lg:grid-cols-[260px,1fr]">
+          <aside className="camera-hud rounded-3xl border border-white/10 p-4 space-y-4">
+            <div>
+              <p className="mono text-[11px] uppercase tracking-[0.5em] text-white/70">Universe Index</p>
+              <p className="text-sm text-white/70">Pick a hero to open their dossier instantly.</p>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1">
+              {rosterList.map((character) => {
+                const coverThumb =
+                  resolveDriveImage(character.coverVariants, 'thumb') ||
                   resolveDriveImage(character.coverVariants, 'preview') ||
                   character.coverImage ||
                   character.coverImageFull;
                 return (
-                  <div className="relative aspect-[3/4] w-full overflow-hidden">
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: cover ? `url(${cover})` : undefined,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundColor: cover ? undefined : 'rgba(20,24,32,0.85)',
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4 space-y-1">
-                      <p className="text-lg font-semibold text-white">{character.character}</p>
-                      {character.alias && (
-                        <p className="text-xs uppercase mono tracking-[0.35em] text-white/65">{character.alias}</p>
+                  <button
+                    key={character.id || character.character}
+                    type="button"
+                    onClick={() => openCharacter(character)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:border-white/35"
+                  >
+                    <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-black/40">
+                      {coverThumb ? (
+                        <img
+                          src={coverThumb}
+                          alt={character.character}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-white/60">
+                          <Sparkles className="h-4 w-4" />
+                        </div>
                       )}
                     </div>
-                  </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white/90 truncate">{character.character}</p>
+                      {character.alias && (
+                        <p className="mono text-[10px] uppercase tracking-[0.35em] text-white/50 truncate">{character.alias}</p>
+                      )}
+                    </div>
+                  </button>
                 );
-              })()}
-              <div className="p-4 space-y-3">
-                <p className="text-sm text-[color:var(--text-secondary)] line-clamp-3">
-                  {character.shortDescription || character.longDescription || 'Character dossier from the Loremaker Universe.'}
-                </p>
-                <div className="flex flex-wrap gap-2 text-[10px] uppercase mono tracking-[0.35em] text-white/60">
-                  {character.alignment && <span className="rounded-full border border-white/15 px-3 py-1">{character.alignment}</span>}
-                  {character.faction && <span className="rounded-full border border-white/15 px-3 py-1">{character.faction}</span>}
-                  {character.era && <span className="rounded-full border border-white/15 px-3 py-1">{character.era}</span>}
+              })}
+            </div>
+          </aside>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {displayedCharacters.map((character, index) => (
+              <motion.button
+                key={`${character.id}-${index}`}
+                type="button"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.05 * index }}
+                className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(8,10,16,0.78)] text-left shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+                onClick={() => openCharacter(character)}
+              >
+                {(() => {
+                  const cover =
+                    resolveDriveImage(character.coverVariants, 'preview') ||
+                    character.coverImage ||
+                    character.coverImageFull;
+                  return (
+                    <div className="relative aspect-[3/4] w-full overflow-hidden">
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: cover ? `url(${cover})` : undefined,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundColor: cover ? undefined : 'rgba(20,24,32,0.85)',
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4 space-y-1">
+                        <p className="text-lg font-semibold text-white">{character.character}</p>
+                        {character.alias && (
+                          <p className="text-xs uppercase mono tracking-[0.35em] text-white/65">{character.alias}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="p-4 space-y-3">
+                  <p className="text-sm text-[color:var(--text-secondary)] line-clamp-3">
+                    {character.shortDescription || character.longDescription || 'Character dossier from the Loremaker Universe.'}
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-[10px] uppercase mono tracking-[0.35em] text-white/60">
+                    {character.alignment && <span className="rounded-full border border-white/15 px-3 py-1">{character.alignment}</span>}
+                    {character.faction && <span className="rounded-full border border-white/15 px-3 py-1">{character.faction}</span>}
+                    {character.era && <span className="rounded-full border border-white/15 px-3 py-1">{character.era}</span>}
+                  </div>
+                  <div className="text-xs text-green-300 opacity-0 transition-opacity group-hover:opacity-100">
+                    Open dossier →
+                  </div>
                 </div>
-                <div className="text-xs text-green-300 opacity-0 transition-opacity group-hover:opacity-100">
-                  Open dossier →
-                </div>
-              </div>
-            </motion.button>
-          ))}
+              </motion.button>
+            ))}
+          </div>
         </div>
 
         {loading && (
@@ -225,7 +279,7 @@ export default function LoremakerSection() {
           <FullscreenLightbox
             key={activeCharacter.id}
             layerId={`loremaker-${activeCharacter.id}`}
-            depth={2650}
+            depth={5200}
             onClose={() => setActiveCharacter(null)}
             innerClassName="p-0"
           >
@@ -237,13 +291,21 @@ export default function LoremakerSection() {
               className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(8,10,18,0.96)] shadow-[0_55px_140px_rgba(0,0,0,0.7)]"
             >
               <div className="flex flex-1 flex-col lg:flex-row">
-                <div className="relative flex-1 min-h-[320px]">
+                <div className="relative flex min-h-[320px] flex-1 items-center justify-center bg-black/55 px-4 py-6">
                   {activeImage ? (
-                    <img src={activeImage} alt={activeCharacter.character} className="h-full w-full object-cover" />
+                    <img
+                      src={activeImage}
+                      alt={activeCharacter.character}
+                      className="max-h-[80vh] w-auto max-w-full rounded-[32px] object-contain shadow-[0_30px_80px_rgba(0,0,0,0.65)]"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-black/50 text-white/60">No image</div>
+                    <div className="flex h-full w-full items-center justify-center rounded-[32px] border border-dashed border-white/20 bg-black/40 text-white/60">
+                      <Sparkles className="mr-3 h-5 w-5" /> No imagery shared yet
+                    </div>
                   )}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent p-6">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent p-6">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <h3 className="text-3xl font-semibold text-white">{activeCharacter.character}</h3>

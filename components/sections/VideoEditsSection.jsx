@@ -125,10 +125,11 @@ const previewFallback = [
 export default function VideoEditsSection() {
   const [previews, setPreviews] = useState({});
   const initiatedRef = useRef(new Set());
-  const [collapsedSections, setCollapsedSections] = useState(() => editCollections.map((collection) => collection.id));
+  const [openSectionId, setOpenSectionId] = useState(editCollections[0]?.id || null);
   const [activeSectionId, setActiveSectionId] = useState(null);
   const [activeClipIndex, setActiveClipIndex] = useState(null);
   const sectionRefs = useRef({});
+  const initialScrollHandledRef = useRef(false);
 
   const scrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -167,32 +168,6 @@ export default function VideoEditsSection() {
     setActiveSectionId(null);
     setActiveClipIndex(null);
   }, []);
-
-  const toggleCollapsed = useCallback(
-    (sectionId) => {
-      setCollapsedSections((prev) => {
-        const isCollapsed = prev.includes(sectionId);
-        const next = isCollapsed ? prev.filter((id) => id !== sectionId) : [...prev, sectionId];
-        if (!isCollapsed && activeSectionId === sectionId) {
-          closeQuickView();
-        }
-        if (isCollapsed && typeof window !== 'undefined') {
-          window.requestAnimationFrame(() => {
-            const node = sectionRefs.current[sectionId];
-            if (node) {
-              try {
-                node.scrollIntoView({ behavior: 'auto', block: 'start' });
-              } catch (error) {
-                node.scrollIntoView();
-              }
-            }
-          });
-        }
-        return next;
-      });
-    },
-    [activeSectionId, closeQuickView]
-  );
 
   const openQuickView = useCallback(
     (sectionId, index) => {
@@ -247,6 +222,33 @@ export default function VideoEditsSection() {
       scrollToActiveLayer();
     }
   }, [activeSectionId, activeClipIndex, scrollToActiveLayer]);
+
+  const handleSectionToggle = useCallback(
+    (sectionId) => {
+      setOpenSectionId((prev) => (prev === sectionId ? prev : sectionId));
+      if (activeSectionId && activeSectionId !== sectionId) {
+        closeQuickView();
+      }
+    },
+    [activeSectionId, closeQuickView]
+  );
+
+  useEffect(() => {
+    if (!openSectionId) return;
+    if (!sectionRefs.current[openSectionId]) return;
+    if (!initialScrollHandledRef.current) {
+      initialScrollHandledRef.current = true;
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      try {
+        sectionRefs.current[openSectionId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (error) {
+        sectionRefs.current[openSectionId]?.scrollIntoView();
+      }
+    });
+  }, [openSectionId]);
 
   const getClipPreview = useCallback(
     (url, collection, index) => {
@@ -322,6 +324,8 @@ export default function VideoEditsSection() {
     const clipMeta = clipUrl ? getClipPreview(clipUrl, activeCollection, activeClipIndex) : null;
     const embedUrl = clipMeta?.media?.embedUrl;
     const provider = clipMeta?.media?.provider || 'unknown';
+    const isVertical = provider === 'instagram' || /reel/i.test(clipUrl || '');
+    const aspectClass = isVertical ? 'aspect-[9/16]' : 'aspect-video';
 
     const clipEntries = activeLinks.map((url, index) => ({
       url,
@@ -333,7 +337,7 @@ export default function VideoEditsSection() {
       <FullscreenLightbox
         key={`${activeCollection.id}-clip-${activeClipIndex}`}
         layerId={`video-edit-${activeCollection.id}`}
-        depth={2650}
+        depth={5200}
         onClose={closeQuickView}
         innerClassName="p-0 overflow-hidden"
       >
@@ -369,28 +373,33 @@ export default function VideoEditsSection() {
           <div className="flex-1 overflow-hidden">
             <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
               <div className="flex flex-1 items-center justify-center">
-                <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_40px_110px_rgba(0,0,0,0.6)]">
-                  {embedUrl ? (
-                    <iframe
-                      key={embedUrl}
-                      src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
-                      className="h-full w-full"
-                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                      title={clipMeta?.title || 'Video playback'}
-                    />
-                  ) : (
-                    <div
-                      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
-                      style={{
-                        backgroundImage: clipMeta?.image ? `url(${clipMeta.image})` : undefined,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }}
-                    >
-                      {!clipMeta?.image && <Play className="h-14 w-14" />}
-                    </div>
-                  )}
+                <div className="relative w-full max-w-4xl">
+                  <div
+                    className={`relative w-full ${aspectClass} max-h-[80vh] overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_40px_110px_rgba(0,0,0,0.6)]`}
+                  >
+                    {embedUrl ? (
+                      <iframe
+                        key={embedUrl}
+                        src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                        className="absolute inset-0 h-full w-full"
+                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                        loading="lazy"
+                        title={clipMeta?.title || 'Video playback'}
+                      />
+                    ) : (
+                      <div
+                        className="absolute inset-0 flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                        style={{
+                          backgroundImage: clipMeta?.image ? `url(${clipMeta.image})` : undefined,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      >
+                        {!clipMeta?.image && <Play className="h-14 w-14" />}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <aside className="flex w-full flex-col gap-6 border-t border-white/10 bg-[rgba(10,12,20,0.88)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
@@ -488,7 +497,7 @@ export default function VideoEditsSection() {
 
         <div className="space-y-10">
           {editCollections.map((collection, sectionIndex) => {
-            const collapsed = collapsedSections.includes(collection.id);
+            const collapsed = openSectionId !== collection.id;
             return (
               <motion.section
                 key={collection.id}
@@ -506,7 +515,7 @@ export default function VideoEditsSection() {
               >
                 <button
                   type="button"
-                  onClick={() => toggleCollapsed(collection.id)}
+                  onClick={() => handleSectionToggle(collection.id)}
                   className="relative flex w-full items-center justify-between gap-3 bg-gradient-to-br from-white/5 via-white/0 to-white/5 px-6 py-5 text-left transition-colors hover:bg-white/10"
                 >
                   <div className="flex items-center gap-4">

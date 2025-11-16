@@ -126,7 +126,7 @@ body::before {
 .content-stage {
   width: min(100%, var(--stage-max-width, 1200px));
   margin: 0 auto;
-  padding: var(--stage-padding-y, clamp(48px, 10vh, 96px)) clamp(14px, 4.5vw, 56px);
+  padding: var(--stage-padding-y, clamp(48px, 10vh, 96px)) clamp(12px, 3.5vw, 42px);
 }
 
 [data-lens-layout='wide'] {

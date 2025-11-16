@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Loader2, Sparkles, X } from 'lucide-react';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
@@ -23,10 +23,14 @@ const getPreviewSrc = (item, intent = 'preview') => {
   return null;
 };
 
+const describeAlbumTheme = (title = 'this series') =>
+  `Custom diffusion and ControlNet workflows inspired by ${title}.`;
+
 export default function AIAlbumsSection() {
   const { loadFolder, getFolder, isLoading, getError } = useDriveFolderCache();
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [favoriteFrames, setFavoriteFrames] = useState({});
 
   const autoScrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -59,7 +63,7 @@ export default function AIAlbumsSection() {
 
   const rootLevelAlbums = useMemo(() => {
     if (!aiRoot) return [];
-    return aiRoot.items.filter((item) => item.type === 'folder' && /ai/i.test(item.title));
+    return aiRoot.items.filter((item) => item.type === 'folder');
   }, [aiRoot]);
 
   const albumEntries = useMemo(() => {
@@ -83,6 +87,20 @@ export default function AIAlbumsSection() {
   }, [selectedAlbum, loadFolder]);
 
   useEffect(() => {
+    if (!selectedAlbum) return;
+    setFavoriteFrames((prev) => {
+      const scoped = {};
+      const prefix = `${selectedAlbum.id}:`;
+      Object.keys(prev).forEach((key) => {
+        if (key.startsWith(prefix)) {
+          scoped[key] = prev[key];
+        }
+      });
+      return scoped;
+    });
+  }, [selectedAlbum]);
+
+  useEffect(() => {
     if (!albumEntries.length) return;
     albumEntries.forEach((album) => {
       if (!getFolder(album.id)) {
@@ -100,10 +118,12 @@ export default function AIAlbumsSection() {
 
   const preparedAlbumImages = useMemo(() => {
     const albumTitle = selectedAlbum?.title || 'AI Collection';
+    const albumSignature = selectedAlbum?.id || 'ai-album';
     return selectedAlbumImages.map((image, index) => {
       const previewSrc = getPreviewSrc(image);
       const fullSrc = getPreviewSrc(image, 'full') || previewSrc;
       const thumbSrc = getPreviewSrc(image, 'thumb') || previewSrc;
+      const favoriteKey = `${albumSignature}:${image.id || index}`;
       return {
         ...image,
         displayTitle: albumTitle,
@@ -112,6 +132,7 @@ export default function AIAlbumsSection() {
         fullSrc,
         thumbSrc,
         frameIndex: index,
+        favoriteKey,
       };
     });
   }, [selectedAlbum?.title, selectedAlbumImages]);
@@ -126,6 +147,8 @@ export default function AIAlbumsSection() {
   }, [preparedAlbumImages, selectedImageIndex]);
 
   const activeImage = selectedImageIndex !== null ? preparedAlbumImages[selectedImageIndex] : null;
+  const activeFavoriteKey = activeImage?.favoriteKey || null;
+  const isActiveFavorite = activeFavoriteKey ? Boolean(favoriteFrames[activeFavoriteKey]) : false;
 
   useEffect(() => {
     if (selectedAlbum || selectedImageIndex !== null) {
@@ -158,6 +181,19 @@ export default function AIAlbumsSection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [preparedAlbumImages.length, selectedImageIndex]);
+
+  const toggleFavorite = useCallback((key) => {
+    if (!key) return;
+    setFavoriteFrames((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+      } else {
+        next[key] = true;
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
@@ -203,7 +239,15 @@ export default function AIAlbumsSection() {
                     const coverCandidate = albumData?.items.find((item) => item.type === 'file') || null;
                     const cover = getPreviewSrc(coverCandidate) || getPreviewSrc(album);
                     if (cover) {
-                      return <img src={cover} alt={`${album.title} cover`} className="h-full w-full object-cover" loading="lazy" />;
+                      return (
+                        <img
+                          src={cover}
+                          alt={`${album.title} cover`}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      );
                     }
                     return (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500/70 via-fuchsia-500/65 to-indigo-600/70">
@@ -217,7 +261,7 @@ export default function AIAlbumsSection() {
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">{album.title}</h3>
-                  <p className="text-sm text-[color:var(--text-secondary)]">Tap to explore generated frames.</p>
+                  <p className="text-sm text-[color:var(--text-secondary)]">{describeAlbumTheme(album.title)}</p>
                 </div>
               </motion.button>
             ))}
@@ -245,7 +289,7 @@ export default function AIAlbumsSection() {
           <FullscreenLightbox
             key={selectedAlbum.id}
             layerId={`ai-album-${selectedAlbum.id}`}
-            depth={2600}
+            depth={5200}
             onClose={() => setSelectedAlbum(null)}
             innerClassName="p-0"
           >
@@ -265,6 +309,7 @@ export default function AIAlbumsSection() {
                     <ArrowLeft className="h-4 w-4" /> Back to AI Albums
                   </button>
                   <h2 className="text-4xl font-bold text-white">{selectedAlbum.title}</h2>
+                  <p className="text-xs text-white/65">{describeAlbumTheme(selectedAlbum.title)}</p>
                   {getError(selectedAlbum.id) && (
                     <p className="text-sm text-rose-300">Unable to load this album. Please try again shortly.</p>
                   )}
@@ -280,40 +325,68 @@ export default function AIAlbumsSection() {
 
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {preparedAlbumImages.map((image, index) => (
-                    <motion.button
-                      key={image.id}
-                      type="button"
-                      onClick={() => setSelectedImageIndex(index)}
-                      initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.01 * index }}
-                      className="relative aspect-square overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_16px_40px_rgba(0,0,0,0.45)]"
-                    >
-                      {(() => {
-                        const preview = getPreviewSrc(image);
-                        if (preview) {
+                  {preparedAlbumImages.map((image, index) => {
+                    const isFavorite = Boolean(favoriteFrames[image.favoriteKey]);
+                    const openFrame = () => setSelectedImageIndex(index);
+                    return (
+                      <motion.div
+                        key={image.id || `${image.frameIndex}-${index}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={openFrame}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openFrame();
+                          }
+                        }}
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.01 * index }}
+                        className="relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_16px_40px_rgba(0,0,0,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                      >
+                        {(() => {
+                          const preview = getPreviewSrc(image);
+                          if (preview) {
+                            return (
+                              <img
+                                src={preview}
+                                alt={image.alt}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            );
+                          }
                           return (
-                            <img
-                              src={preview}
-                              alt={image.alt}
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 text-white/80">
+                              <Sparkles className="h-8 w-8" />
+                            </div>
                           );
-                        }
-                        return (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 text-white/80">
-                            <Sparkles className="h-8 w-8" />
-                          </div>
-                        );
-                      })()}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-                      <div className="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white/85 truncate">
-                        {image.displayTitle}
-                      </div>
-                    </motion.button>
-                  ))}
+                        })()}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                        <div className="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white/85 truncate">
+                          {image.displayTitle}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleFavorite(image.favoriteKey);
+                          }}
+                          className={`absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border transition-all ${
+                            isFavorite
+                              ? 'border-rose-300/70 bg-rose-500/20 text-rose-200'
+                              : 'border-white/20 bg-black/40 text-white/80 hover:border-white/50'
+                          }`}
+                          aria-pressed={isFavorite}
+                          aria-label={isFavorite ? 'Remove favourite' : 'Save favourite frame'}
+                        >
+                          <Heart className="h-4 w-4" fill={isFavorite ? 'currentColor' : 'none'} />
+                        </button>
+                      </motion.div>
+                    );
+                  })}
                 </div>
 
                 {!preparedAlbumImages.length && isLoading(selectedAlbum.id) && (
@@ -332,7 +405,7 @@ export default function AIAlbumsSection() {
           <FullscreenLightbox
             key={`ai-lightbox-${activeImage.id || activeImageIndex}`}
             layerId={`ai-lightbox-${activeImage.id || activeImageIndex}`}
-            depth={2700}
+            depth={5200}
             onClose={() => setSelectedImageIndex(null)}
             innerClassName="p-0 overflow-hidden"
           >
@@ -351,14 +424,34 @@ export default function AIAlbumsSection() {
                     Frame {selectedImageIndex + 1} of {preparedAlbumImages.length}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedImageIndex(null)}
-                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
-                  aria-label="Close lightbox"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-3">
+                  {activeFavoriteKey && (
+                    <button
+                      type="button"
+                      onClick={() => toggleFavorite(activeFavoriteKey)}
+                      className={`flex items-center gap-2 rounded-full border px-3 py-2 text-[10px] mono uppercase tracking-[0.4em] ${
+                        isActiveFavorite
+                          ? 'border-rose-300/60 bg-rose-500/10 text-rose-200'
+                          : 'border-white/15 bg-white/5 text-white/70 hover:border-white/35'
+                      }`}
+                      aria-pressed={isActiveFavorite}
+                    >
+                      <Heart
+                        className="h-3.5 w-3.5"
+                        fill={isActiveFavorite ? 'currentColor' : 'none'}
+                      />
+                      {isActiveFavorite ? 'Favourited' : 'Save Frame'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex(null)}
+                    className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                    aria-label="Close lightbox"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
@@ -373,7 +466,9 @@ export default function AIAlbumsSection() {
                         activeImage.downloadUrl
                       }
                       alt={activeImage.alt}
-                      className="max-h-full max-w-full rounded-[28px] object-contain shadow-[0_30px_80px_rgba(0,0,0,0.65)]"
+                      className="max-h-[80vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_30px_80px_rgba(0,0,0,0.65)]"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                 </div>
@@ -386,6 +481,7 @@ export default function AIAlbumsSection() {
                     <div className="flex flex-col gap-3">
                       {preparedAlbumImages.map((image, index) => {
                         const isCurrent = index === selectedImageIndex;
+                        const isFavoriteThumb = Boolean(favoriteFrames[image.favoriteKey]);
                         return (
                           <button
                             key={image.id || `${image.frameIndex}-${index}`}
@@ -399,11 +495,20 @@ export default function AIAlbumsSection() {
                           >
                             <div className="relative h-16 w-20 overflow-hidden rounded-xl bg-black/40">
                               {image.thumbSrc ? (
-                                <img src={image.thumbSrc} alt={image.alt} className="h-full w-full object-cover" loading="lazy" />
+                                <img
+                                  src={image.thumbSrc}
+                                  alt={image.alt}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
+                                />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-white/60">
                                   <Sparkles className="h-5 w-5" />
                                 </div>
+                              )}
+                              {isFavoriteThumb && (
+                                <Heart className="absolute right-1 top-1 h-3.5 w-3.5 text-rose-300" fill="currentColor" />
                               )}
                             </div>
                             <div className="text-left">
@@ -437,6 +542,7 @@ export default function AIAlbumsSection() {
                             ? 'border border-white/45 bg-white/15 text-white'
                             : 'border border-white/15 bg-white/5 text-white/70 hover:border-white/35'
                         }`}
+                        title={describeAlbumTheme(album.title)}
                       >
                         {album.title}
                       </button>

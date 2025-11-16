@@ -219,13 +219,15 @@ export default function FilmsSection() {
     const mediaMeta = parseMediaLink(activeProject.link);
     const embedUrl = mediaMeta?.embedUrl;
     const provider = mediaMeta?.provider || 'unknown';
+    const isVertical = provider === 'instagram' || /shorts/i.test(activeProject.link || '');
+    const aspectClass = isVertical ? 'aspect-[9/16]' : 'aspect-video';
     const siblingProjects = filteredVideos.filter((project) => project.id !== activeProject.id);
 
     return (
       <FullscreenLightbox
         key={`film-${activeProject.id}`}
         layerId={`film-${activeProject.id}`}
-        depth={2650}
+        depth={5200}
         onClose={closeProject}
         innerClassName="p-0 overflow-hidden"
       >
@@ -258,33 +260,38 @@ export default function FilmsSection() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-hidden">
-            <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
-              <div className="flex flex-1 items-center justify-center">
-                <div className="relative w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_45px_120px_rgba(0,0,0,0.6)]">
-                  {embedUrl ? (
-                    <iframe
-                      key={embedUrl}
-                      src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
-                      className="h-full w-full"
-                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                      title={activeProject.title}
-                    />
-                  ) : (
-                    <div
-                      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
-                      style={{
-                        backgroundImage: preview.image ? `url(${preview.image})` : undefined,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }}
-                    >
-                      {!preview.image && <Play className="h-14 w-14" />}
+              <div className="flex-1 overflow-hidden">
+                <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
+                  <div className="flex flex-1 items-center justify-center">
+                    <div className="relative w-full max-w-5xl">
+                      <div
+                        className={`relative w-full ${aspectClass} max-h-[80vh] overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_45px_120px_rgba(0,0,0,0.6)]`}
+                      >
+                        {embedUrl ? (
+                          <iframe
+                            key={embedUrl}
+                            src={`${embedUrl}${provider === 'youtube' ? '?autoplay=1&rel=0' : ''}`}
+                            className="absolute inset-0 h-full w-full"
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                            title={activeProject.title}
+                          />
+                        ) : (
+                          <div
+                            className="absolute inset-0 flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-white/70"
+                            style={{
+                              backgroundImage: preview.image ? `url(${preview.image})` : undefined,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                            }}
+                          >
+                            {!preview.image && <Play className="h-14 w-14" />}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
               <aside className="flex w-full flex-col gap-6 border-t border-white/10 bg-[rgba(10,12,20,0.88)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
                 <div className="space-y-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] mono uppercase tracking-[0.4em] text-white/70">
