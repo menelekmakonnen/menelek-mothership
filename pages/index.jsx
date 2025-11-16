@@ -28,6 +28,7 @@ import FocusIndicator from '@/components/camera/FocusIndicator';
 import BottomMenu from '@/components/camera/BottomMenu';
 import MobileImmersiveHUD from '@/components/camera/MobileImmersiveHUD';
 import InterfaceOverlays from '@/components/camera/InterfaceOverlays';
+import ShutdownSequence from '@/components/camera/ShutdownSequence';
 
 // UI components
 import RuleOfThirds from '@/components/ui/RuleOfThirds';
@@ -74,6 +75,7 @@ export default function Home() {
     powerState,
     powerOn,
     hasBooted,
+    completeShutdown,
     theme,
     isChangingLens,
     setCurrentSection,
@@ -103,6 +105,10 @@ export default function Home() {
     <BlogSection key="blog" />,
     <LinksSection key="links" />,
   ];
+
+  if (powerState === 'shutting-down') {
+    return <ShutdownSequence onComplete={completeShutdown} />;
+  }
 
   // Power off state
   if (powerState === 'off') {

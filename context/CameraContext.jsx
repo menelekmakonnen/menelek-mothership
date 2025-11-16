@@ -28,6 +28,8 @@ const WHITE_BALANCE_MODES = {
   custom: { name: 'Custom', temp: 5500, tint: 0 },
 };
 
+const GALLERIA_SEQUENCE = ['photography', 'ai-albums', 'films', 'video-edits', 'loremaker'];
+
 export const CameraProvider = ({ children }) => {
   // Power states
   const [powerState, setPowerState] = useState('off'); // 'off', 'booting', 'on', 'standby'
@@ -64,6 +66,12 @@ export const CameraProvider = ({ children }) => {
 
   // Control boxes state
   const [openBoxes, setOpenBoxes] = useState([]); // Can have max 2 open, start with none
+
+  // Galleria linking across sections
+  const galleriaRegistryRef = useRef({});
+  const [, setGalleriaVersion] = useState(0);
+  const [activeGalleriaSection, setActiveGalleriaSectionState] = useState(null);
+  const galleriaSessionRef = useRef({ id: null, closeHandler: null });
 
   // Focus system
   const [focusedLayer, setFocusedLayerState] = useState(null);
@@ -237,6 +245,14 @@ export const CameraProvider = ({ children }) => {
   }, []);
 
   // Power management
+  const completeShutdown = useCallback(() => {
+    galleriaSessionRef.current = { id: null, closeHandler: null };
+    setActiveGalleriaSectionState(null);
+    setPowerState('off');
+    setHasBooted(false);
+    sessionStorage.removeItem('hasBootedThisSession');
+  }, []);
+
   const powerOn = useCallback(() => {
     const needsBoot = !sessionStorage.getItem('hasBootedThisSession');
 
@@ -253,10 +269,9 @@ export const CameraProvider = ({ children }) => {
   }, []);
 
   const powerOff = useCallback(() => {
-    setPowerState('off');
-    // Clear session boot flag so next power on triggers boot
-    sessionStorage.removeItem('hasBootedThisSession');
-  }, []);
+    if (powerState === 'shutting-down') return;
+    setPowerState('shutting-down');
+  }, [powerState]);
 
   const setStandby = useCallback(() => {
     setPowerState('standby');
@@ -723,11 +738,69 @@ export const CameraProvider = ({ children }) => {
     return { filter: filters.join(' ') };
   }, [aperture, exposureComp, getWhiteBalanceFilter, shutterSpeed]);
 
+  const registerGalleriaSection = useCallback((sectionId, config = {}) => {
+    if (!sectionId) return () => {};
+    galleriaRegistryRef.current[sectionId] = {
+      id: sectionId,
+      label: config.label || sectionId,
+      openDefault: config.openDefault,
+    };
+    setGalleriaVersion((version) => version + 1);
+    return () => {
+      if (galleriaRegistryRef.current[sectionId]) {
+        delete galleriaRegistryRef.current[sectionId];
+        setGalleriaVersion((version) => version + 1);
+      }
+    };
+  }, []);
+
+  const engageGalleriaSection = useCallback((sectionId, closeHandler) => {
+    if (!sectionId) return;
+    galleriaSessionRef.current = { id: sectionId, closeHandler: closeHandler || null };
+    setActiveGalleriaSectionState(sectionId);
+  }, []);
+
+  const releaseGalleriaSection = useCallback((sectionId) => {
+    setActiveGalleriaSectionState((current) => {
+      if (current !== sectionId) {
+        return current;
+      }
+      galleriaSessionRef.current = { id: null, closeHandler: null };
+      return null;
+    });
+  }, []);
+
+  const getGalleriaSectionMeta = useCallback((sectionId) => {
+    if (!sectionId) return null;
+    return galleriaRegistryRef.current[sectionId] || null;
+  }, []);
+
+  const navigateGalleriaSection = useCallback((direction = 'next') => {
+    const current = galleriaSessionRef.current.id;
+    if (!current) return;
+    const available = GALLERIA_SEQUENCE.filter((id) => Boolean(galleriaRegistryRef.current[id]));
+    if (!available.length) return;
+    const currentIndex = available.indexOf(current);
+    if (currentIndex === -1) return;
+    const delta = direction === 'prev' ? -1 : 1;
+    const nextIndex = (currentIndex + delta + available.length) % available.length;
+    const nextId = available[nextIndex];
+    if (!nextId) return;
+    if (typeof galleriaSessionRef.current.closeHandler === 'function') {
+      galleriaSessionRef.current.closeHandler();
+    }
+    const entry = galleriaRegistryRef.current[nextId];
+    if (entry && typeof entry.openDefault === 'function') {
+      entry.openDefault({ viaGalleria: true });
+    }
+  }, []);
+
   const value = {
     // Power
     powerState,
     powerOn,
     powerOff,
+    completeShutdown,
     setStandby,
     resetCamera,
     ensurePartialReset,
@@ -822,6 +895,12 @@ export const CameraProvider = ({ children }) => {
     hasInteractiveLayer,
     performFullReset,
     lensLayout,
+    registerGalleriaSection,
+    engageGalleriaSection,
+    releaseGalleriaSection,
+    navigateGalleriaSection,
+    getGalleriaSectionMeta,
+    activeGalleriaSection,
   };
 
   return (

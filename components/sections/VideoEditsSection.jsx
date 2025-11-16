@@ -16,6 +16,7 @@ import {
 import IconBox from '@/components/ui/IconBox';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { parseMediaLink } from '@/lib/mediaLinks';
+import { useCameraContext } from '@/context/CameraContext';
 
 const editCollections = [
   {
@@ -130,6 +131,11 @@ export default function VideoEditsSection() {
   const [activeClipIndex, setActiveClipIndex] = useState(null);
   const sectionRefs = useRef({});
   const initialScrollHandledRef = useRef(false);
+  const {
+    registerGalleriaSection,
+    engageGalleriaSection,
+    releaseGalleriaSection,
+  } = useCameraContext();
 
   const scrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -168,6 +174,29 @@ export default function VideoEditsSection() {
     setActiveSectionId(null);
     setActiveClipIndex(null);
   }, []);
+
+  const openDefaultCollection = useCallback(() => {
+    const defaultCollection = editCollections[0];
+    if (defaultCollection) {
+      openQuickView(defaultCollection.id, 0);
+    }
+  }, [openQuickView]);
+
+  useEffect(() => {
+    const unregister = registerGalleriaSection('video-edits', {
+      label: 'Epic Video Edits',
+      openDefault: openDefaultCollection,
+    });
+    return unregister;
+  }, [openDefaultCollection, registerGalleriaSection]);
+
+  useEffect(() => {
+    if (activeSectionId !== null) {
+      engageGalleriaSection('video-edits', closeQuickView);
+      return () => releaseGalleriaSection('video-edits');
+    }
+    return undefined;
+  }, [activeSectionId, closeQuickView, engageGalleriaSection, releaseGalleriaSection]);
 
   const openQuickView = useCallback(
     (sectionId, index) => {
@@ -343,6 +372,8 @@ export default function VideoEditsSection() {
         depth={5200}
         onClose={closeQuickView}
         innerClassName="p-0 overflow-hidden"
+        galleriaSectionId="video-edits"
+        showGalleriaChrome
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}

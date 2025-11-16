@@ -13,6 +13,7 @@ import {
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
+import { useCameraContext } from '@/context/CameraContext';
 
 const MMM_MEDIA_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
 
@@ -50,6 +51,11 @@ export default function PhotographySection() {
   const [activeAlbum, setActiveAlbum] = useState(null);
   const [activeGallery, setActiveGallery] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(null);
+  const {
+    registerGalleriaSection,
+    engageGalleriaSection,
+    releaseGalleriaSection,
+  } = useCameraContext();
 
   const scrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -133,6 +139,34 @@ export default function PhotographySection() {
     setActiveGallery(null);
     setActiveImageIndex(null);
   }, []);
+
+  const closePhotographyOverlay = useCallback(() => {
+    setActiveImageIndex(null);
+    setActiveGallery(null);
+    setActiveAlbum(null);
+  }, []);
+
+  const openDefaultAlbum = useCallback(() => {
+    if (albumFolders.length) {
+      openAlbum(albumFolders[0]);
+    }
+  }, [albumFolders, openAlbum]);
+
+  useEffect(() => {
+    const unregister = registerGalleriaSection('photography', {
+      label: 'Photography',
+      openDefault: openDefaultAlbum,
+    });
+    return unregister;
+  }, [openDefaultAlbum, registerGalleriaSection]);
+
+  useEffect(() => {
+    if (activeAlbum || activeImageIndex !== null) {
+      engageGalleriaSection('photography', closePhotographyOverlay);
+      return () => releaseGalleriaSection('photography');
+    }
+    return undefined;
+  }, [activeAlbum, activeImageIndex, closePhotographyOverlay, engageGalleriaSection, releaseGalleriaSection]);
 
   useEffect(() => {
     if (!activeAlbum) return;
@@ -471,13 +505,15 @@ export default function PhotographySection() {
       </div>
 
       <AnimatePresence>
-        {activeAlbum && (
+        {activeAlbum && activeImageIndex === null && (
           <FullscreenLightbox
             key={activeAlbum.id}
             layerId={`album-${activeAlbum.id}`}
             depth={5200}
             onClose={closeAlbum}
             innerClassName="p-0"
+            galleriaSectionId="photography"
+            showGalleriaChrome
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -525,6 +561,8 @@ export default function PhotographySection() {
             depth={5200}
             onClose={() => setActiveImageIndex(null)}
             innerClassName="p-0 overflow-hidden"
+            galleriaSectionId="photography"
+            showGalleriaChrome
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}

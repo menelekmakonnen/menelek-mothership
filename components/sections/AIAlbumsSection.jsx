@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Loader2, Sparkles, X } fro
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
+import { useCameraContext } from '@/context/CameraContext';
 
 const AI_ALBUM_ROOT = '1LflEx48azcfu_EBnLv12SOYWhUMXYoBj';
 
@@ -31,6 +32,11 @@ export default function AIAlbumsSection() {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [favoriteFrames, setFavoriteFrames] = useState({});
+  const {
+    registerGalleriaSection,
+    engageGalleriaSection,
+    releaseGalleriaSection,
+  } = useCameraContext();
 
   const autoScrollToActiveLayer = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -85,6 +91,34 @@ export default function AIAlbumsSection() {
     if (!selectedAlbum) return;
     loadFolder(selectedAlbum.id);
   }, [selectedAlbum, loadFolder]);
+
+  const closeAiOverlay = useCallback(() => {
+    setSelectedImageIndex(null);
+    setSelectedAlbum(null);
+  }, []);
+
+  const openDefaultAiAlbum = useCallback(() => {
+    if (albumEntries.length) {
+      setSelectedAlbum(albumEntries[0]);
+      setSelectedImageIndex(null);
+    }
+  }, [albumEntries]);
+
+  useEffect(() => {
+    const unregister = registerGalleriaSection('ai-albums', {
+      label: 'AI Albums',
+      openDefault: openDefaultAiAlbum,
+    });
+    return unregister;
+  }, [openDefaultAiAlbum, registerGalleriaSection]);
+
+  useEffect(() => {
+    if (selectedAlbum || selectedImageIndex !== null) {
+      engageGalleriaSection('ai-albums', closeAiOverlay);
+      return () => releaseGalleriaSection('ai-albums');
+    }
+    return undefined;
+  }, [selectedAlbum, selectedImageIndex, closeAiOverlay, engageGalleriaSection, releaseGalleriaSection]);
 
   useEffect(() => {
     if (!selectedAlbum) return;
@@ -285,13 +319,15 @@ export default function AIAlbumsSection() {
       </div>
 
       <AnimatePresence>
-        {selectedAlbum && (
+        {selectedAlbum && selectedImageIndex === null && (
           <FullscreenLightbox
             key={selectedAlbum.id}
             layerId={`ai-album-${selectedAlbum.id}`}
             depth={5200}
             onClose={() => setSelectedAlbum(null)}
             innerClassName="p-0"
+            galleriaSectionId="ai-albums"
+            showGalleriaChrome
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -408,6 +444,8 @@ export default function AIAlbumsSection() {
             depth={5200}
             onClose={() => setSelectedImageIndex(null)}
             innerClassName="p-0 overflow-hidden"
+            galleriaSectionId="ai-albums"
+            showGalleriaChrome
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}

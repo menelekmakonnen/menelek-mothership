@@ -123,7 +123,12 @@ const filters = [
 
 export default function FilmsSection() {
   const [filter, setFilter] = useState('all');
-  const { currentLens } = useCameraContext();
+  const {
+    currentLens,
+    registerGalleriaSection,
+    engageGalleriaSection,
+    releaseGalleriaSection,
+  } = useCameraContext();
   const [previews, setPreviews] = useState({});
   const initiatedRef = useRef(new Set());
   const [activeProjectId, setActiveProjectId] = useState(null);
@@ -203,6 +208,29 @@ export default function FilmsSection() {
     setActiveProjectId(null);
   }, []);
 
+  const openDefaultProject = useCallback(() => {
+    const target = filteredVideos[0] || projects[0];
+    if (target) {
+      openProject(target.id);
+    }
+  }, [filteredVideos, openProject]);
+
+  useEffect(() => {
+    const unregister = registerGalleriaSection('films', {
+      label: 'Films & Music Videos',
+      openDefault: openDefaultProject,
+    });
+    return unregister;
+  }, [openDefaultProject, registerGalleriaSection]);
+
+  useEffect(() => {
+    if (activeProjectId) {
+      engageGalleriaSection('films', closeProject);
+      return () => releaseGalleriaSection('films');
+    }
+    return undefined;
+  }, [activeProjectId, closeProject, engageGalleriaSection, releaseGalleriaSection]);
+
   // Calculate grid columns based on lens zoom
   // zoom: 0.7 (widest) -> 4 cols, 0.85 -> 3 cols, 0.9-1.0 -> 3 cols, 1.2+ -> 2 cols
   const getGridCols = () => {
@@ -230,6 +258,8 @@ export default function FilmsSection() {
         depth={5200}
         onClose={closeProject}
         innerClassName="p-0 overflow-hidden"
+        galleriaSectionId="films"
+        showGalleriaChrome
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}

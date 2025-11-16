@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Sparkles, X } from 'l
 import BlurLayer from '@/components/ui/BlurLayer';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { resolveDriveImage } from '@/lib/googleDrive';
+import { useCameraContext } from '@/context/CameraContext';
 
 const LOREMAKER_URL = 'https://loremaker.cloud';
 
@@ -23,6 +24,11 @@ export default function LoremakerSection() {
   const [error, setError] = useState(null);
   const [activeCharacter, setActiveCharacter] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const {
+    registerGalleriaSection,
+    engageGalleriaSection,
+    releaseGalleriaSection,
+  } = useCameraContext();
   const rosterList = useMemo(() => {
     if (!characters.length) return [];
     return characters
@@ -100,6 +106,35 @@ export default function LoremakerSection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeCharacter]);
+
+  const closeCharacterOverlay = useCallback(() => {
+    setActiveImageIndex(0);
+    setActiveCharacter(null);
+  }, []);
+
+  const openDefaultCharacter = useCallback(() => {
+    if (displayedCharacters.length) {
+      setActiveCharacter(displayedCharacters[0]);
+      setActiveImageIndex(0);
+      scrollToActiveLayer();
+    }
+  }, [displayedCharacters, scrollToActiveLayer]);
+
+  useEffect(() => {
+    const unregister = registerGalleriaSection('loremaker', {
+      label: 'Loremaker Universe',
+      openDefault: openDefaultCharacter,
+    });
+    return unregister;
+  }, [openDefaultCharacter, registerGalleriaSection]);
+
+  useEffect(() => {
+    if (activeCharacter) {
+      engageGalleriaSection('loremaker', closeCharacterOverlay);
+      return () => releaseGalleriaSection('loremaker');
+    }
+    return undefined;
+  }, [activeCharacter, closeCharacterOverlay, engageGalleriaSection, releaseGalleriaSection]);
 
   const activeImage = useMemo(() => {
     if (!activeCharacter) return null;
@@ -282,6 +317,8 @@ export default function LoremakerSection() {
             depth={5200}
             onClose={() => setActiveCharacter(null)}
             innerClassName="p-0"
+            galleriaSectionId="loremaker"
+            showGalleriaChrome
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
