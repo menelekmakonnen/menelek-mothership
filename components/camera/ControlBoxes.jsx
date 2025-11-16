@@ -3,15 +3,16 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Aperture,
-  Camera,
-  CameraOff,
-  Gamepad2,
+  BarChart3,
+  Gauge,
+  Grid3x3,
   Maximize2,
   Minimize2,
   RefreshCw,
   RotateCcw,
+  SlidersHorizontal,
   Sparkles,
-  Wrench,
+  Timer,
   X,
   Zap,
   ZapOff,
@@ -25,8 +26,6 @@ export default function ControlBoxes() {
   const {
     flashMode,
     setFlashMode,
-    cameraMode,
-    setCameraMode,
     resetCamera,
     ensurePartialReset,
     currentLens,
@@ -36,15 +35,23 @@ export default function ControlBoxes() {
     setGestureLock,
     mobileImmersiveMode,
     setMobileImmersiveMode,
-    applyCameraPreset,
-    activePreset,
-    hudVisibility,
+    iso,
+    setIso,
+    aperture,
+    setAperture,
+    shutterSpeed,
+    setShutterSpeed,
+    exposureComp,
+    setExposureComp,
+    ruleOfThirds,
+    setRuleOfThirds,
+    showHistogram,
+    setShowHistogram,
   } = useCameraContext();
 
   const [isMobile, setIsMobile] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
-  const [activeDesktopPanel, setActiveDesktopPanel] = useState(null);
-  const previousDesktopPanelRef = useRef(null);
+  const [activeDial, setActiveDial] = useState(null);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -69,7 +76,7 @@ export default function ControlBoxes() {
 
   useEffect(() => {
     updateRailHeight();
-  }, [updateRailHeight, isMobile, activeMobilePanel, activeDesktopPanel, hasModifiedSettings]);
+  }, [updateRailHeight, isMobile, activeMobilePanel, hasModifiedSettings, activeDial]);
 
   const getFlashIcon = () => {
     if (flashMode === 'on') return Zap;
@@ -84,17 +91,6 @@ export default function ControlBoxes() {
     setGestureLock(false);
     ensurePartialReset();
   }, [ensurePartialReset, setGestureLock]);
-
-  const toggleDesktopPanel = useCallback((panel) => {
-    setActiveDesktopPanel((prev) => (prev === panel ? null : panel));
-  }, []);
-
-  useEffect(() => {
-    if (!isMobile && previousDesktopPanelRef.current && !activeDesktopPanel) {
-      ensurePartialReset();
-    }
-    previousDesktopPanelRef.current = activeDesktopPanel;
-  }, [activeDesktopPanel, ensurePartialReset, isMobile]);
 
   useEffect(() => {
     const hasPanel = Boolean(activeMobilePanel);
@@ -128,7 +124,7 @@ export default function ControlBoxes() {
       },
       assist: {
         title: 'Assist Options',
-        icon: Wrench,
+        icon: Grid3x3,
         content: <AssistTools />,
       },
       flash: {
@@ -157,36 +153,6 @@ export default function ControlBoxes() {
           </div>
         ),
       },
-      mode: {
-        title: 'Camera Body',
-        icon: cameraMode === 'dslr' ? Camera : CameraOff,
-        content: (
-          <div className="space-y-3">
-            <p className="text-[13px] text-[color:var(--text-secondary)]">
-              Swap between DSLR heft and the lightweight mirrorless body. Mirrorless unlocks expanded HUD telemetry.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[{ id: 'dslr', label: 'DSLR', description: 'Optical view, classic HUD' }, { id: 'mirrorless', label: 'Mirrorless', description: 'Electronic viewfinder with live data' }].map(
-                ({ id, label, description }) => (
-                  <button
-                    key={id}
-                    onClick={() => setCameraMode(id)}
-                    className={`rounded-lg px-4 py-3 text-left border transition-all ${
-                      cameraMode === id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="mono text-xs font-bold uppercase">{label}</span>
-                      {cameraMode === id && <Sparkles className="w-4 h-4 text-green-300" />}
-                    </div>
-                    <p className="text-[11px] mt-2 opacity-70 leading-snug">{description}</p>
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        ),
-      },
       lens: {
         title: `Lens — ${currentLens.name}`,
         icon: RefreshCw,
@@ -208,40 +174,6 @@ export default function ControlBoxes() {
             >
               <span className="mono text-xs uppercase">{mobileImmersiveMode ? 'Exit Immersive' : 'Enter Immersive'}</span>
               {mobileImmersiveMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-          </div>
-        ),
-      },
-      presets: {
-        title: 'Camera Presets',
-        icon: Gamepad2,
-        content: (
-          <div className="space-y-3">
-            {[{ id: 'modern', name: 'Modern Hybrid', desc: 'Clean mirrorless telemetry with adaptive flash logic.' }, { id: 'retro', name: 'Retro HUD', desc: 'Amber overlays, tungsten balance, manual focus.' }, { id: 'cinema', name: 'Cinema Rig', desc: 'Waveform scopes, film matte, audio meters.' }].map(
-              (preset) => (
-                <button
-                  key={preset.id}
-                  onClick={() => applyCameraPreset(preset.id)}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
-                    activePreset === preset.id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="mono text-xs font-bold uppercase">{preset.name}</span>
-                    {activePreset === preset.id && <Sparkles className="w-4 h-4" />}
-                  </div>
-                  <p className="text-[11px] mt-2 opacity-70 leading-snug">{preset.desc}</p>
-                </button>
-              )
-            )}
-            <button
-              onClick={() => applyCameraPreset(null)}
-              className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
-                !activePreset ? 'border-green-400/40 text-green-300 bg-green-500/5' : 'border-white/10 bg-white/5'
-              }`}
-            >
-              <span className="mono text-xs uppercase">Manual Setup</span>
-              <p className="text-[11px] mt-2 opacity-70 leading-snug">Return to your manual configuration.</p>
             </button>
           </div>
         ),
@@ -269,11 +201,10 @@ export default function ControlBoxes() {
           }
         : null,
     };
-  }, [FlashIcon, activePreset, applyCameraPreset, cameraMode, closeMobilePanel, currentLens.name, flashMode, hasModifiedSettings, mobileImmersiveMode, resetCamera, setCameraMode, setFlashMode, setHasModifiedSettings, setMobileImmersiveMode]);
+  }, [FlashIcon, closeMobilePanel, currentLens.name, flashMode, hasModifiedSettings, mobileImmersiveMode, resetCamera, setFlashMode, setHasModifiedSettings, setMobileImmersiveMode]);
 
   const mobilePanelOrder = useMemo(
-    () =>
-      ['exposure', 'assist', 'lens', 'flash', 'mode', 'immersive', 'presets', 'reset'].filter((key) => mobilePanels[key]),
+    () => ['exposure', 'assist', 'lens', 'flash', 'immersive', 'reset'].filter((key) => mobilePanels[key]),
     [mobilePanels]
   );
 
@@ -281,18 +212,108 @@ export default function ControlBoxes() {
     const flashLabel = flashMode === 'auto' ? 'AUTO' : flashMode === 'on' ? 'FLASH ON' : 'FLASH OFF';
     const flashAccent =
       flashMode === 'on' ? 'border-amber-400/40 text-amber-200' : flashMode === 'off' ? 'border-white/15 text-slate-200' : '';
-    const BodyIcon = cameraMode === 'dslr' ? Camera : CameraOff;
-    const desktopPanels = {
-      exposure: {
-        title: 'Exposure Controls',
+
+    const formatApertureValue = (value) => `ƒ/${Number(value).toFixed(1)}`;
+    const formatShutterValue = (speed) => {
+      if (speed >= 1) return `${Math.round(speed)}"`;
+      return `1/${Math.max(1, Math.round(speed))}`;
+    };
+
+    const dialConfigs = [
+      {
+        id: 'iso',
+        label: 'ISO',
+        icon: Gauge,
+        min: 100,
+        max: 6400,
+        step: 100,
+        marks: ['100', '1600', '3200', '6400'],
+        value: iso,
+        setValue: setIso,
+        formatValue: (value) => Math.round(value),
+      },
+      {
+        id: 'aperture',
+        label: 'APERTURE',
         icon: Aperture,
-        content: <ExposureControls />,
+        min: 1.4,
+        max: 22,
+        step: 0.1,
+        marks: ['ƒ/1.4', 'ƒ/5.6', 'ƒ/11', 'ƒ/22'],
+        value: Number(aperture.toFixed(1)),
+        setValue: setAperture,
+        formatValue: (value) => formatApertureValue(value),
       },
-      assist: {
-        title: 'Assist Tools',
-        icon: Wrench,
-        content: <AssistTools />,
+      {
+        id: 'shutter',
+        label: 'SHUTTER',
+        icon: Timer,
+        min: 30,
+        max: 8000,
+        step: 10,
+        marks: ['30"', '1/250', '1/1000', '1/8000'],
+        value: shutterSpeed,
+        setValue: setShutterSpeed,
+        formatValue: (value) => formatShutterValue(value),
       },
+      {
+        id: 'ev',
+        label: 'EV COMP',
+        icon: SlidersHorizontal,
+        min: -3,
+        max: 3,
+        step: 0.3,
+        marks: ['-3', '0', '+3'],
+        value: exposureComp,
+        setValue: setExposureComp,
+        formatValue: (value) => `${value > 0 ? '+' : ''}${Number(value).toFixed(1)} EV`,
+      },
+    ];
+
+    const activeDialConfig = dialConfigs.find((dial) => dial.id === activeDial) || null;
+
+    const handleDialToggle = (dialId) => {
+      setActiveDial((prev) => {
+        if (prev === dialId) {
+          ensurePartialReset();
+          return null;
+        }
+        return dialId;
+      });
+    };
+
+    const handleDialClose = () => {
+      setActiveDial(null);
+      ensurePartialReset();
+    };
+
+    const handleDialChange = (dialId, value) => {
+      const dial = dialConfigs.find((entry) => entry.id === dialId);
+      if (!dial) return;
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) return;
+      dial.setValue(numeric);
+      setHasModifiedSettings(true);
+    };
+
+    const gridOrder = ['off', 'classic', 'precision', 'golden'];
+    const gridLabels = {
+      off: 'OFF',
+      classic: 'CLASSIC',
+      precision: 'PRECISION',
+      golden: 'CINEMATIC',
+    };
+
+    const cycleGrid = () => {
+      const index = gridOrder.indexOf(ruleOfThirds);
+      const next = gridOrder[(index + 1) % gridOrder.length];
+      setRuleOfThirds(next);
+      setHasModifiedSettings(true);
+    };
+
+    const toggleHistogram = () => {
+      setShowHistogram(!showHistogram);
+      setHasModifiedSettings(true);
     };
 
     return (
@@ -302,52 +323,58 @@ export default function ControlBoxes() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <PowerControls orientation="horizontal" variant="inline" />
               <div className="flex flex-wrap items-center gap-3">
-                <motion.button
-                  onClick={() => toggleDesktopPanel('exposure')}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
-                    activeDesktopPanel === 'exposure' ? 'border-green-400/60 text-green-200' : ''
-                  }`}
-                >
-                  <Aperture className="w-4 h-4" />
-                  <div className="flex flex-col leading-none text-left">
-                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Exposure</span>
-                    <span className="mono text-xs font-semibold tracking-[0.35em]">{currentLens.name}</span>
-                  </div>
-                </motion.button>
+                {dialConfigs.map((dial) => {
+                  const Icon = dial.icon;
+                  const isActive = activeDial === dial.id;
+                  return (
+                    <motion.button
+                      key={dial.id}
+                      onClick={() => handleDialToggle(dial.id)}
+                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.03 }}
+                      className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
+                        isActive ? 'border-green-400/60 text-green-200' : ''
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <div className="flex flex-col leading-none text-left">
+                        <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">{dial.label}</span>
+                        <span className="mono text-xs font-semibold tracking-[0.35em]">
+                          {dial.formatValue(dial.value)}
+                        </span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
 
                 <motion.button
-                  onClick={() => toggleDesktopPanel('assist')}
+                  onClick={cycleGrid}
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ scale: 1.03 }}
-                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
-                    activeDesktopPanel === 'assist' ? 'border-green-400/60 text-green-200' : ''
-                  }`}
+                  className="camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all"
                 >
-                  <Wrench className="w-4 h-4" />
+                  <Grid3x3 className="w-4 h-4" />
                   <div className="flex flex-col leading-none text-left">
-                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Assist</span>
-                    <span className="mono text-xs font-semibold tracking-[0.35em]">{hudVisibility.toUpperCase()}</span>
-                  </div>
-                </motion.button>
-
-                <motion.button
-                  onClick={() => {
-                    setHasModifiedSettings(true);
-                    setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr');
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
-                    cameraMode === 'mirrorless' ? 'text-cyan-200 border-cyan-400/40' : ''
-                  }`}
-                >
-                  <BodyIcon className="w-4 h-4" />
-                  <div className="flex flex-col leading-none text-left">
-                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Body</span>
+                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Grid</span>
                     <span className="mono text-xs font-semibold tracking-[0.35em]">
-                      {cameraMode === 'dslr' ? 'DSLR' : 'MIRRORLESS'}
+                      {gridLabels[ruleOfThirds] || 'OFF'}
+                    </span>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  onClick={toggleHistogram}
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
+                    showHistogram ? 'border-green-400/60 text-green-200' : ''
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <div className="flex flex-col leading-none text-left">
+                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Histogram</span>
+                    <span className="mono text-xs font-semibold tracking-[0.35em]">
+                      {showHistogram ? 'VISIBLE' : 'HIDDEN'}
                     </span>
                   </div>
                 </motion.button>
@@ -359,29 +386,12 @@ export default function ControlBoxes() {
                   }}
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ scale: 1.03 }}
-                  className="camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all text-green-200"
+                  className="camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <div className="flex flex-col leading-none text-left">
                     <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Lens</span>
-                    <span className="mono text-xs font-semibold tracking-[0.35em]">{currentLens.id.toUpperCase()}</span>
-                  </div>
-                </motion.button>
-
-                <motion.button
-                  onClick={() => applyCameraPreset(activePreset ? null : 'modern')}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
-                    activePreset ? 'border-green-400/60 text-green-200' : 'text-white/80'
-                  }`}
-                >
-                  <Gamepad2 className="w-4 h-4" />
-                  <div className="flex flex-col leading-none text-left">
-                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Preset</span>
-                    <span className="mono text-xs font-semibold tracking-[0.35em]">
-                      {activePreset ? activePreset.toUpperCase() : 'MANUAL'}
-                    </span>
+                    <span className="mono text-xs font-semibold tracking-[0.35em]">{currentLens.name}</span>
                   </div>
                 </motion.button>
 
@@ -424,35 +434,48 @@ export default function ControlBoxes() {
             </div>
 
             <AnimatePresence>
-              {activeDesktopPanel && (
+              {activeDialConfig && (
                 <motion.div
-                  key="desktop-panel"
+                  key={activeDialConfig.id}
                   initial={{ opacity: 0, y: -12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="relative"
                 >
-                  <div className="max-w-4xl mx-auto camera-hud rounded-3xl border border-white/12 p-6 shadow-2xl">
+                  <div className="max-w-xl mx-auto camera-hud rounded-3xl border border-white/12 p-6 shadow-2xl">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         {(() => {
-                          const PanelIcon = desktopPanels[activeDesktopPanel]?.icon;
-                          return PanelIcon ? <PanelIcon className="w-5 h-5" /> : null;
+                          const ActiveDialIcon = activeDialConfig.icon;
+                          return ActiveDialIcon ? <ActiveDialIcon className="w-5 h-5" /> : null;
                         })()}
-                        <span className="mono text-xs tracking-[0.35em] uppercase">
-                          {desktopPanels[activeDesktopPanel]?.title}
-                        </span>
+                        <span className="mono text-xs tracking-[0.35em] uppercase">{activeDialConfig.label}</span>
                       </div>
                       <button
-                        onClick={() => setActiveDesktopPanel(null)}
+                        onClick={handleDialClose}
                         className="rounded-full bg-white/5 hover:bg-white/10 border border-white/10 p-2"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="max-h-[60vh] overflow-y-auto pr-1 custom-scroll">
-                      {desktopPanels[activeDesktopPanel]?.content}
+                    <div className="space-y-4">
+                      <div className="text-3xl font-semibold">
+                        {activeDialConfig.formatValue(activeDialConfig.value)}
+                      </div>
+                      <input
+                        type="range"
+                        min={activeDialConfig.min}
+                        max={activeDialConfig.max}
+                        step={activeDialConfig.step}
+                        value={activeDialConfig.value}
+                        onChange={(e) => handleDialChange(activeDialConfig.id, e.target.value)}
+                        className="camera-slider w-full accent-green-400"
+                      />
+                      <div className="flex justify-between text-[10px] opacity-60">
+                        {activeDialConfig.marks.map((mark) => (
+                          <span key={mark}>{mark}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </motion.div>

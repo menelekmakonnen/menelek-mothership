@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 export default function InterfaceOverlays() {
-  const { interfaceModules, theme, activePreset, cameraMode } = useCameraContext();
+  const { interfaceModules, theme, cameraMode } = useCameraContext();
   const [horizonTilt, setHorizonTilt] = useState(0);
   const [waveform, setWaveform] = useState(() => generateWaveform());
   const [peakingPattern, setPeakingPattern] = useState(
@@ -34,7 +34,7 @@ export default function InterfaceOverlays() {
       `repeating-linear-gradient(45deg, ${peakingColor} 0px, ${peakingColor} 6px, transparent 6px, transparent 16px)`
     );
     setZebraColor(`rgba(${r}, ${g}, ${b}, ${zebraOpacity})`);
-  }, [theme, activePreset, cameraMode, interfaceModules.focusPeaking]);
+  }, [theme, cameraMode, interfaceModules.focusPeaking]);
 
   useEffect(() => {
     if (!interfaceModules.horizonLevel) {

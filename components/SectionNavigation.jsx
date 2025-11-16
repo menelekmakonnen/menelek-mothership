@@ -305,30 +305,38 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
       {/* Sections with lens zoom effect */}
       <div className={`relative w-full min-h-screen transition-all duration-500 ease-out${lensClass}`}>
         <div className="absolute inset-0 -z-10 pointer-events-none" style={{ ...stageBackgroundStyle, minHeight: '100%' }} />
-        <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
-          <motion.div
-            key={currentSection}
-            custom={swipeDirection}
-            initial={{ opacity: 0, x: swipeDirection * 100, filter: `blur(${getMotionBlur()}px)` }}
-            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, x: swipeDirection * -100, filter: `blur(${getMotionBlur()}px)` }}
-            transition={{
-              duration: 0.5,
-              ease: [0.4, 0, 0.2, 1],
-            }}
-            className="w-full min-h-screen content-stage"
-            style={contentStyle}
-          >
-            <BlurLayer
-              depth={400}
-              layerId={`section-${currentSection}`}
-              focusOnMount
-              className="w-full min-h-screen"
-            >
-              {sections[currentSection]}
-            </BlurLayer>
-          </motion.div>
-        </AnimatePresence>
+        <div className="relative w-full min-h-screen content-stage">
+          {sections.map((section, index) => {
+            const isActive = index === currentSection;
+            const sectionKey = section?.key ?? `section-${index}`;
+            return (
+              <motion.div
+                key={sectionKey}
+                initial={false}
+                animate={{
+                  opacity: isActive ? 1 : 0,
+                  x: isActive ? 0 : swipeDirection * -40,
+                  filter: isActive ? 'blur(0px)' : `blur(${getMotionBlur()}px)`,
+                }}
+                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                className={`w-full ${
+                  isActive ? 'relative min-h-screen' : 'absolute inset-0 h-0 pointer-events-none'
+                }`}
+                style={isActive ? contentStyle : { pointerEvents: 'none' }}
+                aria-hidden={!isActive}
+              >
+                <BlurLayer
+                  depth={400}
+                  layerId={`section-${index}`}
+                  focusOnMount={isActive}
+                  className="w-full min-h-screen"
+                >
+                  {section}
+                </BlurLayer>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Back to top button */}

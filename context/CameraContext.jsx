@@ -97,10 +97,6 @@ export const CameraProvider = ({ children }) => {
   // Immersive mobile layout
   const [mobileImmersiveMode, setMobileImmersiveMode] = useState(false);
 
-  // Camera skin / presets
-  const [activePreset, setActivePreset] = useState(null);
-  const manualSettingsRef = useRef(null);
-
   const baseInterfaceProfiles = useRef({
     dslr: {
       focusPeaking: false,
@@ -120,39 +116,6 @@ export const CameraProvider = ({ children }) => {
       analogMeter: false,
       cinemaScope: false,
       audioMeters: false,
-      filmMatte: false,
-    },
-  }).current;
-
-  const presetInterfaceProfiles = useRef({
-    modern: {
-      focusPeaking: true,
-      zebraHighlight: true,
-      waveformMonitor: true,
-      horizonLevel: true,
-      analogMeter: false,
-      cinemaScope: false,
-      audioMeters: false,
-      filmMatte: false,
-    },
-    retro: {
-      focusPeaking: false,
-      zebraHighlight: false,
-      waveformMonitor: false,
-      horizonLevel: false,
-      analogMeter: true,
-      cinemaScope: false,
-      audioMeters: false,
-      filmMatte: true,
-    },
-    cinema: {
-      focusPeaking: false,
-      zebraHighlight: true,
-      waveformMonitor: true,
-      horizonLevel: true,
-      analogMeter: false,
-      cinemaScope: true,
-      audioMeters: true,
       filmMatte: false,
     },
   }).current;
@@ -293,9 +256,7 @@ export const CameraProvider = ({ children }) => {
     setFocusMode('single');
     setOpenBoxes([]);
     _setCameraMode('dslr');
-    setActivePreset(null);
     applyInterfaceProfile(baseInterfaceProfiles.dslr);
-    manualSettingsRef.current = null;
     setGestureLockMap({});
     setMobileImmersiveMode(false);
     setHasModifiedSettings(false);
@@ -495,8 +456,7 @@ export const CameraProvider = ({ children }) => {
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-camera-skin', cameraMode);
     document.documentElement.setAttribute('data-camera-mode', cameraMode);
-    document.documentElement.setAttribute('data-camera-preset', activePreset || 'manual');
-  }, [activePreset, cameraMode]);
+  }, [cameraMode]);
 
   useEffect(() => {
     if (focusedLayer !== null || orderedLayers.length === 0) return;
@@ -560,98 +520,6 @@ export const CameraProvider = ({ children }) => {
       document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [focusLayer]);
-
-  const applyCameraPreset = useCallback((presetId) => {
-    setHasModifiedSettings(true);
-
-    if (!presetId) {
-      setActivePreset(null);
-      if (manualSettingsRef.current) {
-        const settings = manualSettingsRef.current;
-        if (settings.cameraMode !== cameraMode) {
-          setCameraMode(settings.cameraMode);
-        }
-        setIso(settings.iso);
-        setAperture(settings.aperture);
-        setShutterSpeed(settings.shutterSpeed);
-        setExposureComp(settings.exposureComp);
-        setWhiteBalance(settings.whiteBalance);
-        setHudVisibility(settings.hudVisibility);
-        setFocusMode(settings.focusMode);
-        setShowHistogram(settings.showHistogram);
-        setFlashMode(settings.flashMode);
-        applyInterfaceProfile(settings.interfaceModules || baseInterfaceProfiles[cameraMode]);
-      } else {
-        applyInterfaceProfile(baseInterfaceProfiles[cameraMode]);
-      }
-      manualSettingsRef.current = null;
-      setActivePreset(null);
-      return;
-    }
-
-    if (!activePreset && !manualSettingsRef.current) {
-      manualSettingsRef.current = {
-        iso,
-        aperture,
-        shutterSpeed,
-        exposureComp,
-        whiteBalance,
-        hudVisibility,
-        focusMode,
-        showHistogram,
-        flashMode,
-        cameraMode,
-        interfaceModules: { ...interfaceModules },
-      };
-    }
-
-    setActivePreset(presetId);
-
-    switch (presetId) {
-      case 'modern':
-        setCameraMode('mirrorless');
-        setHudVisibility('minimal');
-        setFlashMode('auto');
-        setWhiteBalance('daylight');
-        setFocusMode('continuous');
-        setExposureComp(0);
-        setIso(400);
-        setShutterSpeed(250);
-        setAperture(2.8);
-        setShowHistogram(true);
-        applyInterfaceProfile(presetInterfaceProfiles.modern);
-        break;
-      case 'retro':
-        setCameraMode('dslr');
-        setHudVisibility('full');
-        setFlashMode('off');
-        setWhiteBalance('tungsten');
-        setFocusMode('manual');
-        setExposureComp(0.5);
-        setIso(800);
-        setShutterSpeed(60);
-        setAperture(1.8);
-        setShowHistogram(false);
-        applyInterfaceProfile(presetInterfaceProfiles.retro);
-        break;
-      case 'cinema':
-        setCameraMode('mirrorless');
-        setHudVisibility('full');
-        setFlashMode('off');
-        setWhiteBalance('cloudy');
-        setFocusMode('manual');
-        setExposureComp(-0.7);
-        setIso(640);
-        setShutterSpeed(50);
-        setAperture(4);
-        setShowHistogram(true);
-        applyInterfaceProfile(presetInterfaceProfiles.cinema);
-        break;
-      default:
-        setActivePreset(null);
-        break;
-    }
-  }, [activePreset, applyInterfaceProfile, aperture, baseInterfaceProfiles, cameraMode, exposureComp, flashMode, focusMode, hudVisibility, interfaceModules, iso, presetInterfaceProfiles, setAperture, setCameraMode, setExposureComp, setFlashMode, setFocusMode, setHudVisibility, setIso, setShutterSpeed, setShowHistogram, setWhiteBalance, shutterSpeed, whiteBalance]);
 
   // Theme based on flash mode
   const getTheme = useCallback(() => {
@@ -942,8 +810,6 @@ export const CameraProvider = ({ children }) => {
     releaseGestureLock,
     mobileImmersiveMode,
     setMobileImmersiveMode,
-    activePreset,
-    applyCameraPreset,
     interfaceModules,
     hasInteractiveLayer,
     performFullReset,

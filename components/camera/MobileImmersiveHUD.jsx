@@ -1,7 +1,7 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { Maximize2, Minimize2, Zap, ZapOff, Sparkles, Camera, CameraOff, RotateCcw, Gamepad2 } from 'lucide-react';
+import { Maximize2, Minimize2, Zap, ZapOff, Sparkles, RotateCcw } from 'lucide-react';
 import ExposureControls from './ExposureControls';
 import AssistTools from './AssistTools';
 import LensSelector from './LensSelector';
@@ -14,12 +14,8 @@ export default function MobileImmersiveHUD() {
     releaseGestureLock,
     flashMode,
     setFlashMode,
-    cameraMode,
-    setCameraMode,
     hasModifiedSettings,
     resetCamera,
-    applyCameraPreset,
-    activePreset,
   } = useCameraContext();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -49,12 +45,6 @@ export default function MobileImmersiveHUD() {
     { id: 'auto', label: 'Auto', icon: Sparkles },
     { id: 'on', label: 'Flash On', icon: Zap },
     { id: 'off', label: 'Flash Off', icon: ZapOff },
-  ];
-
-  const presets = [
-    { id: 'modern', title: 'Modern Hybrid' },
-    { id: 'retro', title: 'Retro HUD' },
-    { id: 'cinema', title: 'Cinema Rig' },
   ];
 
   return (
@@ -146,62 +136,11 @@ export default function MobileImmersiveHUD() {
                 </div>
 
                 <div>
-                  <h3 className="mono text-[11px] uppercase tracking-[0.3em] text-green-300 mb-3">Camera Body</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[{ id: 'dslr', label: 'DSLR', icon: Camera, blurb: 'Optical view, tactile HUD' },
-                      { id: 'mirrorless', label: 'Mirrorless', icon: CameraOff, blurb: 'Electronic view with live feedback' }].map(({ id, label, icon: Icon, blurb }) => (
-                        <button
-                          key={id}
-                          onClick={() => setCameraMode(id)}
-                          className={`rounded-xl px-4 py-3 text-left border transition-all ${
-                            cameraMode === id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="mono text-xs uppercase">{label}</span>
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <p className="text-[11px] mt-2 opacity-70 leading-snug">{blurb}</p>
-                        </button>
-                      ))}
-                  </div>
+                  <h3 className="mono text-[11px] uppercase tracking-[0.3em] text-green-300 mb-3">Quick tips</h3>
+                  <p className="text-[12px] text-white/70 leading-relaxed">
+                    Toggle immersive controls, adjust flash, and fine-tune exposure without leaving the rig. Use the desktop rail for grid and histogram tweaks.
+                  </p>
                 </div>
-              </div>
-            </motion.section>
-
-            <motion.section
-              layout
-              className="camera-hud rounded-3xl p-4 border border-white/10"
-            >
-              <header className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Gamepad2 className="w-4 h-4 text-green-300" />
-                  <h3 className="mono text-xs uppercase tracking-[0.35em] text-green-300">Presets</h3>
-                </div>
-                {activePreset && (
-                  <span className="text-[11px] text-green-300 mono uppercase">{activePreset}</span>
-                )}
-              </header>
-              <div className="grid grid-cols-1 gap-2">
-                {presets.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => applyCameraPreset(preset.id)}
-                    className={`rounded-xl px-4 py-3 text-left border transition-all ${
-                      activePreset === preset.id ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <span className="mono text-xs uppercase">{preset.title}</span>
-                  </button>
-                ))}
-                <button
-                  onClick={() => applyCameraPreset(null)}
-                  className={`rounded-xl px-4 py-3 text-left border transition-all ${
-                    !activePreset ? 'border-green-400/60 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5'
-                  }`}
-                >
-                  <span className="mono text-xs uppercase">Manual Configuration</span>
-                </button>
               </div>
             </motion.section>
           </div>

@@ -13,12 +13,12 @@ export default function CameraHUD() {
     whiteBalance,
     focusMode,
     hudVisibility,
+    setHudVisibility,
     batteryLevel,
     cameraMode,
     interfaceModules,
     theme,
     currentSection,
-    activePreset,
   } = useCameraContext();
 
   const [accentColor, setAccentColor] = useState('#00ff88');
@@ -38,7 +38,7 @@ export default function CameraHUD() {
     const accentChannel = styles.getPropertyValue('--accent-rgb').trim() || '0, 255, 136';
     setAccentColor(accent);
     setAccentRgb(accentChannel);
-  }, [theme, cameraMode, activePreset]);
+  }, [theme, cameraMode]);
 
   // Analyze page content for real-time readings
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function CameraHUD() {
       window.removeEventListener('resize', analyzeContent);
       attributeObserver?.disconnect();
     };
-  }, [iso, aperture, shutterSpeed, whiteBalance, currentLens, interfaceModules, theme, currentSection, activePreset]);
+  }, [iso, aperture, shutterSpeed, whiteBalance, currentLens, interfaceModules, theme, currentSection]);
 
   useEffect(() => {
     if (!interfaceModules.audioMeters) return;
@@ -234,6 +234,13 @@ export default function CameraHUD() {
   };
 
   const formatAperture = (ap) => `f/${ap.toFixed(1)}`;
+
+  const hudModes = [
+    { id: 'none', label: 'Off' },
+    { id: 'minimal', label: 'Min' },
+    { id: 'standard', label: 'Std' },
+    { id: 'full', label: 'Full' },
+  ];
 
   const analogNeedle = (() => {
     const exposureBias = exposureComp * 30;
@@ -297,6 +304,14 @@ export default function CameraHUD() {
             <div className="font-bold text-[color:var(--hud-text)]">{formatShutterSpeed(shutterSpeed)}</div>
           </div>
 
+          {/* Focus Mode */}
+          <div className="flex flex-col items-center">
+            <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">FOCUS</div>
+            <div className="font-bold uppercase text-[10px] text-[color:var(--hud-text)]">
+              {focusMode === 'single' ? 'AF-S' : focusMode === 'continuous' ? 'AF-C' : 'MF'}
+            </div>
+          </div>
+
           {(hudVisibility === 'standard' || hudVisibility === 'full') && (
             <>
               {/* Exposure Compensation */}
@@ -319,14 +334,6 @@ export default function CameraHUD() {
 
           {hudVisibility === 'full' && (
             <>
-              {/* Focus Mode */}
-              <div className="flex flex-col items-center">
-                <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">FOCUS</div>
-                <div className="font-bold uppercase text-[10px] text-[color:var(--hud-text)]">
-                  {focusMode === 'single' ? 'AF-S' : focusMode === 'continuous' ? 'AF-C' : 'MF'}
-                </div>
-              </div>
-
               {/* Brightness reading */}
               <div className="flex flex-col items-center">
                 <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">LUX</div>
@@ -364,7 +371,25 @@ export default function CameraHUD() {
             </div>
           )}
 
-          <BatteryIndicator />
+          <div className="flex flex-col items-center gap-1">
+            <BatteryIndicator />
+            <div className="flex gap-1">
+              {hudModes.map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setHudVisibility(mode.id)}
+                  className={`rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.2em] border transition ${
+                    hudVisibility === mode.id
+                      ? 'border-green-400/70 text-green-300'
+                      : 'border-white/15 text-white/50 hover:border-white/40 hover:text-white/80'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {interfaceModules.audioMeters && (
             <div className="flex items-end gap-1 h-10">

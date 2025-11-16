@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
-import { X, GalleryHorizontalEnd } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, GalleryHorizontalEnd, ChevronLeft, ChevronRight } from 'lucide-react';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { useCameraContext } from '@/context/CameraContext';
-import { getGalleriaSectionDetail } from '@/lib/galleriaSections';
+import { getGalleriaSectionDetail, listAllGalleriaSections } from '@/lib/galleriaSections';
 
 export default function GalleriaHome() {
   const {
@@ -27,19 +27,46 @@ export default function GalleriaHome() {
   }, [listGalleriaSections]);
 
   const cards = useMemo(() => {
-    if (!sections.length) return [];
-    return sections.map((section) => {
-      const meta = getGalleriaSectionDetail(section.id);
-      return { ...section, ...meta };
-    });
+    if (sections.length) {
+      return sections.map((section) => {
+        const meta = getGalleriaSectionDetail(section.id);
+        return { ...section, ...meta };
+      });
+    }
+    return listAllGalleriaSections();
   }, [sections]);
+
+  const [highlightIndex, setHighlightIndex] = useState(0);
+
+  useEffect(() => {
+    setHighlightIndex(0);
+  }, [cards.length]);
 
   if (!isGalleriaHomeOpen) return null;
 
   const handleOpen = (sectionId) => {
+    const index = cards.findIndex((card) => card.id === sectionId);
+    if (index >= 0) {
+      setHighlightIndex(index);
+    }
     closeGalleriaHome();
     requestAnimationFrame(() => {
       openGalleriaSection(sectionId, { viaGalleria: true });
+    });
+  };
+
+  const handleCycleLaunch = (direction) => {
+    if (!cards.length) return;
+    setHighlightIndex((prev) => {
+      const next = (prev + direction + cards.length) % cards.length;
+      const target = cards[next];
+      if (target) {
+        closeGalleriaHome();
+        requestAnimationFrame(() => {
+          openGalleriaSection(target.id, { viaGalleria: true });
+        });
+      }
+      return next;
     });
   };
 
@@ -75,9 +102,25 @@ export default function GalleriaHome() {
           that power the camera HUD.
         </p>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {cards.length ? (
-            cards.map((section) => {
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => handleCycleLaunch(-1)}
+            className="absolute left-6 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/20 bg-black/70 p-3 text-white shadow-lg transition hover:border-white/60"
+            aria-label="Previous Galleria section"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCycleLaunch(1)}
+            className="absolute right-6 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/20 bg-black/70 p-3 text-white shadow-lg transition hover:border-white/60"
+            aria-label="Next Galleria section"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {cards.map((section) => {
               const Icon = section.icon || GalleryHorizontalEnd;
               return (
                 <button
@@ -113,12 +156,8 @@ export default function GalleriaHome() {
                   </div>
                 </button>
               );
-            })
-          ) : (
-            <div className="col-span-full rounded-3xl border border-white/10 bg-white/5 p-6 text-white/70">
-              No Galleria-enabled sections are active yet.
-            </div>
-          )}
+            })}
+          </div>
         </div>
 
         <div className="mt-auto rounded-[32px] border border-white/10 bg-gradient-to-r from-black/80 via-black/70 to-black/80 p-6 text-white/80 shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
