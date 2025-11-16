@@ -66,10 +66,6 @@ export default function FullscreenLightbox({
     };
   }, []);
 
-  if (!portalElement) {
-    return null;
-  }
-
   const showGalleriaNav = Boolean(showGalleriaChrome && galleriaSectionId);
   const galleriaMeta = galleriaSectionId ? getGalleriaSectionMeta(galleriaSectionId) : null;
   const galleriaDetail = galleriaSectionId ? getGalleriaSectionDetail(galleriaSectionId) : null;
@@ -91,6 +87,10 @@ export default function FullscreenLightbox({
       return [];
     }
   }, [listGalleriaSections, showGalleriaNav]);
+
+  if (!portalElement) {
+    return null;
+  }
 
   const ActiveIcon = galleriaDetail?.icon || GalleryHorizontalEnd;
   const activeTitle = galleriaMeta?.label || galleriaDetail?.title || 'Galleria';

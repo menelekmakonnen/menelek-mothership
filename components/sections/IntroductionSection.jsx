@@ -361,18 +361,19 @@ export default function IntroductionSection() {
                     <motion.button
                       type="button"
                       onClick={openGalleriaHome}
-                      className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-left text-white/90 shadow-[0_18px_40px_rgba(0,0,0,0.4)] backdrop-blur-2xl"
+                      className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-white/15 bg-[rgba(6,8,18,0.7)] px-4 py-2 text-white/85 shadow-[0_16px_36px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
                       whileHover={{ scale: 1.05, translateY: -2 }}
                       whileTap={{ scale: 0.97 }}
                     >
-                      <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/15 via-cyan-300/10 to-blue-400/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true" />
-                      <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-white/30 bg-black/40">
-                        <GalleryHorizontalEnd className="h-4 w-4" />
+                      <span
+                        className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 via-cyan-300/5 to-blue-400/10 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                        aria-hidden="true"
+                      />
+                      <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/50">
+                        <GalleryHorizontalEnd className="h-3.5 w-3.5" />
                       </span>
-                      <span className="relative flex flex-col leading-tight">
-                        <span className="text-[10px] mono uppercase tracking-[0.55em] text-white/60">Galleria</span>
-                        <span className="text-sm font-semibold uppercase tracking-[0.4em]">Enter Vault</span>
-                      </span>
+                      <span className="relative text-[11px] mono uppercase tracking-[0.55em]">Galleria Vault</span>
+                      <ArrowUpRight className="relative h-3.5 w-3.5 text-white/70 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                     </motion.button>
                   </div>
                 </motion.div>
