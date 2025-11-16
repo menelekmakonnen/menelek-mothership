@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Camera,
@@ -194,11 +194,23 @@ export default function PhotographySection() {
     }
   }, [activeImageIndex, preparedGalleryImages]);
 
+  const galleryOpenRef = useRef(false);
   useEffect(() => {
-    if (activeGallery || activeImageIndex !== null) {
+    const isOpen = Boolean(activeGallery);
+    if (isOpen && !galleryOpenRef.current) {
       scrollToActiveLayer();
     }
-  }, [activeGallery, activeImageIndex, scrollToActiveLayer]);
+    galleryOpenRef.current = isOpen;
+  }, [activeGallery, scrollToActiveLayer]);
+
+  const imageOpenRef = useRef(false);
+  useEffect(() => {
+    const isOpen = activeImageIndex !== null;
+    if (isOpen && !imageOpenRef.current) {
+      scrollToActiveLayer();
+    }
+    imageOpenRef.current = isOpen;
+  }, [activeImageIndex, scrollToActiveLayer]);
 
   const activeImage = activeImageIndex !== null ? preparedGalleryImages[activeImageIndex] : null;
 
@@ -532,7 +544,7 @@ export default function PhotographySection() {
               </div>
 
               <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-                <div className="flex flex-1 items-center justify-center bg-black/80 px-4 py-6 md:px-10">
+                <div className="relative flex flex-1 items-center justify-center bg-black/80 px-4 py-6 md:px-10">
                   <div className="relative flex max-h-full w-full items-center justify-center">
                     <img
                       src={activeImageSrc}
@@ -540,6 +552,34 @@ export default function PhotographySection() {
                       className="max-h-full max-w-full rounded-[28px] object-contain shadow-[0_35px_90px_rgba(0,0,0,0.65)]"
                     />
                   </div>
+                  {preparedGalleryImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveImageIndex((index) =>
+                            index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length
+                          )
+                        }
+                        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white transition hover:bg-black/80 md:left-6"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveImageIndex((index) =>
+                            index === null ? null : (index + 1) % preparedGalleryImages.length
+                          )
+                        }
+                        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white transition hover:bg-black/80 md:right-6"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
                 </div>
                 <aside className="w-full overflow-y-auto border-t border-white/10 bg-[rgba(8,10,16,0.9)] p-6 lg:w-[320px] lg:border-t-0 lg:border-l xl:w-[360px]">
                   <div className="space-y-4">
@@ -611,34 +651,6 @@ export default function PhotographySection() {
                 </div>
               </div>
 
-              {preparedGalleryImages.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveImageIndex((index) =>
-                        index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length
-                      )
-                    }
-                    className="absolute left-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                    aria-label="Previous image"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveImageIndex((index) =>
-                        index === null ? null : (index + 1) % preparedGalleryImages.length
-                      )
-                    }
-                    className="absolute right-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                    aria-label="Next image"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </>
-              )}
             </motion.div>
           </FullscreenLightbox>
         )}

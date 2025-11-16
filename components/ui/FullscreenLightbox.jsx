@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import BlurLayer from './BlurLayer';
 
 export default function FullscreenLightbox({
@@ -11,6 +12,19 @@ export default function FullscreenLightbox({
   lockGestures = true,
   onClose,
 }) {
+  const [portalElement, setPortalElement] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const node = document.createElement('div');
+    node.className = 'fullscreen-lightbox-portal';
+    document.body.appendChild(node);
+    setPortalElement(node);
+    return () => {
+      document.body.removeChild(node);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.requestAnimationFrame(() => {
@@ -22,7 +36,11 @@ export default function FullscreenLightbox({
     });
   }, []);
 
-  return (
+  if (!portalElement) {
+    return null;
+  }
+
+  const lightbox = (
     <BlurLayer
       layerId={layerId}
       depth={depth}
@@ -37,4 +55,6 @@ export default function FullscreenLightbox({
       </div>
     </BlurLayer>
   );
+
+  return createPortal(lightbox, portalElement);
 }
