@@ -1,46 +1,8 @@
 import { useMemo } from 'react';
-import { Camera, Film, BookOpen, Brain, Video, Image as ImageIcon, X, GalleryHorizontalEnd } from 'lucide-react';
+import { X } from 'lucide-react';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { useCameraContext } from '@/context/CameraContext';
-
-const SECTION_DETAILS = {
-  photography: {
-    title: 'Photography',
-    description: 'MMM Media beauty, travel, and professional shoots streamed from Drive.',
-    icon: Camera,
-    accent: 'from-emerald-500/70 via-teal-500/70 to-slate-900/90',
-  },
-  'ai-albums': {
-    title: 'AI Albums',
-    description: 'Custom diffusion explorations, prompts, and conceptual artboards.',
-    icon: ImageIcon,
-    accent: 'from-fuchsia-500/70 via-rose-500/70 to-slate-900/90',
-  },
-  films: {
-    title: 'Films & Music Videos',
-    description: 'Narrative features, shorts, and commissioned music films.',
-    icon: Film,
-    accent: 'from-amber-500/70 via-orange-500/70 to-slate-900/90',
-  },
-  'video-edits': {
-    title: 'Epic Video Edits',
-    description: 'High-energy reels parsed directly from Instagram and YouTube.',
-    icon: Video,
-    accent: 'from-indigo-500/70 via-purple-500/70 to-slate-900/90',
-  },
-  loremaker: {
-    title: 'Loremaker Universe',
-    description: 'Living character bible pulled from the online spreadsheet.',
-    icon: BookOpen,
-    accent: 'from-cyan-500/70 via-blue-500/70 to-slate-900/90',
-  },
-  'ai-projects': {
-    title: 'AI Projects',
-    description: 'Interactive demos and prompts across workshops and starterclasses.',
-    icon: Brain,
-    accent: 'from-sky-500/70 via-cyan-500/70 to-slate-900/90',
-  },
-};
+import { getGalleriaSectionDetail } from '@/lib/galleriaSections';
 
 export default function GalleriaHome() {
   const {
@@ -58,12 +20,7 @@ export default function GalleriaHome() {
   const cards = useMemo(() => {
     if (!sections.length) return [];
     return sections.map((section) => {
-      const meta = SECTION_DETAILS[section.id] || {
-        title: section.label,
-        description: 'Open this experience inside the viewport-filling Galleria.',
-        icon: GalleryHorizontalEnd,
-        accent: 'from-slate-600/80 via-slate-700/80 to-slate-900/90',
-      };
+      const meta = getGalleriaSectionDetail(section.id);
       return { ...section, ...meta };
     });
   }, [sections]);
@@ -118,18 +75,32 @@ export default function GalleriaHome() {
                   key={section.id}
                   type="button"
                   onClick={() => handleOpen(section.id)}
-                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 text-left transition hover:-translate-y-1 hover:border-white/30"
+                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 text-left shadow-[0_25px_80px_rgba(0,0,0,0.45)] transition hover:-translate-y-1.5 hover:border-white/40"
+                  aria-label={`Open ${section.title}`}
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${section.accent}`} aria-hidden="true" />
-                  <div className="relative flex flex-col gap-4 p-6">
-                    <div className="inline-flex items-center gap-3 rounded-full bg-black/30 px-4 py-2 text-[11px] mono uppercase tracking-[0.35em] text-white/75">
+                  <div className="absolute inset-0" aria-hidden="true">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{
+                        backgroundImage: section.previewImage
+                          ? `linear-gradient(145deg, rgba(0,0,0,0.55), rgba(6,10,18,0.85)), url(${section.previewImage})`
+                          : undefined,
+                      }}
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${section.accent} opacity-70`} />
+                  </div>
+                  <div className="relative flex h-full flex-col justify-between gap-6 p-6">
+                    <div className="inline-flex items-center gap-3 rounded-full bg-black/35 px-4 py-2 text-[11px] mono uppercase tracking-[0.35em] text-white/75">
                       <Icon className="h-4 w-4" />
                       <span>{section.title}</span>
                     </div>
-                    <p className="text-base text-white/80">{section.description}</p>
-                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-white">
-                      Launch <span className="h-px w-6 bg-white/60" />
-                    </span>
+                    <p className="text-base text-white/85">{section.description}</p>
+                    <div className="inline-flex items-center gap-3 text-sm font-semibold text-white">
+                      Launch
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-black/30 transition group-hover:border-white/80">
+                        <span className="h-0.5 w-6 bg-white" />
+                      </span>
+                    </div>
                   </div>
                 </button>
               );
@@ -141,8 +112,8 @@ export default function GalleriaHome() {
           )}
         </div>
 
-        <div className="mt-auto rounded-3xl border border-white/10 bg-black/40 p-6 text-white/80">
-          <div className="flex flex-wrap items-center gap-6 text-sm mono uppercase tracking-[0.35em]">
+        <div className="mt-auto rounded-[32px] border border-white/10 bg-gradient-to-r from-black/80 via-black/70 to-black/80 p-6 text-white/80 shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
+          <div className="flex flex-wrap items-center gap-6 text-[11px] mono uppercase tracking-[0.35em]">
             <div>
               ISO <span className="text-white">{iso}</span>
             </div>
@@ -154,6 +125,9 @@ export default function GalleriaHome() {
             </div>
             <div>
               Battery <span className="text-white">{Math.max(0, Math.min(100, Math.round(batteryLevel)))}%</span>
+            </div>
+            <div>
+              Sections <span className="text-white">{cards.length}</span>
             </div>
           </div>
         </div>

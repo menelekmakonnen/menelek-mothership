@@ -793,22 +793,52 @@ export const CameraProvider = ({ children }) => {
     }
   }, []);
 
-  const navigateGalleriaSection = useCallback((direction = 'next') => {
-    const current = galleriaSessionRef.current.id;
-    if (!current) return;
-    const available = GALLERIA_SEQUENCE.filter((id) => Boolean(galleriaRegistryRef.current[id]));
-    if (!available.length) return;
-    const currentIndex = available.indexOf(current);
-    if (currentIndex === -1) return;
-    const delta = direction === 'prev' ? -1 : 1;
-    const nextIndex = (currentIndex + delta + available.length) % available.length;
-    const nextId = available[nextIndex];
-    if (!nextId) return;
-    if (typeof galleriaSessionRef.current.closeHandler === 'function') {
-      galleriaSessionRef.current.closeHandler();
-    }
-    openGalleriaSection(nextId, { viaGalleria: true });
-  }, [openGalleriaSection]);
+  const performGalleriaSwitch = useCallback(
+    (nextId) => {
+      if (!nextId) return;
+      const closeHandler = galleriaSessionRef.current.closeHandler;
+      if (typeof closeHandler === 'function') {
+        closeHandler();
+      }
+      requestAnimationFrame(() => {
+        openGalleriaSection(nextId, { viaGalleria: true });
+      });
+    },
+    [openGalleriaSection]
+  );
+
+  const navigateGalleriaSection = useCallback(
+    (direction = 'next', fallbackSectionId = null) => {
+      const available = GALLERIA_SEQUENCE.filter((id) => Boolean(galleriaRegistryRef.current[id]));
+      if (!available.length) return;
+      const anchor = galleriaSessionRef.current.id || fallbackSectionId;
+      if (!anchor) return;
+      const currentIndex = available.indexOf(anchor);
+      if (currentIndex === -1) return;
+      const delta = direction === 'prev' ? -1 : 1;
+      const nextIndex = (currentIndex + delta + available.length) % available.length;
+      const nextId = available[nextIndex];
+      if (!nextId) return;
+      if (galleriaSessionRef.current.id) {
+        performGalleriaSwitch(nextId);
+      } else {
+        openGalleriaSection(nextId, { viaGalleria: true });
+      }
+    },
+    [openGalleriaSection, performGalleriaSwitch]
+  );
+
+  const switchGalleriaSection = useCallback(
+    (sectionId) => {
+      if (!sectionId) return;
+      const available = GALLERIA_SEQUENCE.filter((id) => Boolean(galleriaRegistryRef.current[id]));
+      if (!available.includes(sectionId)) return;
+      const current = galleriaSessionRef.current.id;
+      if (current === sectionId) return;
+      performGalleriaSwitch(sectionId);
+    },
+    [performGalleriaSwitch]
+  );
 
   const openGalleriaHome = useCallback(() => {
     setGalleriaHomeOpen(true);
@@ -922,6 +952,7 @@ export const CameraProvider = ({ children }) => {
     engageGalleriaSection,
     releaseGalleriaSection,
     navigateGalleriaSection,
+    switchGalleriaSection,
     getGalleriaSectionMeta,
     listGalleriaSections,
     openGalleriaSection,

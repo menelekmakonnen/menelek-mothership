@@ -17,6 +17,7 @@ import {
   Mail,
   BookOpen,
   Globe,
+  GalleryHorizontalEnd,
 } from 'lucide-react';
 import IconBox from '@/components/ui/IconBox';
 import { useCameraContext } from '@/context/CameraContext';
@@ -360,11 +361,20 @@ export default function IntroductionSection() {
                     <motion.button
                       type="button"
                       onClick={openGalleriaHome}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/85 transition hover:border-white/40 hover:text-white"
-                      whileHover={{ scale: 1.03, translateY: -1 }}
-                      whileTap={{ scale: 0.96 }}
+                      className="group relative overflow-hidden rounded-full border-2 border-white/40 px-8 py-4 text-left text-white shadow-[0_15px_50px_rgba(0,0,0,0.4)]"
+                      whileHover={{ scale: 1.05, translateY: -2 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      Launch Galleria
+                      <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/40 via-cyan-400/35 to-blue-500/45 opacity-90 blur-[1px] transition group-hover:opacity-100" />
+                      <span className="relative z-10 flex items-center gap-4">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/30">
+                          <GalleryHorizontalEnd className="h-5 w-5" />
+                        </span>
+                        <span className="flex flex-col leading-tight">
+                          <span className="text-xs mono uppercase tracking-[0.55em] text-white/70">Immersive</span>
+                          <span className="text-lg font-semibold uppercase tracking-[0.35em]">Launch Galleria</span>
+                        </span>
+                      </span>
                     </motion.button>
                   </div>
                 </motion.div>
