@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { X } from 'lucide-react';
+import { X, GalleryHorizontalEnd } from 'lucide-react';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import { useCameraContext } from '@/context/CameraContext';
 import { getGalleriaSectionDetail } from '@/lib/galleriaSections';
@@ -69,7 +69,7 @@ export default function GalleriaHome() {
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {cards.length ? (
             cards.map((section) => {
-              const Icon = section.icon;
+              const Icon = section.icon || GalleryHorizontalEnd;
               return (
                 <button
                   key={section.id}

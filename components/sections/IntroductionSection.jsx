@@ -361,19 +361,16 @@ export default function IntroductionSection() {
                     <motion.button
                       type="button"
                       onClick={openGalleriaHome}
-                      className="group relative overflow-hidden rounded-full border-2 border-white/40 px-8 py-4 text-left text-white shadow-[0_15px_50px_rgba(0,0,0,0.4)]"
-                      whileHover={{ scale: 1.05, translateY: -2 }}
-                      whileTap={{ scale: 0.95 }}
+                      className="group inline-flex items-center gap-3 rounded-full border border-white/25 bg-gradient-to-r from-emerald-500/30 via-cyan-500/25 to-blue-500/30 px-5 py-3 text-left text-white/90 shadow-[0_18px_45px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                      whileHover={{ scale: 1.04, translateY: -1 }}
+                      whileTap={{ scale: 0.97 }}
                     >
-                      <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/40 via-cyan-400/35 to-blue-500/45 opacity-90 blur-[1px] transition group-hover:opacity-100" />
-                      <span className="relative z-10 flex items-center gap-4">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/30">
-                          <GalleryHorizontalEnd className="h-5 w-5" />
-                        </span>
-                        <span className="flex flex-col leading-tight">
-                          <span className="text-xs mono uppercase tracking-[0.55em] text-white/70">Immersive</span>
-                          <span className="text-lg font-semibold uppercase tracking-[0.35em]">Launch Galleria</span>
-                        </span>
+                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black/35 border border-white/30">
+                        <GalleryHorizontalEnd className="h-5 w-5" />
+                      </span>
+                      <span className="flex flex-col leading-tight">
+                        <span className="text-[10px] mono uppercase tracking-[0.55em] text-white/70">Immersive</span>
+                        <span className="text-base font-semibold uppercase tracking-[0.35em]">Launch Galleria</span>
                       </span>
                     </motion.button>
                   </div>

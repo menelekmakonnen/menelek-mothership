@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import BlurLayer from './BlurLayer';
 import { useCameraContext } from '@/context/CameraContext';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GalleryHorizontalEnd } from 'lucide-react';
 import { getGalleriaSectionDetail } from '@/lib/galleriaSections';
 
 let activeLightboxCount = 0;
@@ -85,7 +85,7 @@ export default function FullscreenLightbox({
     });
   }, [listGalleriaSections, showGalleriaNav]);
 
-  const ActiveIcon = galleriaDetail?.icon || null;
+  const ActiveIcon = galleriaDetail?.icon || GalleryHorizontalEnd;
   const activeTitle = galleriaMeta?.label || galleriaDetail?.title || 'Galleria';
 
   const lightbox = (
@@ -142,7 +142,7 @@ export default function FullscreenLightbox({
                 </div>
                 <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
                   {galleriaSections.map((section) => {
-                    const Icon = section.icon;
+                    const Icon = section.icon || GalleryHorizontalEnd;
                     const isActive = section.id === galleriaSectionId;
                     return (
                       <button
