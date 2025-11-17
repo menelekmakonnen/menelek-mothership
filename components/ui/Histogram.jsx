@@ -1,10 +1,13 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { X } from 'lucide-react';
 
 export default function Histogram() {
-  const { showHistogram } = useCameraContext();
+  const { showHistogram, setShowHistogram } = useCameraContext();
   const [histogramData, setHistogramData] = useState([]);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const dragOrigin = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!showHistogram) return;
@@ -32,13 +35,35 @@ export default function Histogram() {
     <AnimatePresence>
       {showHistogram && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="fixed top-20 right-4 z-[1400] camera-hud rounded-lg p-3 w-48"
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-[140px] right-6 z-[1800] camera-hud rounded-xl p-3 w-52 cursor-move"
+          drag
+          dragMomentum={false}
+          onDragStart={() => {
+            dragOrigin.current = { ...position };
+          }}
+          onDragEnd={(event, info) => {
+            setPosition({
+              x: dragOrigin.current.x + info.offset.x,
+              y: dragOrigin.current.y + info.offset.y,
+            });
+          }}
+          style={{ x: position.x, y: position.y }}
         >
-          <div className="mono text-[10px] mb-2 opacity-75 tracking-wider">
-            HISTOGRAM
+          <div className="flex items-center justify-between mb-2">
+            <div className="mono text-[10px] opacity-75 tracking-wider">
+              HISTOGRAM
+            </div>
+            <button
+              onClick={() => setShowHistogram(false)}
+              className="w-6 h-6 flex items-center justify-center rounded-full border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+              title="Close histogram"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <X className="w-3 h-3" />
+            </button>
           </div>
           <div className="flex items-end gap-0.5 h-16">
             {histogramData.map((value, i) => (

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="mmGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8cfffb">
+        <animate attributeName="stop-color" values="#8cfffb;#ff8bf5;#8cfffb" dur="6s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#ff8bf5">
+        <animate attributeName="stop-color" values="#ff8bf5;#ffd480;#ff8bf5" dur="6s" repeatCount="indefinite" />
+      </stop>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="12" fill="#05060d" stroke="url(#mmGlow)" stroke-width="2" />
+  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-family="'Space Grotesk', 'Segoe UI', sans-serif" font-size="28" font-weight="700" fill="url(#mmGlow)">
+    MM
+  </text>
+</svg>
