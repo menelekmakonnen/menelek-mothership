@@ -1,70 +1,114 @@
-import { motion } from 'framer-motion';
-import { Play, Film } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Video } from 'lucide-react';
+import { useGalleria } from '@/context/GalleriaContext';
+import Galleria from '@/components/galleria/Galleria';
 
-// Placeholder - will be populated from Google Drive
-const videos = Array.from({ length: 12 }, (_, i) => ({
-  id: i + 1,
-  title: `Epic Edit ${i + 1}`,
-  thumbnail: ['🎬', '🎥', '🎞️', '📹'][i % 4],
-  duration: `${Math.floor(Math.random() * 5) + 2}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
-  views: `${Math.floor(Math.random() * 100)}K`,
-}));
+// Video categories as albums
+const epicEditsData = {
+  title: 'Epic Video Edits',
+  description: 'Professional video editing showcase',
+  albums: [
+    {
+      id: 'music-videos',
+      name: 'Music Videos',
+      emoji: '🎵',
+      images: Array.from({ length: 15 }, (_, i) => ({
+        id: `music-${i}`,
+        title: `Music Video ${i + 1}`,
+        url: `https://picsum.photos/1920/1080?random=${i + 1000}`,
+        thumbnail: `https://picsum.photos/400/300?random=${i + 1000}`,
+      })),
+    },
+    {
+      id: 'commercials',
+      name: 'Commercials',
+      emoji: '📺',
+      images: Array.from({ length: 20 }, (_, i) => ({
+        id: `commercial-${i}`,
+        title: `Commercial ${i + 1}`,
+        url: `https://picsum.photos/1920/1080?random=${i + 1100}`,
+        thumbnail: `https://picsum.photos/400/300?random=${i + 1100}`,
+      })),
+    },
+    {
+      id: 'short-films',
+      name: 'Short Films',
+      emoji: '🎬',
+      images: Array.from({ length: 10 }, (_, i) => ({
+        id: `film-${i}`,
+        title: `Short Film ${i + 1}`,
+        url: `https://picsum.photos/1920/1080?random=${i + 1200}`,
+        thumbnail: `https://picsum.photos/400/300?random=${i + 1200}`,
+      })),
+    },
+    {
+      id: 'social-media',
+      name: 'Social Media',
+      emoji: '📱',
+      images: Array.from({ length: 25 }, (_, i) => ({
+        id: `social-${i}`,
+        title: `Social ${i + 1}`,
+        url: `https://picsum.photos/1080/1920?random=${i + 1300}`,
+        thumbnail: `https://picsum.photos/300/400?random=${i + 1300}`,
+      })),
+    },
+    {
+      id: 'events',
+      name: 'Event Highlights',
+      emoji: '🎉',
+      images: Array.from({ length: 18 }, (_, i) => ({
+        id: `event-video-${i}`,
+        title: `Event Highlight ${i + 1}`,
+        url: `https://picsum.photos/1920/1080?random=${i + 1400}`,
+        thumbnail: `https://picsum.photos/400/300?random=${i + 1400}`,
+      })),
+    },
+    {
+      id: 'trailers',
+      name: 'Trailers & Teasers',
+      emoji: '🎥',
+      images: Array.from({ length: 12 }, (_, i) => ({
+        id: `trailer-${i}`,
+        title: `Trailer ${i + 1}`,
+        url: `https://picsum.photos/1920/1080?random=${i + 1500}`,
+        thumbnail: `https://picsum.photos/400/300?random=${i + 1500}`,
+      })),
+    },
+  ],
+};
 
 export default function VideoEditsSection() {
+  const [isGalleriaOpen, setIsGalleriaOpen] = useState(false);
+  const { registerGallery, goToGallery } = useGalleria();
+
+  // Register this gallery
+  useEffect(() => {
+    registerGallery('epic-edits', epicEditsData);
+  }, [registerGallery]);
+
+  const handleOpenGalleria = () => {
+    setIsGalleriaOpen(true);
+    goToGallery('epic-edits');
+  };
+
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          Epic Video Edits
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
-        >
-          Professional video editing and motion graphics
-        </motion.p>
-
-        <div className="grid md:grid-cols-4 gap-6">
-          {videos.map((video, index) => (
-            <motion.div
-              key={video.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.05 * index }}
-              className="luxury-card group cursor-pointer"
-              whileHover={{ y: -8 }}
-            >
-              {/* Video thumbnail */}
-              <div className="aspect-video bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg mb-4 flex items-center justify-center text-5xl relative overflow-hidden group-hover:scale-105 transition-transform">
-                {video.thumbnail}
-
-                {/* Play overlay */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white ml-1" />
-                  </div>
-                </div>
-
-                {/* Duration badge */}
-                <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs mono">
-                  {video.duration}
-                </div>
-              </div>
-
-              {/* Video info */}
-              <h3 className="font-bold mb-1">{video.title}</h3>
-              <p className="text-xs text-gray-400">{video.views} views</p>
-            </motion.div>
-          ))}
+    <div className="flex h-full w-full items-center justify-center p-8">
+      <button
+        onClick={handleOpenGalleria}
+        className="group flex flex-col items-center gap-4 rounded-3xl border-2 border-white/20 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 p-12 transition-all hover:scale-105 hover:border-white/40 hover:shadow-2xl"
+      >
+        <Video className="h-24 w-24 text-white transition-transform group-hover:scale-110" />
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-white">Epic Video Edits</h2>
+          <p className="mt-2 text-white/70">Click to explore categories</p>
         </div>
-      </div>
+      </button>
+
+      <Galleria
+        isOpen={isGalleriaOpen}
+        onClose={() => setIsGalleriaOpen(false)}
+        galleriesData={{ 'epic-edits': epicEditsData }}
+      />
     </div>
   );
 }

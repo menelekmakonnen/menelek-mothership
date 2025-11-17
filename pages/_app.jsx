@@ -1,10 +1,13 @@
 import { CameraProvider } from '@/context/CameraContext';
+import { GalleriaProvider } from '@/context/GalleriaContext';
 import '@/styles/globals.css';
 
 export default function App({ Component, pageProps }) {
   return (
     <CameraProvider>
-      <Component {...pageProps} />
+      <GalleriaProvider>
+        <Component {...pageProps} />
+      </GalleriaProvider>
     </CameraProvider>
   );
 }

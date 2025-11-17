@@ -1,123 +1,92 @@
-import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { Sparkles, Wand2, Cpu, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Image } from 'lucide-react';
+import { useGalleria } from '@/context/GalleriaContext';
+import Galleria from '@/components/galleria/Galleria';
 
-// Placeholder AI-generated content albums
-const aiAlbums = [
-  {
-    id: 1,
-    name: 'AI Portraits',
-    count: 24,
-    icon: Sparkles,
-    gradient: 'from-purple-600 to-pink-600',
-  },
-  {
-    id: 2,
-    name: 'Concept Art',
-    count: 36,
-    icon: Wand2,
-    gradient: 'from-blue-600 to-cyan-600',
-  },
-  {
-    id: 3,
-    name: 'Digital Dreams',
-    count: 28,
-    icon: Cpu,
-    gradient: 'from-green-600 to-emerald-600',
-  },
-  {
-    id: 4,
-    name: 'Future Visions',
-    count: 42,
-    icon: Zap,
-    gradient: 'from-orange-600 to-red-600',
-  },
-];
+// Sample AI Albums data
+const aiAlbumsData = {
+  title: 'AI Albums',
+  description: 'AI-generated artwork and designs',
+  albums: [
+    {
+      id: 'ai-portraits',
+      name: 'AI Portraits',
+      emoji: '🤖',
+      images: Array.from({ length: 18 }, (_, i) => ({
+        id: `ai-portrait-${i}`,
+        title: `AI Portrait ${i + 1}`,
+        url: `https://picsum.photos/1000/1000?random=${i + 500}`,
+        thumbnail: `https://picsum.photos/400/400?random=${i + 500}`,
+      })),
+    },
+    {
+      id: 'concept-art',
+      name: 'Concept Art',
+      emoji: '🎨',
+      images: Array.from({ length: 22 }, (_, i) => ({
+        id: `concept-${i}`,
+        title: `Concept ${i + 1}`,
+        url: `https://picsum.photos/1200/900?random=${i + 600}`,
+        thumbnail: `https://picsum.photos/400/400?random=${i + 600}`,
+      })),
+    },
+    {
+      id: 'digital-dreams',
+      name: 'Digital Dreams',
+      emoji: '✨',
+      images: Array.from({ length: 28 }, (_, i) => ({
+        id: `dream-${i}`,
+        title: `Dream ${i + 1}`,
+        url: `https://picsum.photos/1100/1100?random=${i + 700}`,
+        thumbnail: `https://picsum.photos/400/400?random=${i + 700}`,
+      })),
+    },
+    {
+      id: 'future-visions',
+      name: 'Future Visions',
+      emoji: '🔮',
+      images: Array.from({ length: 20 }, (_, i) => ({
+        id: `vision-${i}`,
+        title: `Vision ${i + 1}`,
+        url: `https://picsum.photos/1300/900?random=${i + 800}`,
+        thumbnail: `https://picsum.photos/400/400?random=${i + 800}`,
+      })),
+    },
+  ],
+};
 
 export default function AIAlbumsSection() {
-  const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [isGalleriaOpen, setIsGalleriaOpen] = useState(false);
+  const { registerGallery, goToGallery } = useGalleria();
 
-  if (selectedAlbum) {
-    return (
-      <div className="w-full min-h-screen p-8 pt-32 pb-32">
-        <div className="max-w-7xl mx-auto">
-          <button
-            onClick={() => setSelectedAlbum(null)}
-            className="text-green-400 hover:underline mb-6"
-          >
-            ← Back to AI Albums
-          </button>
+  // Register this gallery
+  useEffect(() => {
+    registerGallery('ai-albums', aiAlbumsData);
+  }, [registerGallery]);
 
-          <h2 className="text-4xl font-bold mb-2">{selectedAlbum.name}</h2>
-          <p className="text-gray-400 mb-8">{selectedAlbum.count} AI-generated images</p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: selectedAlbum.count }).map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.02 * i }}
-                className={`aspect-square bg-gradient-to-br ${selectedAlbum.gradient} rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform flex items-center justify-center text-4xl opacity-80`}
-              >
-                🤖
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleOpenGalleria = () => {
+    setIsGalleriaOpen(true);
+    goToGallery('ai-albums');
+  };
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          AI Albums
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
-        >
-          AI-generated visual art and experiments
-        </motion.p>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {aiAlbums.map((album, index) => {
-            const Icon = album.icon;
-            return (
-              <motion.div
-                key={album.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
-                onClick={() => setSelectedAlbum(album)}
-                className="group cursor-pointer"
-                whileHover={{ y: -8 }}
-              >
-                <div className={`aspect-square bg-gradient-to-br ${album.gradient} rounded-2xl p-8 mb-4 flex flex-col items-center justify-center group-hover:scale-105 transition-transform`}>
-                  <Icon className="w-20 h-20 text-white mb-4" />
-                  <div className="text-white/80 text-sm mono">AI GENERATED</div>
-                </div>
-
-                <h3 className="font-bold text-xl mb-2">{album.name}</h3>
-                <p className="text-sm text-gray-400">{album.count} images</p>
-
-                <div className="mt-3 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                  View Album →
-                </div>
-              </motion.div>
-            );
-          })}
+    <div className="flex h-full w-full items-center justify-center p-8">
+      <button
+        onClick={handleOpenGalleria}
+        className="group flex flex-col items-center gap-4 rounded-3xl border-2 border-white/20 bg-gradient-to-br from-purple-600/20 to-pink-600/20 p-12 transition-all hover:scale-105 hover:border-white/40 hover:shadow-2xl"
+      >
+        <Image className="h-24 w-24 text-white transition-transform group-hover:scale-110" />
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-white">AI Albums</h2>
+          <p className="mt-2 text-white/70">Click to explore gallery</p>
         </div>
-      </div>
+      </button>
+
+      <Galleria
+        isOpen={isGalleriaOpen}
+        onClose={() => setIsGalleriaOpen(false)}
+        galleriesData={{ 'ai-albums': aiAlbumsData }}
+      />
     </div>
   );
 }

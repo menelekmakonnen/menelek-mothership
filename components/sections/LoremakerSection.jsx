@@ -1,99 +1,101 @@
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { BookOpen } from 'lucide-react';
+import { useGalleria } from '@/context/GalleriaContext';
+import Galleria from '@/components/galleria/Galleria';
 
-// Placeholder character data - replace with Google Sheets data
+// All available Loremaker characters
 const allCharacters = [
-  { name: 'Aria Stormweaver', emoji: '⚡', role: 'Elemental Mage' },
-  { name: 'Dusk Shadowblade', emoji: '🗡️', role: 'Shadow Assassin' },
-  { name: 'Zephyr Windcaller', emoji: '🌪️', role: 'Wind Archer' },
-  { name: 'Terra Earthshaper', emoji: '🏔️', role: 'Earth Guardian' },
-  { name: 'Lyra Moonwhisper', emoji: '🌙', role: 'Lunar Priestess' },
-  { name: 'Blaze Inferno', emoji: '🔥', role: 'Fire Warrior' },
-  { name: 'Frost Iceheart', emoji: '❄️', role: 'Ice Sorceress' },
-  { name: 'Nova Starforge', emoji: '⭐', role: 'Cosmic Blacksmith' },
-  { name: 'Raven Nightwing', emoji: '🦅', role: 'Sky Sentinel' },
-  { name: 'Sage Timeless', emoji: '⏳', role: 'Chronomancer' },
-  { name: 'Echo Soundwave', emoji: '🎵', role: 'Sonic Bard' },
-  { name: 'Vex Voidwalker', emoji: '🌀', role: 'Void Mystic' },
-  { name: 'Crimson Bloodmoon', emoji: '🩸', role: 'Blood Knight' },
-  { name: 'Jade Lifebinder', emoji: '🌿', role: 'Nature Druid' },
-  { name: 'Atlas Titanborn', emoji: '💪', role: 'Titan Champion' },
-  { name: 'Cipher Codebreaker', emoji: '🔐', role: 'Rune Scholar' },
-  { name: 'Phoenix Ashborn', emoji: '🔥', role: 'Flame Phoenix' },
-  { name: 'Onyx Darkstone', emoji: '⚫', role: 'Dark Paladin' },
-  { name: 'Aurora Dawnbringer', emoji: '🌅', role: 'Light Herald' },
-  { name: 'Vortex Stormchaser', emoji: '🌊', role: 'Storm Rider' },
+  { id: 1, name: 'Aria Stormweaver', emoji: '⚡', role: 'Elemental Mage', description: 'Master of elemental storms and lightning magic' },
+  { id: 2, name: 'Dusk Shadowblade', emoji: '🗡️', role: 'Shadow Assassin', description: 'Silent hunter of the dark realms' },
+  { id: 3, name: 'Zephyr Windcaller', emoji: '🌪️', role: 'Wind Archer', description: 'Guardian of the sky paths' },
+  { id: 4, name: 'Terra Earthshaper', emoji: '🏔️', role: 'Earth Guardian', description: 'Protector of the ancient mountains' },
+  { id: 5, name: 'Lyra Moonwhisper', emoji: '🌙', role: 'Lunar Priestess', description: 'Keeper of moonlight rituals' },
+  { id: 6, name: 'Blaze Inferno', emoji: '🔥', role: 'Fire Warrior', description: 'Champion of the eternal flame' },
+  { id: 7, name: 'Frost Iceheart', emoji: '❄️', role: 'Ice Sorceress', description: 'Wielder of winter\'s fury' },
+  { id: 8, name: 'Nova Starforge', emoji: '⭐', role: 'Cosmic Blacksmith', description: 'Forger of celestial weapons' },
+  { id: 9, name: 'Raven Nightwing', emoji: '🦅', role: 'Sky Sentinel', description: 'Watcher of the endless skies' },
+  { id: 10, name: 'Sage Timeless', emoji: '⏳', role: 'Chronomancer', description: 'Manipulator of time itself' },
+  { id: 11, name: 'Echo Soundwave', emoji: '🎵', role: 'Sonic Bard', description: 'Maestro of sonic warfare' },
+  { id: 12, name: 'Vex Voidwalker', emoji: '🌀', role: 'Void Mystic', description: 'Explorer of the void between worlds' },
+  { id: 13, name: 'Crimson Bloodmoon', emoji: '🩸', role: 'Blood Knight', description: 'Warrior bound by ancient oaths' },
+  { id: 14, name: 'Jade Lifebinder', emoji: '🌿', role: 'Nature Druid', description: 'Guardian of all living things' },
+  { id: 15, name: 'Atlas Titanborn', emoji: '💪', role: 'Titan Champion', description: 'Bearer of immense strength' },
+  { id: 16, name: 'Cipher Codebreaker', emoji: '🔐', role: 'Rune Scholar', description: 'Decoder of ancient mysteries' },
+  { id: 17, name: 'Phoenix Ashborn', emoji: '🔥', role: 'Flame Phoenix', description: 'Reborn from the ashes of war' },
+  { id: 18, name: 'Onyx Darkstone', emoji: '⚫', role: 'Dark Paladin', description: 'Knight of the shadow realm' },
+  { id: 19, name: 'Aurora Dawnbringer', emoji: '🌅', role: 'Light Herald', description: 'Herald of the new dawn' },
+  { id: 20, name: 'Vortex Stormchaser', emoji: '🌊', role: 'Storm Rider', description: 'Master of tempests and tides' },
+  { id: 21, name: 'Ember Flamekeeper', emoji: '🕯️', role: 'Fire Keeper', description: 'Protector of the eternal flame' },
+  { id: 22, name: 'Mistral Clouddancer', emoji: '☁️', role: 'Sky Dancer', description: 'Dancer among the clouds' },
+  { id: 23, name: 'Obsidian Nightfall', emoji: '🌑', role: 'Shadow Lord', description: 'Ruler of the endless night' },
+  { id: 24, name: 'Crystal Lightweaver', emoji: '💎', role: 'Light Mage', description: 'Weaver of pure light' },
+  { id: 25, name: 'Thorin Earthbreaker', emoji: '🗿', role: 'Earth Titan', description: 'Breaker of mountains' },
 ];
 
 export default function LoremakerSection() {
-  const [displayedCharacters, setDisplayedCharacters] = useState([]);
+  const [isGalleriaOpen, setIsGalleriaOpen] = useState(false);
+  const [loremakerData, setLoremakerData] = useState(null);
+  const { registerGallery, goToGallery } = useGalleria();
 
   useEffect(() => {
-    // Randomly select characters on load
+    // Randomly select 20 characters
     const shuffled = [...allCharacters].sort(() => Math.random() - 0.5);
-    setDisplayedCharacters(shuffled.slice(0, 12));
-  }, []);
+    const selected = shuffled.slice(0, 20);
+
+    // Create single album with 20 character "images"
+    const data = {
+      title: 'Loremaker Universe',
+      description: '20 random characters from the Loremaker world',
+      albums: [
+        {
+          id: 'loremaker-characters',
+          name: 'Character Roster',
+          emoji: '⚔️',
+          images: selected.map(char => ({
+            id: char.id,
+            title: char.name,
+            url: `https://picsum.photos/800/1000?random=${char.id + 900}`,
+            thumbnail: `https://picsum.photos/400/400?random=${char.id + 900}`,
+            emoji: char.emoji,
+            role: char.role,
+            description: char.description,
+            loremakerLink: 'https://loremaker.cloud',
+          })),
+        },
+      ],
+    };
+
+    setLoremakerData(data);
+    registerGallery('loremaker', data);
+  }, [registerGallery]);
+
+  const handleOpenGalleria = () => {
+    setIsGalleriaOpen(true);
+    goToGallery('loremaker');
+  };
+
+  if (!loremakerData) return null;
 
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          Loremaker Universe
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
-        >
-          Epic character-driven narratives across multiple realms
-        </motion.p>
-
-        {/* Static character grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {displayedCharacters.map((character, index) => (
-            <motion.div
-              key={character.name}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.05 * index }}
-              className="luxury-card group cursor-pointer text-center"
-              whileHover={{ y: -8 }}
-            >
-              {/* Character icon */}
-              <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                {character.emoji}
-              </div>
-
-              {/* Character name */}
-              <h3 className="font-bold text-lg mb-2">{character.name}</h3>
-
-              {/* Character role */}
-              <p className="text-sm text-gray-400">{character.role}</p>
-
-              {/* Hover effect */}
-              <div className="mt-4 text-xs text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                View Details →
-              </div>
-            </motion.div>
-          ))}
+    <div className="flex h-full w-full items-center justify-center p-8">
+      <button
+        onClick={handleOpenGalleria}
+        className="group flex flex-col items-center gap-4 rounded-3xl border-2 border-white/20 bg-gradient-to-br from-orange-600/20 to-red-600/20 p-12 transition-all hover:scale-105 hover:border-white/40 hover:shadow-2xl"
+      >
+        <BookOpen className="h-24 w-24 text-white transition-transform group-hover:scale-110" />
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-white">Loremaker Universe</h2>
+          <p className="mt-2 text-white/70">Click to meet 20 random characters</p>
         </div>
+      </button>
 
-        {/* Info note */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-12 text-center text-sm text-gray-500"
-        >
-          Characters are randomly selected from the Loremaker Universe roster
-        </motion.div>
-      </div>
+      {loremakerData && (
+        <Galleria
+          isOpen={isGalleriaOpen}
+          onClose={() => setIsGalleriaOpen(false)}
+          galleriesData={{ loremaker: loremakerData }}
+        />
+      )}
     </div>
   );
 }
