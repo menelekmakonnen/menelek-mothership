@@ -69,6 +69,7 @@ export const CameraProvider = ({ children }) => {
 
   // Galleria linking across sections
   const galleriaRegistryRef = useRef({});
+  const pendingGalleriaRequestsRef = useRef([]);
   const [galleriaVersion, setGalleriaVersion] = useState(0);
   const [activeGalleriaSection, setActiveGalleriaSectionState] = useState(null);
   const [isGalleriaHomeOpen, setGalleriaHomeOpen] = useState(false);
@@ -617,6 +618,21 @@ export const CameraProvider = ({ children }) => {
       description: config.description || null,
     };
     setGalleriaVersion((version) => version + 1);
+
+    if (config.openDefault) {
+      const queue = pendingGalleriaRequestsRef.current;
+      if (queue.length) {
+        const pending = queue.filter((request) => request.sectionId === sectionId);
+        if (pending.length) {
+          pendingGalleriaRequestsRef.current = queue.filter((request) => request.sectionId !== sectionId);
+          pending.forEach((request) => {
+            requestAnimationFrame(() => {
+              config.openDefault({ viaGalleria: true, ...request.options });
+            });
+          });
+        }
+      }
+    }
     return () => {
       if (galleriaRegistryRef.current[sectionId]) {
         delete galleriaRegistryRef.current[sectionId];
@@ -676,7 +692,12 @@ export const CameraProvider = ({ children }) => {
     const entry = galleriaRegistryRef.current[sectionId];
     if (entry && typeof entry.openDefault === 'function') {
       entry.openDefault({ viaGalleria: true, ...options });
+      return;
     }
+    pendingGalleriaRequestsRef.current = [
+      ...pendingGalleriaRequestsRef.current.filter((request) => request.sectionId !== sectionId),
+      { sectionId, options },
+    ];
   }, []);
 
   const performGalleriaSwitch = useCallback(

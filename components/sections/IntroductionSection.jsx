@@ -208,7 +208,7 @@ export default function IntroductionSection() {
 
   useEffect(() => {
     if (cycleCount === 0) return;
-    if (cycleCount % 4 === 0) {
+    if (cycleCount % 5 === 0) {
       setProjectIndex((prev) => (prev + 1) % featuredProjects.length);
     }
   }, [cycleCount]);
@@ -315,9 +315,22 @@ export default function IntroductionSection() {
               </div>
 
               <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-                <div className="flex items-center justify-center">
-                  <IconBox icon={activeProject.icon} gradient={activeProject.iconGradient} size="xl" className="shadow-[0_25px_60px_rgba(0,0,0,0.35)]" />
-                </div>
+                <motion.a
+                  href={activeProject.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.06, rotate: 2 }}
+                  whileTap={{ scale: 0.94 }}
+                  className="flex items-center justify-center"
+                >
+                  <span className="sr-only">{activeProject.action}</span>
+                  <IconBox
+                    icon={activeProject.icon}
+                    gradient={activeProject.iconGradient}
+                    size="xl"
+                    className="shadow-[0_25px_60px_rgba(0,0,0,0.35)]"
+                  />
+                </motion.a>
                 <motion.div
                   key={activeProject.id}
                   initial={{ opacity: 0, y: 18 }}
@@ -347,17 +360,6 @@ export default function IntroductionSection() {
                     ))}
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <motion.a
-                      href={activeProject.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-3 rounded-full border border-white/25 bg-white/10 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/90 shadow-[0_20px_44px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/15"
-                      whileHover={{ scale: 1.04, translateY: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      <span>{activeProject.action}</span>
-                      <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-1" />
-                    </motion.a>
                     <motion.button
                       type="button"
                       onClick={openGalleriaHome}

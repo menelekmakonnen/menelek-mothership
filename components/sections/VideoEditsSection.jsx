@@ -344,7 +344,7 @@ export default function VideoEditsSection() {
       const preview = previews[url];
       const mediaMeta = parseMediaLink(url);
       const fallbackImage = mediaMeta?.thumbnailUrl || null;
-      const title = preview?.data?.title || `${collection.title} · Clip ${index + 1}`;
+      const title = preview?.data?.title || `${collection.title} · Reel ${index + 1}`;
       const description =
         preview?.data?.description || collection.description || 'Tap to explore this reel inside the camera viewer.';
 
@@ -422,6 +422,7 @@ export default function VideoEditsSection() {
     const clipEntries = activeLinks.map((url, index) => ({
       url,
       index,
+      collectionTitle: activeCollection.title,
       meta: getClipPreview(url, activeCollection, index),
     }));
 
@@ -512,7 +513,7 @@ export default function VideoEditsSection() {
                 </div>
                 <div className="space-y-3">
                   <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Collection Clips</h3>
-                  <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+                  <div className="flex max-h-[45vh] flex-col gap-3 overflow-y-auto pr-1">
                     {clipEntries.map((entry) => {
                       const isCurrent = entry.index === activeClipIndex;
                       const entryThumb = entry.meta?.image;
@@ -521,7 +522,7 @@ export default function VideoEditsSection() {
                           key={entry.index}
                           type="button"
                           onClick={() => setActiveClipIndex(entry.index)}
-                          className={`min-w-[220px] snap-start flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
+                          className={`flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition-all ${
                             isCurrent
                               ? 'border-white/45 bg-white/12 text-white'
                               : 'border-white/12 bg-white/5 text-white/70 hover:border-white/35'
@@ -529,7 +530,12 @@ export default function VideoEditsSection() {
                         >
                           <div className="relative h-16 w-24 overflow-hidden rounded-xl bg-black/35">
                             {entryThumb ? (
-                              <img src={entryThumb} alt={entry.meta?.title || `Clip ${entry.index + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                              <img
+                                src={entryThumb}
+                                alt={entry.meta?.title || entry.collectionTitle}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-white/60">
                                 <Play className="h-5 w-5" />
@@ -537,8 +543,10 @@ export default function VideoEditsSection() {
                             )}
                           </div>
                           <div className="min-w-0 text-left">
-                            <p className="mono text-[10px] uppercase tracking-[0.35em] text-white/60">Clip {entry.index + 1}</p>
-                            <p className="text-sm font-semibold text-white/85 truncate">{entry.meta?.title || activeCollection.title}</p>
+                            <p className="text-xs font-semibold text-white/90 line-clamp-2">{entry.meta?.title || entry.collectionTitle}</p>
+                            {entry.meta?.description && (
+                              <p className="text-[11px] text-white/60 line-clamp-1">{entry.meta.description}</p>
+                            )}
                           </div>
                         </button>
                       );

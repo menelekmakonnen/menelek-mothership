@@ -205,6 +205,8 @@ export default function LoremakerSection() {
       null
     );
   }, [activeCharacter, activeImageIndex]);
+  const activeCharacterUrl = activeCharacter ? buildCharacterUrl(activeCharacter.character || '') : null;
+  const totalCharacterFrames = activeCharacter?.galleryImages?.length || 0;
 
   const openCharacter = useCallback(
     (character) => {
@@ -498,8 +500,41 @@ export default function LoremakerSection() {
                           <p className="text-sm uppercase mono tracking-[0.35em] text-white/70">{activeCharacter.alias}</p>
                         )}
                       </div>
+                      {activeCharacterUrl && (
+                        <a
+                          href={activeCharacterUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-4 py-2 text-[11px] mono uppercase tracking-[0.35em] text-white/80 hover:border-white/50 hover:text-white"
+                        >
+                          Visit Loremaker
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
                     </div>
                   </div>
+                  {totalCharacterFrames > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        className="absolute bottom-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white shadow-lg transition hover:border-white/70"
+                        onClick={() =>
+                          setActiveImageIndex((index) => (index - 1 + totalCharacterFrames) % totalCharacterFrames)
+                        }
+                        aria-label="Previous character image"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="absolute bottom-6 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white shadow-lg transition hover:border-white/70"
+                        onClick={() => setActiveImageIndex((index) => (index + 1) % totalCharacterFrames)}
+                        aria-label="Next character image"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
                   {activeCharacter.galleryImages?.length > 1 && (
                     <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
                       {activeCharacter.galleryImages.map((image, idx) => (
@@ -520,17 +555,6 @@ export default function LoremakerSection() {
                   <div className="space-y-4 text-sm text-[color:var(--text-secondary)]">
                     {activeCharacter.shortDescription && <p>{activeCharacter.shortDescription}</p>}
                     {!activeCharacter.shortDescription && activeCharacter.longDescription && <p>{activeCharacter.longDescription}</p>}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <a
-                        href={buildCharacterUrl(activeCharacter.character || '')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[11px] mono uppercase tracking-[0.35em] text-white/80 hover:text-white"
-                      >
-                        Visit Loremaker
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </div>
                     <div className="grid grid-cols-2 gap-3 text-xs uppercase mono tracking-[0.35em] text-white/60">
                       {[
                         ['Alignment', activeCharacter.alignment],
