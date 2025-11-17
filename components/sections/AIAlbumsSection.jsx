@@ -31,11 +31,13 @@ export default function AIAlbumsSection() {
   const { loadFolder, getFolder, isLoading, getError } = useDriveFolderCache();
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [isAlbumBrowserOpen, setAlbumBrowserOpen] = useState(false);
   const [favoriteFrames, setFavoriteFrames] = useState({});
   const [albumSortMode, setAlbumSortMode] = useState('name');
   const [imageSortMode, setImageSortMode] = useState('original');
   const {
     registerGalleriaSection,
+    updateGalleriaSectionMeta,
     engageGalleriaSection,
     releaseGalleriaSection,
   } = useCameraContext();
@@ -49,6 +51,17 @@ export default function AIAlbumsSection() {
         window.scrollTo(0, 0);
       }
     });
+  }, []);
+
+  const openAlbumBrowser = useCallback(() => {
+    setAlbumBrowserOpen(true);
+    setSelectedAlbum(null);
+    setSelectedImageIndex(null);
+    autoScrollToActiveLayer();
+  }, [autoScrollToActiveLayer]);
+
+  const closeAlbumBrowser = useCallback(() => {
+    setAlbumBrowserOpen(false);
   }, []);
 
   useEffect(() => {
@@ -126,6 +139,26 @@ export default function AIAlbumsSection() {
   }, [albumSortMode, hasAlbumMedia, rawAlbumEntries, sortFolders]);
 
   useEffect(() => {
+    if (!albumEntries.length) return;
+    const sample = albumEntries[Math.floor(Math.random() * albumEntries.length)];
+    if (!sample) return;
+    const albumData = getFolder(sample.id);
+    let cover = null;
+    if (albumData) {
+      const fileCandidate = albumData.items.find((item) => item.type === 'file' && getPreviewSrc(item));
+      if (fileCandidate) {
+        cover = getPreviewSrc(fileCandidate);
+      }
+    }
+    if (!cover) {
+      cover = getPreviewSrc(sample);
+    }
+    if (cover) {
+      updateGalleriaSectionMeta('ai-albums', { previewImage: cover });
+    }
+  }, [albumEntries, getFolder, updateGalleriaSectionMeta]);
+
+  useEffect(() => {
     if (!selectedAlbum) return;
     loadFolder(selectedAlbum.id);
   }, [selectedAlbum, loadFolder]);
@@ -133,14 +166,22 @@ export default function AIAlbumsSection() {
   const closeAiOverlay = useCallback(() => {
     setSelectedImageIndex(null);
     setSelectedAlbum(null);
+    setAlbumBrowserOpen(false);
   }, []);
 
-  const openDefaultAiAlbum = useCallback(() => {
-    if (albumEntries.length) {
-      setSelectedAlbum(albumEntries[0]);
-      setSelectedImageIndex(null);
-    }
-  }, [albumEntries]);
+  const openDefaultAiAlbum = useCallback(
+    (options = {}) => {
+      if (options.startInGallery) {
+        openAlbumBrowser();
+        return;
+      }
+      if (albumEntries.length) {
+        setSelectedAlbum(albumEntries[0]);
+        setSelectedImageIndex(null);
+      }
+    },
+    [albumEntries, openAlbumBrowser]
+  );
 
   useEffect(() => {
     const unregister = registerGalleriaSection('ai-albums', {
@@ -151,12 +192,19 @@ export default function AIAlbumsSection() {
   }, [openDefaultAiAlbum, registerGalleriaSection]);
 
   useEffect(() => {
-    if (selectedAlbum || selectedImageIndex !== null) {
+    if (isAlbumBrowserOpen || selectedAlbum || selectedImageIndex !== null) {
       engageGalleriaSection('ai-albums', closeAiOverlay);
       return () => releaseGalleriaSection('ai-albums');
     }
     return undefined;
-  }, [selectedAlbum, selectedImageIndex, closeAiOverlay, engageGalleriaSection, releaseGalleriaSection]);
+  }, [
+    closeAiOverlay,
+    engageGalleriaSection,
+    isAlbumBrowserOpen,
+    releaseGalleriaSection,
+    selectedAlbum,
+    selectedImageIndex,
+  ]);
 
   useEffect(() => {
     if (!selectedAlbum) return;
@@ -403,6 +451,102 @@ export default function AIAlbumsSection() {
           </div>
         </section>
       </div>
+
+      <AnimatePresence>
+        {isAlbumBrowserOpen && (
+          <FullscreenLightbox
+            key="ai-album-browser"
+            layerId="ai-album-browser"
+            depth={5200}
+            onClose={closeAlbumBrowser}
+            innerClassName="p-0"
+            galleriaSectionId="ai-albums"
+            showGalleriaChrome
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0.92, scale: 0.97 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+              className="flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(7,9,16,0.96)] shadow-[0_40px_120px_rgba(0,0,0,0.65)]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">AI Album Vault</p>
+                  <h2 className="text-4xl font-semibold text-white/90">Pick an experiment</h2>
+                  <p className="text-sm text-white/65">Concept boards, character studies, and prompt explorations.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAlbumBrowser}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close AI album browser"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.4em] text-white/60">
+                  <span>Sort albums</span>
+                  <select
+                    value={albumSortMode}
+                    onChange={(event) => setAlbumSortMode(event.target.value)}
+                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
+                  >
+                    <option value="name">Name A–Z</option>
+                    <option value="name-desc">Name Z–A</option>
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                  </select>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {albumEntries.map((album) => {
+                    const albumData = getFolder(album.id);
+                    const coverCandidate = albumData
+                      ? albumData.items.find((item) => item.type === 'file' && getPreviewSrc(item))
+                      : null;
+                    const cover = coverCandidate ? getPreviewSrc(coverCandidate) : getPreviewSrc(album);
+                    return (
+                      <motion.button
+                        key={album.id}
+                        type="button"
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        onClick={() => {
+                          setAlbumBrowserOpen(false);
+                          setSelectedAlbum(album);
+                          setSelectedImageIndex(null);
+                        }}
+                        className="rounded-3xl border border-white/10 bg-[rgba(12,14,22,0.85)] p-5 text-left hover:border-white/35 transition"
+                      >
+                        <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl bg-black/40">
+                          {cover ? (
+                            <img src={cover} alt={`${album.title} cover`} className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500/70 via-pink-500/70 to-indigo-600/70">
+                              <Sparkles className="h-8 w-8 text-white" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                          <div className="absolute bottom-3 left-3 text-xs mono uppercase tracking-[0.35em] text-white/70">Open</div>
+                        </div>
+                        <h3 className="text-xl font-semibold text-white">{album.title}</h3>
+                        <p className="text-sm text-white/70">{describeAlbumTheme(album.title)}</p>
+                      </motion.button>
+                    );
+                  })}
+                  {!albumEntries.length && (
+                    <div className="col-span-full flex h-48 items-center justify-center rounded-3xl border border-white/10 bg-black/30 text-white/70">
+                      AI albums are loading…
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </FullscreenLightbox>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {selectedAlbum && selectedImageIndex === null && (

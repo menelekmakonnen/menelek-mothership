@@ -8,6 +8,14 @@ import { useCameraContext } from '@/context/CameraContext';
 
 const LOREMAKER_URL = 'https://loremaker.cloud';
 
+const slugify = (value = '') =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'character';
+
+const buildCharacterUrl = (name) => `${LOREMAKER_URL}/characters/${slugify(name)}`;
+
 function shuffle(array) {
   const copy = [...array];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -24,8 +32,10 @@ export default function LoremakerSection() {
   const [error, setError] = useState(null);
   const [activeCharacter, setActiveCharacter] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isRosterBrowserOpen, setRosterBrowserOpen] = useState(false);
   const {
     registerGalleriaSection,
+    updateGalleriaSectionMeta,
     engageGalleriaSection,
     releaseGalleriaSection,
   } = useCameraContext();
@@ -45,6 +55,17 @@ export default function LoremakerSection() {
         window.scrollTo(0, 0);
       }
     });
+  }, []);
+
+  const openRosterBrowser = useCallback(() => {
+    setRosterBrowserOpen(true);
+    setActiveCharacter(null);
+    setActiveImageIndex(0);
+    scrollToActiveLayer();
+  }, [scrollToActiveLayer]);
+
+  const closeRosterBrowser = useCallback(() => {
+    setRosterBrowserOpen(false);
   }, []);
 
   useEffect(() => {
@@ -84,6 +105,21 @@ export default function LoremakerSection() {
   }, [characters]);
 
   useEffect(() => {
+    if (!displayedCharacters.length) return;
+    const sample = displayedCharacters[Math.floor(Math.random() * displayedCharacters.length)];
+    if (!sample) return;
+    const cover =
+      resolveDriveImage(sample.coverVariants, 'preview') ||
+      sample.coverImage ||
+      resolveDriveImage(sample.galleryImages?.[0]?.variants, 'preview') ||
+      sample.galleryImages?.[0]?.preview ||
+      null;
+    if (cover) {
+      updateGalleriaSectionMeta('loremaker', { previewImage: cover });
+    }
+  }, [displayedCharacters, updateGalleriaSectionMeta]);
+
+  useEffect(() => {
     if (!activeCharacter) return;
     const handleKeyDown = (event) => {
       if (event.key === 'ArrowRight') {
@@ -110,15 +146,23 @@ export default function LoremakerSection() {
   const closeCharacterOverlay = useCallback(() => {
     setActiveImageIndex(0);
     setActiveCharacter(null);
+    setRosterBrowserOpen(false);
   }, []);
 
-  const openDefaultCharacter = useCallback(() => {
-    if (displayedCharacters.length) {
-      setActiveCharacter(displayedCharacters[0]);
-      setActiveImageIndex(0);
-      scrollToActiveLayer();
-    }
-  }, [displayedCharacters, scrollToActiveLayer]);
+  const openDefaultCharacter = useCallback(
+    (options = {}) => {
+      if (options.startInGallery) {
+        openRosterBrowser();
+        return;
+      }
+      if (displayedCharacters.length) {
+        setActiveCharacter(displayedCharacters[0]);
+        setActiveImageIndex(0);
+        scrollToActiveLayer();
+      }
+    },
+    [displayedCharacters, openRosterBrowser, scrollToActiveLayer]
+  );
 
   useEffect(() => {
     const unregister = registerGalleriaSection('loremaker', {
@@ -129,12 +173,18 @@ export default function LoremakerSection() {
   }, [openDefaultCharacter, registerGalleriaSection]);
 
   useEffect(() => {
-    if (activeCharacter) {
+    if (isRosterBrowserOpen || activeCharacter) {
       engageGalleriaSection('loremaker', closeCharacterOverlay);
       return () => releaseGalleriaSection('loremaker');
     }
     return undefined;
-  }, [activeCharacter, closeCharacterOverlay, engageGalleriaSection, releaseGalleriaSection]);
+  }, [
+    activeCharacter,
+    closeCharacterOverlay,
+    engageGalleriaSection,
+    isRosterBrowserOpen,
+    releaseGalleriaSection,
+  ]);
 
   const activeImage = useMemo(() => {
     if (!activeCharacter) return null;
@@ -325,6 +375,88 @@ export default function LoremakerSection() {
       </div>
 
       <AnimatePresence>
+        {isRosterBrowserOpen && (
+          <FullscreenLightbox
+            key="loremaker-roster-browser"
+            layerId="loremaker-roster-browser"
+            depth={5200}
+            onClose={closeRosterBrowser}
+            innerClassName="p-0"
+            galleriaSectionId="loremaker"
+            showGalleriaChrome
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0.92, scale: 0.97 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+              className="flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(5,7,14,0.96)] shadow-[0_45px_140px_rgba(0,0,0,0.7)]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Loremaker Universe</p>
+                  <h2 className="text-4xl font-semibold text-white/90">Choose a dossier</h2>
+                  <p className="text-sm text-white/65">Select a hero to open their immersive character sheet.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeRosterBrowser}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close roster browser"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {displayedCharacters.map((character) => {
+                    const cover =
+                      resolveDriveImage(character.coverVariants, 'preview') ||
+                      character.coverImage ||
+                      resolveDriveImage(character.galleryImages?.[0]?.variants, 'preview') ||
+                      character.galleryImages?.[0]?.preview ||
+                      null;
+                    return (
+                      <motion.button
+                        key={character.id || character.character}
+                        type="button"
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                        onClick={() => {
+                          setRosterBrowserOpen(false);
+                          openCharacter(character);
+                        }}
+                        className="text-left rounded-3xl border border-white/10 bg-[rgba(10,12,22,0.85)] p-5 hover:border-white/35"
+                      >
+                        <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl bg-black/40">
+                          {cover ? (
+                            <img src={cover} alt={character.character} className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyan-500/40 via-purple-500/40 to-slate-900/60 text-white/80">
+                              <Sparkles className="h-8 w-8" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+                        </div>
+                        <h3 className="text-2xl font-semibold text-white">{character.character}</h3>
+                        {character.alias && (
+                          <p className="text-xs uppercase mono tracking-[0.35em] text-white/60">{character.alias}</p>
+                        )}
+                        {character.shortDescription && (
+                          <p className="mt-2 text-sm text-white/70 line-clamp-2">{character.shortDescription}</p>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </FullscreenLightbox>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {activeCharacter && (
           <FullscreenLightbox
             key={activeCharacter.id}
@@ -366,17 +498,6 @@ export default function LoremakerSection() {
                           <p className="text-sm uppercase mono tracking-[0.35em] text-white/70">{activeCharacter.alias}</p>
                         )}
                       </div>
-                      <div className="flex gap-3">
-                        <a
-                          href={LOREMAKER_URL}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.35em] text-white hover:bg-white/15"
-                        >
-                          Visit Loremaker
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </div>
                     </div>
                   </div>
                   {activeCharacter.galleryImages?.length > 1 && (
@@ -399,6 +520,17 @@ export default function LoremakerSection() {
                   <div className="space-y-4 text-sm text-[color:var(--text-secondary)]">
                     {activeCharacter.shortDescription && <p>{activeCharacter.shortDescription}</p>}
                     {!activeCharacter.shortDescription && activeCharacter.longDescription && <p>{activeCharacter.longDescription}</p>}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a
+                        href={buildCharacterUrl(activeCharacter.character || '')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[11px] mono uppercase tracking-[0.35em] text-white/80 hover:text-white"
+                      >
+                        Visit Loremaker
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
                     <div className="grid grid-cols-2 gap-3 text-xs uppercase mono tracking-[0.35em] text-white/60">
                       {[
                         ['Alignment', activeCharacter.alignment],
@@ -450,7 +582,7 @@ export default function LoremakerSection() {
                           : (index - 1 + activeCharacter.galleryImages.length) % activeCharacter.galleryImages.length
                       )
                     }
-                    className="absolute left-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                    className="absolute left-6 bottom-6 flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="Previous image"
                   >
                     <ChevronLeft className="h-5 w-5" />
@@ -464,7 +596,7 @@ export default function LoremakerSection() {
                           : (index + 1) % activeCharacter.galleryImages.length
                       )
                     }
-                    className="absolute right-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                    className="absolute right-6 bottom-6 flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="Next image"
                   >
                     <ChevronRight className="h-5 w-5" />

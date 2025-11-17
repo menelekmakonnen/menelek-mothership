@@ -51,7 +51,7 @@ export default function GalleriaHome() {
     }
     closeGalleriaHome();
     requestAnimationFrame(() => {
-      openGalleriaSection(sectionId, { viaGalleria: true });
+      openGalleriaSection(sectionId, { viaGalleria: true, startInGallery: true });
     });
   };
 
@@ -63,7 +63,7 @@ export default function GalleriaHome() {
       if (target) {
         closeGalleriaHome();
         requestAnimationFrame(() => {
-          openGalleriaSection(target.id, { viaGalleria: true });
+          openGalleriaSection(target.id, { viaGalleria: true, startInGallery: true });
         });
       }
       return next;
@@ -122,6 +122,7 @@ export default function GalleriaHome() {
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {cards.map((section) => {
               const Icon = section.icon || GalleryHorizontalEnd;
+              const previewImage = section.previewImage;
               return (
                 <button
                   key={section.id}
@@ -134,8 +135,8 @@ export default function GalleriaHome() {
                     <div
                       className="absolute inset-0 bg-cover bg-center"
                       style={{
-                        backgroundImage: section.previewImage
-                          ? `linear-gradient(145deg, rgba(0,0,0,0.55), rgba(6,10,18,0.85)), url(${section.previewImage})`
+                        backgroundImage: previewImage
+                          ? `linear-gradient(145deg, rgba(0,0,0,0.55), rgba(6,10,18,0.85)), url(${previewImage})`
                           : undefined,
                       }}
                     />

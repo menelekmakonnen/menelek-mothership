@@ -613,6 +613,8 @@ export const CameraProvider = ({ children }) => {
       id: sectionId,
       label: config.label || sectionId,
       openDefault: config.openDefault,
+      previewImage: config.previewImage || null,
+      description: config.description || null,
     };
     setGalleriaVersion((version) => version + 1);
     return () => {
@@ -621,6 +623,17 @@ export const CameraProvider = ({ children }) => {
         setGalleriaVersion((version) => version + 1);
       }
     };
+  }, []);
+
+  const updateGalleriaSectionMeta = useCallback((sectionId, patch = {}) => {
+    if (!sectionId || !patch) return;
+    const entry = galleriaRegistryRef.current[sectionId];
+    if (!entry) return;
+    galleriaRegistryRef.current[sectionId] = {
+      ...entry,
+      ...patch,
+    };
+    setGalleriaVersion((version) => version + 1);
   }, []);
 
   const engageGalleriaSection = useCallback((sectionId, closeHandler) => {
@@ -644,7 +657,12 @@ export const CameraProvider = ({ children }) => {
     return GALLERIA_SEQUENCE.map((id) => {
       const entry = galleriaRegistryRef.current[id];
       if (!entry) return null;
-      return { id, label: entry.label || id };
+      return {
+        id,
+        label: entry.label || id,
+        previewImage: entry.previewImage || null,
+        description: entry.description || null,
+      };
     }).filter(Boolean);
   }, [galleriaVersion]);
 
@@ -815,6 +833,7 @@ export const CameraProvider = ({ children }) => {
     performFullReset,
     lensLayout,
     registerGalleriaSection,
+    updateGalleriaSectionMeta,
     engageGalleriaSection,
     releaseGalleriaSection,
     navigateGalleriaSection,

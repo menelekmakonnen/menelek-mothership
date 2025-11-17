@@ -129,10 +129,12 @@ export default function VideoEditsSection() {
   const [openSectionId, setOpenSectionId] = useState(editCollections[0]?.id || null);
   const [activeSectionId, setActiveSectionId] = useState(null);
   const [activeClipIndex, setActiveClipIndex] = useState(null);
+  const [isCollectionBrowserOpen, setCollectionBrowserOpen] = useState(false);
   const sectionRefs = useRef({});
   const initialScrollHandledRef = useRef(false);
   const {
     registerGalleriaSection,
+    updateGalleriaSectionMeta,
     engageGalleriaSection,
     releaseGalleriaSection,
   } = useCameraContext();
@@ -170,10 +172,38 @@ export default function VideoEditsSection() {
     });
   }, []);
 
+  useEffect(() => {
+    const urls = editCollections.flatMap((collection) => collection.links);
+    for (const url of urls) {
+      const preview = previews[url];
+      const image = preview?.data?.image || preview?.data?.thumbnailUrl;
+      if (image) {
+        updateGalleriaSectionMeta('video-edits', { previewImage: image });
+        break;
+      }
+    }
+  }, [previews, updateGalleriaSectionMeta]);
+
   const closeQuickView = useCallback(() => {
     setActiveSectionId(null);
     setActiveClipIndex(null);
   }, []);
+
+  const openCollectionBrowser = useCallback(() => {
+    setCollectionBrowserOpen(true);
+    setActiveSectionId(null);
+    setActiveClipIndex(null);
+    scrollToActiveLayer();
+  }, [scrollToActiveLayer]);
+
+  const closeCollectionBrowser = useCallback(() => {
+    setCollectionBrowserOpen(false);
+  }, []);
+
+  const closeVideoEditsExperience = useCallback(() => {
+    setCollectionBrowserOpen(false);
+    closeQuickView();
+  }, [closeQuickView]);
 
   const openQuickView = useCallback(
     (sectionId, index) => {
@@ -184,12 +214,19 @@ export default function VideoEditsSection() {
     [scrollToActiveLayer]
   );
 
-  const openDefaultCollection = useCallback(() => {
-    const defaultCollection = editCollections[0];
-    if (defaultCollection) {
-      openQuickView(defaultCollection.id, 0);
-    }
-  }, [openQuickView]);
+  const openDefaultCollection = useCallback(
+    (options = {}) => {
+      if (options.startInGallery) {
+        openCollectionBrowser();
+        return;
+      }
+      const defaultCollection = editCollections[0];
+      if (defaultCollection) {
+        openQuickView(defaultCollection.id, 0);
+      }
+    },
+    [openCollectionBrowser, openQuickView]
+  );
 
   useEffect(() => {
     const unregister = registerGalleriaSection('video-edits', {
@@ -200,12 +237,18 @@ export default function VideoEditsSection() {
   }, [openDefaultCollection, registerGalleriaSection]);
 
   useEffect(() => {
-    if (activeSectionId !== null) {
-      engageGalleriaSection('video-edits', closeQuickView);
+    if (isCollectionBrowserOpen || activeSectionId !== null) {
+      engageGalleriaSection('video-edits', closeVideoEditsExperience);
       return () => releaseGalleriaSection('video-edits');
     }
     return undefined;
-  }, [activeSectionId, closeQuickView, engageGalleriaSection, releaseGalleriaSection]);
+  }, [
+    activeSectionId,
+    closeVideoEditsExperience,
+    engageGalleriaSection,
+    isCollectionBrowserOpen,
+    releaseGalleriaSection,
+  ]);
 
   const activeCollection = useMemo(
     () => editCollections.find((collection) => collection.id === activeSectionId) || null,
@@ -603,6 +646,75 @@ export default function VideoEditsSection() {
           })}
         </div>
       </div>
+
+      <AnimatePresence>
+        {isCollectionBrowserOpen && (
+          <FullscreenLightbox
+            key="video-edits-browser"
+            layerId="video-edits-browser"
+            depth={5200}
+            onClose={closeCollectionBrowser}
+            innerClassName="p-0"
+            galleriaSectionId="video-edits"
+            showGalleriaChrome
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0.92, scale: 0.97 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+              className="flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(5,7,14,0.96)] shadow-[0_45px_140px_rgba(0,0,0,0.7)]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Epic Video Edits</p>
+                  <h2 className="text-4xl font-semibold text-white/90">Choose a collection</h2>
+                  <p className="text-sm text-white/65">Open any category to jump into its immersive quick view.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCollectionBrowser}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close video edit browser"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {editCollections.map((collection) => (
+                    <motion.button
+                      key={collection.id}
+                      type="button"
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25 }}
+                      onClick={() => {
+                        setCollectionBrowserOpen(false);
+                        openQuickView(collection.id, 0);
+                      }}
+                      className="text-left rounded-3xl border border-white/10 bg-[rgba(10,12,20,0.85)] p-5 hover:border-white/35"
+                    >
+                      <div className="relative mb-4 aspect-video overflow-hidden rounded-2xl bg-black/40">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${collection.gradient.panel}`} />
+                        <div className="relative z-10 flex h-full flex-col justify-between p-4 text-white">
+                          <IconBox icon={collection.icon} gradient={collection.gradient.icon} size="md" />
+                          <p className="text-sm text-white/75">{collection.description}</p>
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs uppercase mono tracking-[0.35em] text-white/60">{collection.links.length} clips</p>
+                        <h3 className="text-xl font-semibold text-white">{collection.title}</h3>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </FullscreenLightbox>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>{renderQuickView()}</AnimatePresence>
     </div>

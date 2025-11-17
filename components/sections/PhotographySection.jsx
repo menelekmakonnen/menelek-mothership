@@ -51,11 +51,13 @@ export default function PhotographySection() {
   const [activeAlbum, setActiveAlbum] = useState(null);
   const [activeGallery, setActiveGallery] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(null);
+  const [isAlbumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [albumSortMode, setAlbumSortMode] = useState('name');
   const [gallerySortMode, setGallerySortMode] = useState('name');
   const [frameSortMode, setFrameSortMode] = useState('original');
   const {
     registerGalleriaSection,
+    updateGalleriaSectionMeta,
     engageGalleriaSection,
     releaseGalleriaSection,
   } = useCameraContext();
@@ -116,6 +118,15 @@ export default function PhotographySection() {
 
   useEffect(() => {
     if (!albumFolders.length) return;
+    const sample = albumFolders[Math.floor(Math.random() * albumFolders.length)];
+    const cover = resolveCoverImage(sample);
+    if (cover) {
+      updateGalleriaSectionMeta('photography', { previewImage: cover });
+    }
+  }, [albumFolders, resolveCoverImage, updateGalleriaSectionMeta]);
+
+  useEffect(() => {
+    if (!albumFolders.length) return;
     albumFolders.forEach((album) => {
       loadFolder(album.id);
     });
@@ -160,6 +171,18 @@ export default function PhotographySection() {
     [findFirstImage, getFolder]
   );
 
+  const openAlbumPicker = useCallback(() => {
+    setAlbumPickerOpen(true);
+    setActiveAlbum(null);
+    setActiveGallery(null);
+    setActiveImageIndex(null);
+    scrollToActiveLayer();
+  }, [scrollToActiveLayer]);
+
+  const closeAlbumPicker = useCallback(() => {
+    setAlbumPickerOpen(false);
+  }, []);
+
   const openAlbum = useCallback(
     (album) => {
       setActiveAlbum(album);
@@ -180,13 +203,21 @@ export default function PhotographySection() {
     setActiveImageIndex(null);
     setActiveGallery(null);
     setActiveAlbum(null);
+    setAlbumPickerOpen(false);
   }, []);
 
-  const openDefaultAlbum = useCallback(() => {
-    if (albumFolders.length) {
-      openAlbum(albumFolders[0]);
-    }
-  }, [albumFolders, openAlbum]);
+  const openDefaultAlbum = useCallback(
+    (options = {}) => {
+      if (options.startInGallery) {
+        openAlbumPicker();
+        return;
+      }
+      if (albumFolders.length) {
+        openAlbum(albumFolders[0]);
+      }
+    },
+    [albumFolders, openAlbum, openAlbumPicker]
+  );
 
   useEffect(() => {
     const unregister = registerGalleriaSection('photography', {
@@ -197,12 +228,19 @@ export default function PhotographySection() {
   }, [openDefaultAlbum, registerGalleriaSection]);
 
   useEffect(() => {
-    if (activeAlbum || activeImageIndex !== null) {
+    if (isAlbumPickerOpen || activeAlbum || activeImageIndex !== null) {
       engageGalleriaSection('photography', closePhotographyOverlay);
       return () => releaseGalleriaSection('photography');
     }
     return undefined;
-  }, [activeAlbum, activeImageIndex, closePhotographyOverlay, engageGalleriaSection, releaseGalleriaSection]);
+  }, [
+    activeAlbum,
+    activeImageIndex,
+    closePhotographyOverlay,
+    engageGalleriaSection,
+    isAlbumPickerOpen,
+    releaseGalleriaSection,
+  ]);
 
   useEffect(() => {
     if (!activeAlbum) return;
@@ -345,7 +383,7 @@ export default function PhotographySection() {
     [preparedGalleryImages.length]
   );
 
-  const renderAlbumCard = (album) => {
+  const renderAlbumCard = (album, { onOpen } = {}) => {
     const meta = albumMeta[album.title] || {
       gradient: 'from-slate-500/80 via-slate-600/70 to-slate-900/80',
       tagline: 'Curated moments',
@@ -354,6 +392,7 @@ export default function PhotographySection() {
     const Icon = meta.icon;
     const cover = resolveCoverImage(album);
     const loadingCover = !cover && (isLoading(album.id) || !getFolder(album.id));
+    const handleOpen = typeof onOpen === 'function' ? onOpen : openAlbum;
 
     return (
       <motion.button
@@ -362,7 +401,7 @@ export default function PhotographySection() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        onClick={() => openAlbum(album)}
+        onClick={() => handleOpen(album)}
         className="group text-left rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.78)] p-6 transition-all hover:-translate-y-1 hover:border-white/20"
       >
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
@@ -613,7 +652,7 @@ export default function PhotographySection() {
             </div>
           </div>
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {albumFolders.map(renderAlbumCard)}
+            {albumFolders.map((album) => renderAlbumCard(album))}
             {!rootFolder && isLoading(MMM_MEDIA_ROOT) && (
               <div className="col-span-full flex h-48 items-center justify-center rounded-3xl border border-white/10 bg-black/40">
                 <Loader2 className="h-8 w-8 animate-spin text-green-300" />
@@ -622,6 +661,75 @@ export default function PhotographySection() {
           </div>
         </section>
       </div>
+
+      <AnimatePresence>
+        {isAlbumPickerOpen && (
+          <FullscreenLightbox
+            key="photography-album-picker"
+            layerId="photography-album-picker"
+            depth={5200}
+            onClose={closeAlbumPicker}
+            innerClassName="p-0"
+            galleriaSectionId="photography"
+            showGalleriaChrome
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0.92, scale: 0.97 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+              className="relative flex h-full w-full flex-col overflow-hidden border border-white/10 bg-[rgba(5,7,12,0.96)] shadow-[0_45px_120px_rgba(0,0,0,0.65)]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Photography Galleria</p>
+                  <h2 className="text-4xl font-semibold text-white/90">Choose a collection</h2>
+                  <p className="text-sm text-white/65">Dive into Beauty, Professional, and collaborative shoots.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAlbumPicker}
+                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                  aria-label="Close album picker"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.4em] text-white/60">
+                  <span>Sort collections</span>
+                  <select
+                    value={albumSortMode}
+                    onChange={(event) => setAlbumSortMode(event.target.value)}
+                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
+                  >
+                    <option value="name">Name A–Z</option>
+                    <option value="name-desc">Name Z–A</option>
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                  </select>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {albumFolders.map((album) =>
+                    renderAlbumCard(album, {
+                      onOpen: (entry) => {
+                        setAlbumPickerOpen(false);
+                        openAlbum(entry);
+                      },
+                    })
+                  )}
+                  {!albumFolders.length && (
+                    <div className="col-span-full flex h-48 items-center justify-center rounded-3xl border border-white/10 bg-black/40 text-white/70">
+                      Albums are loading from Drive…
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </FullscreenLightbox>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {activeAlbum && activeImageIndex === null && (
