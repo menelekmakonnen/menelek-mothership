@@ -18,6 +18,7 @@ export default function FullscreenLightbox({
   onClose,
   galleriaSectionId,
   showGalleriaChrome = false,
+  onWheelNavigate,
 }) {
   const [portalElement, setPortalElement] = useState(null);
   const { activeGalleriaSection, navigateGalleriaSection, getGalleriaSectionMeta } = useCameraContext();
@@ -77,7 +78,16 @@ export default function FullscreenLightbox({
       onClose={onClose}
       className={`fixed inset-0 flex flex-col items-stretch justify-stretch overflow-hidden ${className}`.trim()}
     >
-      <div className={`relative flex-1 overflow-y-auto overflow-x-hidden ${innerClassName}`.trim()}>
+      <div
+        className={`relative flex-1 overflow-y-auto overflow-x-hidden ${innerClassName}`.trim()}
+        onWheel={(event) => {
+          if (typeof onWheelNavigate !== 'function') return;
+          if (Math.abs(event.deltaY) < 4 && Math.abs(event.deltaX) < 4) return;
+          event.preventDefault();
+          const direction = event.deltaY > 0 || event.deltaX > 0 ? 'next' : 'prev';
+          onWheelNavigate(direction, event);
+        }}
+      >
         {children}
         {showGalleriaNav && (
           <div className="pointer-events-none absolute inset-0">

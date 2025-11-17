@@ -32,6 +32,8 @@ export default function AIAlbumsSection() {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [favoriteFrames, setFavoriteFrames] = useState({});
+  const [albumSortMode, setAlbumSortMode] = useState('name');
+  const [imageSortMode, setImageSortMode] = useState('original');
   const {
     registerGalleriaSection,
     engageGalleriaSection,
@@ -55,6 +57,36 @@ export default function AIAlbumsSection() {
 
   const aiRoot = getFolder(AI_ALBUM_ROOT);
 
+  const hasAlbumMedia = useCallback(
+    (folderId, depth = 0) => {
+      if (!folderId || depth > 4) return false;
+      const folder = getFolder(folderId);
+      if (!folder) return true;
+      const fileExists = folder.items.some((item) => item.type === 'file' && getPreviewSrc(item));
+      if (fileExists) return true;
+      const nestedFolders = folder.items.filter((item) => item.type === 'folder');
+      return nestedFolders.some((nested) => hasAlbumMedia(nested.id, depth + 1));
+    },
+    [getFolder]
+  );
+
+  const sortFolders = useCallback((items, mode) => {
+    if (!items?.length) return [];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    const clone = [...items];
+    switch (mode) {
+      case 'name-desc':
+        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
+      case 'newest':
+        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
+      case 'oldest':
+        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
+      case 'name':
+      default:
+        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
+    }
+  }, []);
+
   const aiContainer = useMemo(() => {
     if (!aiRoot) return null;
     const folders = aiRoot.items.filter((item) => item.type === 'folder');
@@ -72,7 +104,7 @@ export default function AIAlbumsSection() {
     return aiRoot.items.filter((item) => item.type === 'folder');
   }, [aiRoot]);
 
-  const albumEntries = useMemo(() => {
+  const rawAlbumEntries = useMemo(() => {
     if (aiContainer) {
       const folderData = getFolder(aiContainer.id);
       if (!folderData) return [];
@@ -86,6 +118,12 @@ export default function AIAlbumsSection() {
     if (!aiRoot) return [];
     return aiRoot.items.filter((item) => item.type === 'folder');
   }, [aiContainer, getFolder, aiRoot, rootLevelAlbums]);
+
+  const albumEntries = useMemo(() => {
+    if (!rawAlbumEntries.length) return [];
+    const filtered = rawAlbumEntries.filter((album) => hasAlbumMedia(album.id));
+    return sortFolders(filtered, albumSortMode);
+  }, [albumSortMode, hasAlbumMedia, rawAlbumEntries, sortFolders]);
 
   useEffect(() => {
     if (!selectedAlbum) return;
@@ -150,18 +188,37 @@ export default function AIAlbumsSection() {
     return albumData.items.filter((item) => item.type === 'file');
   }, [getFolder, selectedAlbum]);
 
+  const sortedAlbumImages = useMemo(() => {
+    if (!selectedAlbumImages.length) return [];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    const clone = [...selectedAlbumImages];
+    switch (imageSortMode) {
+      case 'name':
+        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
+      case 'name-desc':
+        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
+      case 'newest':
+        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
+      case 'oldest':
+        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
+      case 'original':
+      default:
+        return clone;
+    }
+  }, [imageSortMode, selectedAlbumImages]);
+
   const preparedAlbumImages = useMemo(() => {
     const albumTitle = selectedAlbum?.title || 'AI Collection';
     const albumSignature = selectedAlbum?.id || 'ai-album';
-    return selectedAlbumImages.map((image, index) => {
+    return sortedAlbumImages.map((image, index) => {
       const previewSrc = getPreviewSrc(image);
       const fullSrc = getPreviewSrc(image, 'full') || previewSrc;
       const thumbSrc = getPreviewSrc(image, 'thumb') || previewSrc;
       const favoriteKey = `${albumSignature}:${image.id || index}`;
       return {
         ...image,
-        displayTitle: albumTitle,
-        alt: `${albumTitle} created by Menelek Makonnen`,
+        displayTitle: `${albumTitle} · Frame ${index + 1}`,
+        alt: `${albumTitle} frame ${index + 1} created by Menelek Makonnen`,
         previewSrc,
         fullSrc,
         thumbSrc,
@@ -169,7 +226,7 @@ export default function AIAlbumsSection() {
         favoriteKey,
       };
     });
-  }, [selectedAlbum?.title, selectedAlbumImages]);
+  }, [selectedAlbum?.id, selectedAlbum?.title, sortedAlbumImages]);
 
   useEffect(() => {
     if (selectedImageIndex === null) return;
@@ -194,13 +251,13 @@ export default function AIAlbumsSection() {
     if (selectedImageIndex === null || !preparedAlbumImages.length) return;
 
     const handleKeyDown = (event) => {
-      if (event.key === 'ArrowRight') {
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
         event.preventDefault();
         setSelectedImageIndex((index) => {
           if (index === null) return index;
           return (index + 1) % preparedAlbumImages.length;
         });
-      } else if (event.key === 'ArrowLeft') {
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
         event.preventDefault();
         setSelectedImageIndex((index) => {
           if (index === null) return index;
@@ -215,6 +272,20 @@ export default function AIAlbumsSection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [preparedAlbumImages.length, selectedImageIndex]);
+
+  const handleAiWheel = useCallback(
+    (direction) => {
+      if (!preparedAlbumImages.length) return;
+      setSelectedImageIndex((index) => {
+        if (index === null) return index;
+        if (direction === 'next') {
+          return (index + 1) % preparedAlbumImages.length;
+        }
+        return (index - 1 + preparedAlbumImages.length) % preparedAlbumImages.length;
+      });
+    },
+    [preparedAlbumImages.length]
+  );
 
   const toggleFavorite = useCallback((key) => {
     if (!key) return;
@@ -248,9 +319,24 @@ export default function AIAlbumsSection() {
         </header>
 
         <section className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <h2 className="mono text-[12px] uppercase tracking-[0.5em] text-[color:var(--text-secondary)]">Collections</h2>
-            {getError(AI_ALBUM_ROOT) && <div className="text-sm text-rose-300">Unable to reach Google Drive right now.</div>}
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.35em] text-[color:var(--text-secondary)]">
+              {getError(AI_ALBUM_ROOT) && (
+                <div className="text-xs text-rose-300 normal-case tracking-normal">Unable to reach Google Drive right now.</div>
+              )}
+              <label className="hidden md:block">Sort</label>
+              <select
+                value={albumSortMode}
+                onChange={(event) => setAlbumSortMode(event.target.value)}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.35em]"
+              >
+                <option value="name">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -446,6 +532,7 @@ export default function AIAlbumsSection() {
             innerClassName="p-0 overflow-hidden"
             galleriaSectionId="ai-albums"
             showGalleriaChrome
+            onWheelNavigate={handleAiWheel}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -515,6 +602,20 @@ export default function AIAlbumsSection() {
                     <div>
                       <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Generated Frames</h3>
                       <p className="text-sm text-white/65">Navigate through the AI sequence</p>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.35em] text-white/60">
+                      <span>Order</span>
+                      <select
+                        value={imageSortMode}
+                        onChange={(event) => setImageSortMode(event.target.value)}
+                        className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
+                      >
+                        <option value="original">Curated</option>
+                        <option value="name">Name A–Z</option>
+                        <option value="name-desc">Name Z–A</option>
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                      </select>
                     </div>
                     <div className="flex flex-col gap-3">
                       {preparedAlbumImages.map((image, index) => {

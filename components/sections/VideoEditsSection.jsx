@@ -214,6 +214,20 @@ export default function VideoEditsSection() {
 
   const activeLinks = activeCollection?.links || [];
 
+  const handleClipWheel = useCallback(
+    (direction) => {
+      if (activeClipIndex === null || !activeLinks.length) return;
+      setActiveClipIndex((index) => {
+        if (index === null) return index;
+        if (direction === 'next') {
+          return (index + 1) % activeLinks.length;
+        }
+        return (index - 1 + activeLinks.length) % activeLinks.length;
+      });
+    },
+    [activeClipIndex, activeLinks.length]
+  );
+
   useEffect(() => {
     if (!activeCollection) return;
     if (activeClipIndex === null) {
@@ -358,6 +372,9 @@ export default function VideoEditsSection() {
     const provider = clipMeta?.media?.provider || 'unknown';
     const isVertical = provider === 'instagram' || /reel/i.test(clipUrl || '');
     const aspectClass = isVertical ? 'aspect-[9/16]' : 'aspect-video';
+    const playerShellClass = isVertical
+      ? 'mx-auto w-full max-w-sm sm:max-w-md lg:max-w-[420px]'
+      : 'w-full max-w-4xl';
 
     const clipEntries = activeLinks.map((url, index) => ({
       url,
@@ -374,6 +391,7 @@ export default function VideoEditsSection() {
         innerClassName="p-0 overflow-hidden"
         galleriaSectionId="video-edits"
         showGalleriaChrome
+        onWheelNavigate={handleClipWheel}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -405,11 +423,11 @@ export default function VideoEditsSection() {
           </div>
 
           <div className="flex-1 overflow-hidden">
-            <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
-              <div className="flex flex-1 items-center justify-center">
-                <div className="relative w-full max-w-4xl">
+              <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
+                <div className="flex flex-1 items-center justify-center">
+                <div className={`relative ${playerShellClass}`}>
                   <div
-                    className={`relative w-full ${aspectClass} max-h-[80vh] overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_40px_110px_rgba(0,0,0,0.6)]`}
+                    className={`relative w-full ${aspectClass} ${isVertical ? 'max-h-[72vh]' : 'max-h-[80vh]'} overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_40px_110px_rgba(0,0,0,0.6)]`}
                   >
                     {embedUrl ? (
                       <iframe
@@ -451,7 +469,7 @@ export default function VideoEditsSection() {
                 </div>
                 <div className="space-y-3">
                   <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">Collection Clips</h3>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
                     {clipEntries.map((entry) => {
                       const isCurrent = entry.index === activeClipIndex;
                       const entryThumb = entry.meta?.image;
@@ -460,7 +478,7 @@ export default function VideoEditsSection() {
                           key={entry.index}
                           type="button"
                           onClick={() => setActiveClipIndex(entry.index)}
-                          className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
+                          className={`min-w-[220px] snap-start flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
                             isCurrent
                               ? 'border-white/45 bg-white/12 text-white'
                               : 'border-white/12 bg-white/5 text-white/70 hover:border-white/35'

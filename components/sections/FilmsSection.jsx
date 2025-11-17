@@ -249,7 +249,22 @@ export default function FilmsSection() {
     const provider = mediaMeta?.provider || 'unknown';
     const isVertical = provider === 'instagram' || /shorts/i.test(activeProject.link || '');
     const aspectClass = isVertical ? 'aspect-[9/16]' : 'aspect-video';
+    const playerShellClass = isVertical
+      ? 'mx-auto w-full max-w-sm sm:max-w-md lg:max-w-[520px]'
+      : 'w-full max-w-5xl';
     const siblingProjects = filteredVideos.filter((project) => project.id !== activeProject.id);
+    const handleWheelNavigate = (direction) => {
+      if (!filteredVideos.length) return;
+      const currentIndex = filteredVideos.findIndex((project) => project.id === activeProject.id);
+      if (currentIndex === -1) return;
+      const nextIndex = direction === 'next'
+        ? (currentIndex + 1) % filteredVideos.length
+        : (currentIndex - 1 + filteredVideos.length) % filteredVideos.length;
+      const nextProject = filteredVideos[nextIndex];
+      if (nextProject) {
+        setActiveProjectId(nextProject.id);
+      }
+    };
 
     return (
       <FullscreenLightbox
@@ -260,6 +275,7 @@ export default function FilmsSection() {
         innerClassName="p-0 overflow-hidden"
         galleriaSectionId="films"
         showGalleriaChrome
+        onWheelNavigate={handleWheelNavigate}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -293,9 +309,9 @@ export default function FilmsSection() {
               <div className="flex-1 overflow-hidden">
                 <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:gap-6">
                   <div className="flex flex-1 items-center justify-center">
-                    <div className="relative w-full max-w-5xl">
+                    <div className={`relative ${playerShellClass}`}>
                       <div
-                        className={`relative w-full ${aspectClass} max-h-[80vh] overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_45px_120px_rgba(0,0,0,0.6)]`}
+                        className={`relative w-full ${aspectClass} ${isVertical ? 'max-h-[72vh]' : 'max-h-[80vh]'} overflow-hidden rounded-[28px] border border-white/10 bg-black/80 shadow-[0_45px_120px_rgba(0,0,0,0.6)]`}
                       >
                         {embedUrl ? (
                           <iframe
@@ -336,9 +352,9 @@ export default function FilmsSection() {
                 </div>
                 <div className="space-y-3">
                   <h3 className="mono text-[11px] uppercase tracking-[0.45em] text-white/55">More Films</h3>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto pr-1">
                     {siblingProjects.length ? (
-                      siblingProjects.slice(0, 6).map((project) => {
+                      siblingProjects.map((project) => {
                         const siblingPreview = resolvePreview(project);
                         return (
                           <button

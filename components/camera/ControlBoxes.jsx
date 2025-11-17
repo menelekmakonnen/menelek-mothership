@@ -3,14 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Aperture,
-  BarChart3,
   Gauge,
   Grid3x3,
   Maximize2,
   Minimize2,
   RefreshCw,
   RotateCcw,
-  SlidersHorizontal,
   Sparkles,
   Timer,
   X,
@@ -41,12 +39,8 @@ export default function ControlBoxes() {
     setAperture,
     shutterSpeed,
     setShutterSpeed,
-    exposureComp,
-    setExposureComp,
     ruleOfThirds,
     setRuleOfThirds,
-    showHistogram,
-    setShowHistogram,
   } = useCameraContext();
 
   const [isMobile, setIsMobile] = useState(false);
@@ -256,18 +250,6 @@ export default function ControlBoxes() {
         setValue: setShutterSpeed,
         formatValue: (value) => formatShutterValue(value),
       },
-      {
-        id: 'ev',
-        label: 'EV COMP',
-        icon: SlidersHorizontal,
-        min: -3,
-        max: 3,
-        step: 0.3,
-        marks: ['-3', '0', '+3'],
-        value: exposureComp,
-        setValue: setExposureComp,
-        formatValue: (value) => `${value > 0 ? '+' : ''}${Number(value).toFixed(1)} EV`,
-      },
     ];
 
     const activeDialConfig = dialConfigs.find((dial) => dial.id === activeDial) || null;
@@ -311,18 +293,12 @@ export default function ControlBoxes() {
       setHasModifiedSettings(true);
     };
 
-    const toggleHistogram = () => {
-      setShowHistogram(!showHistogram);
-      setHasModifiedSettings(true);
-    };
-
     return (
       <div ref={containerRef} className="fixed top-0 left-0 right-0 z-[2000]">
         <div className="camera-top-rail pointer-events-none">
           <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4 pb-4 pointer-events-auto space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <PowerControls orientation="horizontal" variant="inline" />
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-1 min-w-[320px] flex-wrap items-center gap-3">
                 {dialConfigs.map((dial) => {
                   const Icon = dial.icon;
                   const isActive = activeDial === dial.id;
@@ -363,23 +339,6 @@ export default function ControlBoxes() {
                 </motion.button>
 
                 <motion.button
-                  onClick={toggleHistogram}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  className={`camera-hud h-12 px-4 rounded-2xl border border-white/12 flex items-center gap-3 transition-all ${
-                    showHistogram ? 'border-green-400/60 text-green-200' : ''
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <div className="flex flex-col leading-none text-left">
-                    <span className="mono text-[9px] uppercase tracking-[0.4em] opacity-70">Histogram</span>
-                    <span className="mono text-xs font-semibold tracking-[0.35em]">
-                      {showHistogram ? 'VISIBLE' : 'HIDDEN'}
-                    </span>
-                  </div>
-                </motion.button>
-
-                <motion.button
                   onClick={() => {
                     setHasModifiedSettings(true);
                     cycleLens();
@@ -394,7 +353,8 @@ export default function ControlBoxes() {
                     <span className="mono text-xs font-semibold tracking-[0.35em]">{currentLens.name}</span>
                   </div>
                 </motion.button>
-
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <motion.button
                   onClick={() => {
                     setHasModifiedSettings(true);
@@ -433,56 +393,64 @@ export default function ControlBoxes() {
               </div>
             </div>
 
-            <AnimatePresence>
-              {activeDialConfig && (
-                <motion.div
-                  key={activeDialConfig.id}
-                  initial={{ opacity: 0, y: -12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="max-w-xl mx-auto camera-hud rounded-3xl border border-white/12 p-6 shadow-2xl">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        {(() => {
-                          const ActiveDialIcon = activeDialConfig.icon;
-                          return ActiveDialIcon ? <ActiveDialIcon className="w-5 h-5" /> : null;
-                        })()}
-                        <span className="mono text-xs tracking-[0.35em] uppercase">{activeDialConfig.label}</span>
-                      </div>
-                      <button
-                        onClick={handleDialClose}
-                        className="rounded-full bg-white/5 hover:bg-white/10 border border-white/10 p-2"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="text-3xl font-semibold">
-                        {activeDialConfig.formatValue(activeDialConfig.value)}
-                      </div>
-                      <input
-                        type="range"
-                        min={activeDialConfig.min}
-                        max={activeDialConfig.max}
-                        step={activeDialConfig.step}
-                        value={activeDialConfig.value}
-                        onChange={(e) => handleDialChange(activeDialConfig.id, e.target.value)}
-                        className="camera-slider w-full accent-green-400"
-                      />
-                      <div className="flex justify-between text-[10px] opacity-60">
-                        {activeDialConfig.marks.map((mark) => (
-                          <span key={mark}>{mark}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
+      <AnimatePresence>
+        {activeDialConfig && (
+          <motion.div
+            key={activeDialConfig.id}
+            className="fixed inset-0 z-[2300] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleDialClose}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-xl w-full mx-6 camera-hud rounded-3xl border border-white/12 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.65)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const ActiveDialIcon = activeDialConfig.icon;
+                    return ActiveDialIcon ? <ActiveDialIcon className="w-5 h-5" /> : null;
+                  })()}
+                  <span className="mono text-xs tracking-[0.35em] uppercase">{activeDialConfig.label}</span>
+                </div>
+                <button
+                  onClick={handleDialClose}
+                  className="rounded-full bg-white/5 hover:bg-white/10 border border-white/10 p-2"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="text-3xl font-semibold">
+                  {activeDialConfig.formatValue(activeDialConfig.value)}
+                </div>
+                <input
+                  type="range"
+                  min={activeDialConfig.min}
+                  max={activeDialConfig.max}
+                  step={activeDialConfig.step}
+                  value={activeDialConfig.value}
+                  onChange={(e) => handleDialChange(activeDialConfig.id, e.target.value)}
+                  className="camera-slider w-full accent-green-400"
+                />
+                <div className="flex justify-between text-[10px] opacity-60">
+                  {activeDialConfig.marks.map((mark) => (
+                    <span key={mark}>{mark}</span>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     );
   }

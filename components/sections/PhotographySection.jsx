@@ -51,6 +51,9 @@ export default function PhotographySection() {
   const [activeAlbum, setActiveAlbum] = useState(null);
   const [activeGallery, setActiveGallery] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(null);
+  const [albumSortMode, setAlbumSortMode] = useState('name');
+  const [gallerySortMode, setGallerySortMode] = useState('name');
+  const [frameSortMode, setFrameSortMode] = useState('original');
   const {
     registerGalleriaSection,
     engageGalleriaSection,
@@ -73,10 +76,43 @@ export default function PhotographySection() {
   }, [loadFolder]);
 
   const rootFolder = getFolder(MMM_MEDIA_ROOT);
+
+  const hasMedia = useCallback(
+    (folderId, depth = 0) => {
+      if (!folderId || depth > 4) return false;
+      const folderData = getFolder(folderId);
+      if (!folderData) return true; // still loading, optimistically keep
+      const hasFiles = folderData.items.some((item) => item.type === 'file' && resolveItemImage(item));
+      if (hasFiles) return true;
+      const nestedFolders = folderData.items.filter((item) => item.type === 'folder');
+      return nestedFolders.some((nested) => hasMedia(nested.id, depth + 1));
+    },
+    [getFolder]
+  );
+
+  const sortFolders = useCallback((folders, mode) => {
+    if (!folders?.length) return [];
+    const clone = [...folders];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    switch (mode) {
+      case 'newest':
+        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
+      case 'oldest':
+        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
+      case 'name-desc':
+        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
+      case 'name':
+      default:
+        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
+    }
+  }, []);
+
   const albumFolders = useMemo(() => {
     if (!rootFolder) return [];
-    return rootFolder.items.filter((item) => item.type === 'folder' && albumMeta[item.title]);
-  }, [rootFolder]);
+    const folders = rootFolder.items.filter((item) => item.type === 'folder' && albumMeta[item.title]);
+    const filtered = folders.filter((folder) => hasMedia(folder.id));
+    return sortFolders(filtered, albumSortMode);
+  }, [albumSortMode, hasMedia, rootFolder, sortFolders]);
 
   useEffect(() => {
     if (!albumFolders.length) return;
@@ -176,8 +212,9 @@ export default function PhotographySection() {
   const activeAlbumData = activeAlbum ? getFolder(activeAlbum.id) : null;
   const galleryFolders = useMemo(() => {
     if (!activeAlbumData) return [];
-    return activeAlbumData.items.filter((item) => item.type === 'folder');
-  }, [activeAlbumData]);
+    const folders = activeAlbumData.items.filter((item) => item.type === 'folder' && hasMedia(item.id));
+    return sortFolders(folders, gallerySortMode);
+  }, [activeAlbumData, gallerySortMode, hasMedia, sortFolders]);
 
   useEffect(() => {
     if (!galleryFolders.length) return;
@@ -199,6 +236,25 @@ export default function PhotographySection() {
     return activeGalleryData.items.filter((item) => item.type === 'file');
   }, [activeGalleryData]);
 
+  const sortedGalleryImages = useMemo(() => {
+    if (!galleryImages.length) return [];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    const clone = [...galleryImages];
+    switch (frameSortMode) {
+      case 'name':
+        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
+      case 'name-desc':
+        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
+      case 'newest':
+        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
+      case 'oldest':
+        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
+      case 'original':
+      default:
+        return clone;
+    }
+  }, [frameSortMode, galleryImages]);
+
   const galleryQuickLook = useMemo(
     () =>
       galleryFolders.map((gallery) => ({
@@ -211,21 +267,21 @@ export default function PhotographySection() {
 
   const preparedGalleryImages = useMemo(() => {
     const galleryTitle = activeGallery?.title || activeAlbum?.title || 'Photography Gallery';
-    return galleryImages.map((image, index) => {
+    return sortedGalleryImages.map((image, index) => {
       const previewSrc = resolveItemImage(image);
       const fullSrc = resolveItemImage(image, 'full') || previewSrc;
       const thumbSrc = resolveItemImage(image, 'thumb') || previewSrc;
       return {
         ...image,
-        displayTitle: galleryTitle,
-        alt: `${galleryTitle} shot by Menelek Makonnen`,
+        displayTitle: `${galleryTitle} · Frame ${index + 1}`,
+        alt: `${galleryTitle} frame ${index + 1} shot by Menelek Makonnen`,
         frameIndex: index,
         previewSrc,
         fullSrc,
         thumbSrc,
       };
     });
-  }, [activeAlbum?.title, activeGallery?.title, galleryImages]);
+  }, [activeAlbum?.title, activeGallery?.title, sortedGalleryImages]);
 
   useEffect(() => {
     if (activeImageIndex === null) return;
@@ -274,6 +330,20 @@ export default function PhotographySection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeImageIndex, preparedGalleryImages.length]);
+
+  const handleImageWheel = useCallback(
+    (direction) => {
+      if (!preparedGalleryImages.length) return;
+      setActiveImageIndex((index) => {
+        if (index === null) return index;
+        if (direction === 'next') {
+          return (index + 1) % preparedGalleryImages.length;
+        }
+        return (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length;
+      });
+    },
+    [preparedGalleryImages.length]
+  );
 
   const renderAlbumCard = (album) => {
     const meta = albumMeta[album.title] || {
@@ -370,19 +440,37 @@ export default function PhotographySection() {
   const renderGalleryGrid = () => {
     if (!activeGallery) {
       return (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 overflow-y-auto pr-2">
-          {galleryFolders.map(renderGalleryCard)}
-          {!galleryFolders.length && (
-            <div className="col-span-full flex h-48 items-center justify-center rounded-2xl border border-white/10 bg-black/35">
-              {activeAlbum ? (
-                isLoading(activeAlbum.id) ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-green-300" />
-                ) : (
-                  <p className="text-sm text-white/70">No galleries found in this album yet.</p>
-                )
-              ) : null}
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="mono text-[11px] uppercase tracking-[0.4em] text-white/60">Galleries</span>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-white/60">
+              <span className="hidden sm:inline">Sort</span>
+              <select
+                value={gallerySortMode}
+                onChange={(event) => setGallerySortMode(event.target.value)}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
+              >
+                <option value="name">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+              </select>
             </div>
-          )}
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 overflow-y-auto pr-2">
+            {galleryFolders.map(renderGalleryCard)}
+            {!galleryFolders.length && (
+              <div className="col-span-full flex h-48 items-center justify-center rounded-2xl border border-white/10 bg-black/35">
+                {activeAlbum ? (
+                  isLoading(activeAlbum.id) ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-green-300" />
+                  ) : (
+                    <p className="text-sm text-white/70">No galleries found in this album yet.</p>
+                  )
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -411,6 +499,22 @@ export default function PhotographySection() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs uppercase tracking-[0.4em] text-white/55">Frame order</div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-white/60">
+              <select
+                value={frameSortMode}
+                onChange={(event) => setFrameSortMode(event.target.value)}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
+              >
+                <option value="original">Curated</option>
+                <option value="name">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+              </select>
+            </div>
+          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {preparedGalleryImages.map((image, index) => {
               const preview = resolveItemImage(image);
@@ -489,9 +593,24 @@ export default function PhotographySection() {
         </header>
 
         <section className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <h2 className="mono text-[12px] uppercase tracking-[0.5em] text-[color:var(--text-secondary)]">Albums</h2>
-            {getError(MMM_MEDIA_ROOT) && <div className="text-sm text-rose-300">Unable to load Google Drive albums. Please retry.</div>}
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.35em] text-[color:var(--text-secondary)]">
+              {getError(MMM_MEDIA_ROOT) && (
+                <div className="text-xs text-rose-300 normal-case tracking-normal">Unable to load albums.</div>
+              )}
+              <label className="hidden md:block">Sort</label>
+              <select
+                value={albumSortMode}
+                onChange={(event) => setAlbumSortMode(event.target.value)}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.35em]"
+              >
+                <option value="name">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+              </select>
+            </div>
           </div>
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
             {albumFolders.map(renderAlbumCard)}
@@ -563,6 +682,7 @@ export default function PhotographySection() {
             innerClassName="p-0 overflow-hidden"
             galleriaSectionId="photography"
             showGalleriaChrome
+            onWheelNavigate={handleImageWheel}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -684,8 +804,9 @@ export default function PhotographySection() {
                             onClick={() => {
                               if (gallery.id === activeGallery?.id) return;
                               const nextGallery = galleryFolders.find((item) => item.id === gallery.id) || null;
-                              setActiveImageIndex(null);
+                              if (!nextGallery) return;
                               setActiveGallery(nextGallery);
+                              setActiveImageIndex(0);
                               scrollToActiveLayer();
                             }}
                             className={`flex min-w-[140px] flex-col rounded-2xl border bg-white/5 px-2 pb-3 pt-2 text-left transition-all ${

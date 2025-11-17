@@ -1,7 +1,8 @@
 import { useCameraContext } from '@/context/CameraContext';
 import { useEffect, useState, useMemo } from 'react';
 import BatteryIndicator from './BatteryIndicator';
-import { Camera } from 'lucide-react';
+import PowerControls from './PowerControls';
+import { Camera, BarChart3 } from 'lucide-react';
 
 export default function CameraHUD() {
   const {
@@ -19,6 +20,8 @@ export default function CameraHUD() {
     interfaceModules,
     theme,
     currentSection,
+    showHistogram,
+    setShowHistogram,
   } = useCameraContext();
 
   const [accentColor, setAccentColor] = useState('#00ff88');
@@ -253,6 +256,9 @@ export default function CameraHUD() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[2500] pointer-events-none">
+      <div className="absolute left-4 -top-16 hidden md:flex pointer-events-auto">
+        <PowerControls orientation="vertical" variant="inline" />
+      </div>
       <div className="camera-hud border-t px-4 py-3 flex items-center justify-between gap-4 mono text-xs pointer-events-auto">
         {/* Left section - Camera mode and lens */}
         <div className="flex items-center gap-4">
@@ -364,6 +370,19 @@ export default function CameraHUD() {
 
         {/* Right section - Battery and status indicators */}
         <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setShowHistogram(!showHistogram)}
+            className={`hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+              showHistogram
+                ? 'border-green-400/60 text-green-300'
+                : 'border-white/15 text-white/60 hover:border-white/35 hover:text-white/80'
+            }`}
+            aria-pressed={showHistogram}
+            aria-label="Toggle histogram"
+          >
+            <BarChart3 className="h-4 w-4" />
+          </button>
           {(hudVisibility === 'standard' || hudVisibility === 'full') && (
             <div className="flex flex-col items-center">
               <div className="text-[9px] opacity-60 text-[color:var(--hud-text)]">BATTERY</div>

@@ -165,6 +165,21 @@ export default function LoremakerSection() {
     [scrollToActiveLayer]
   );
 
+  const handleCharacterWheel = useCallback(
+    (direction) => {
+      if (!activeCharacter) return;
+      const totalFrames = activeCharacter.galleryImages?.length || 0;
+      if (!totalFrames) return;
+      setActiveImageIndex((index) => {
+        if (direction === 'next') {
+          return (index + 1) % totalFrames;
+        }
+        return (index - 1 + totalFrames) % totalFrames;
+      });
+    },
+    [activeCharacter]
+  );
+
   useEffect(() => {
     if (activeCharacter) {
       scrollToActiveLayer();
@@ -319,6 +334,7 @@ export default function LoremakerSection() {
             innerClassName="p-0"
             galleriaSectionId="loremaker"
             showGalleriaChrome
+            onWheelNavigate={handleCharacterWheel}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
