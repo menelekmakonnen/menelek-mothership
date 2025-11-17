@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { Play, ChevronDown, ExternalLink, Heart, MessageCircle, Send, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, ChevronLeft, ChevronRight, X, Loader } from 'lucide-react';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
+import GalleryNavigation from '@/components/ui/GalleryNavigation';
+import ScrollControls from '@/components/ui/ScrollControls';
 
 // Helper function to extract video info
 function getVideoInfo(url) {
@@ -14,6 +17,7 @@ function getVideoInfo(url) {
       platform: 'youtube',
       id: videoId,
       thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      embed: `https://www.youtube.com/embed/${videoId}`,
     };
   }
 
@@ -23,18 +27,20 @@ function getVideoInfo(url) {
       platform: 'vimeo',
       id: videoId,
       thumbnail: null,
+      embed: `https://player.vimeo.com/video/${videoId}`,
     };
   }
 
   return null;
 }
 
-// Video edit categories with clips
-const categories = [
+// Video edit albums with clips
+const albums = [
   {
     id: 'action',
     name: 'Action & Sports',
     icon: '⚡',
+    description: 'High-energy athletic moments',
     clips: [
       {
         id: 1,
@@ -58,6 +64,7 @@ const categories = [
     id: 'cinematic',
     name: 'Cinematic Edits',
     icon: '🎬',
+    description: 'Atmospheric storytelling',
     clips: [
       {
         id: 3,
@@ -81,6 +88,7 @@ const categories = [
     id: 'music',
     name: 'Music Synced',
     icon: '🎵',
+    description: 'Beat-perfect timing',
     clips: [
       {
         id: 5,
@@ -104,6 +112,7 @@ const categories = [
     id: 'creative',
     name: 'Creative Effects',
     icon: '✨',
+    description: 'Advanced VFX and motion graphics',
     clips: [
       {
         id: 7,
@@ -125,188 +134,235 @@ const categories = [
   },
 ];
 
-export default function VideoEditsSection() {
-  const [openCategory, setOpenCategory] = useState('action');
-  const [selectedVideo, setSelectedVideo] = useState(null);
+export default function VideoEditsSection({ onGalleryNavigate }) {
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(null);
+  const containerRef = useRef(null);
 
   // Get all clips for navigation
-  const allClips = categories.flatMap(cat =>
-    cat.clips.map(clip => ({ ...clip, category: cat.name }))
-  );
+  const allClips = selectedAlbum ? selectedAlbum.clips : [];
 
-  // Navigate video lightbox
-  const navigateVideo = (direction) => {
-    if (!selectedVideo) return;
-    const currentIndex = allClips.findIndex(c => c.id === selectedVideo.id);
+  // Navigate album view - cycles through albums only
+  const navigateAlbum = (direction) => {
+    if (!selectedAlbum) return;
+    const currentIndex = albums.findIndex(a => a.id === selectedAlbum.id);
     const newIndex = direction === 'next'
-      ? (currentIndex + 1) % allClips.length
-      : (currentIndex - 1 + allClips.length) % allClips.length;
-    setSelectedVideo(allClips[newIndex]);
+      ? (currentIndex + 1) % albums.length
+      : (currentIndex - 1 + albums.length) % albums.length;
+    setSelectedAlbum(albums[newIndex]);
+    setSelectedVideoIndex(null);
   };
 
-  // Keyboard navigation
+  // Navigate video lightbox - cycles through videos only
+  const navigateVideo = (direction) => {
+    if (selectedVideoIndex === null) return;
+    const newIndex = direction === 'next'
+      ? (selectedVideoIndex + 1) % allClips.length
+      : (selectedVideoIndex - 1 + allClips.length) % allClips.length;
+    setSelectedVideoIndex(newIndex);
+  };
+
+  // Keyboard navigation - context-aware
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!selectedVideo) return;
-      if (e.key === 'ArrowRight') navigateVideo('next');
-      if (e.key === 'ArrowLeft') navigateVideo('prev');
-      if (e.key === 'Escape') setSelectedVideo(null);
+      // Single video view navigation
+      if (selectedVideoIndex !== null) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateVideo('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateVideo('prev');
+        }
+        if (e.key === 'Escape') {
+          setSelectedVideoIndex(null);
+        }
+      }
+      // Album view navigation
+      else if (selectedAlbum && selectedVideoIndex === null) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateAlbum('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateAlbum('prev');
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedVideo, allClips]);
+  }, [selectedVideoIndex, selectedAlbum, allClips]);
+
+  // Breadcrumbs
+  const getBreadcrumbs = () => {
+    const crumbs = [
+      { id: 'galleria', label: 'Galleria' },
+      { id: 'video-edits', label: 'Epic Video Edits' },
+    ];
+
+    if (selectedAlbum) {
+      crumbs.push({ id: `album-${selectedAlbum.id}`, label: selectedAlbum.name });
+    }
+
+    if (selectedVideoIndex !== null && allClips[selectedVideoIndex]) {
+      crumbs.push({ id: 'video', label: allClips[selectedVideoIndex].title.substring(0, 20) + '...' });
+    }
+
+    return crumbs;
+  };
+
+  const handleBreadcrumbNavigate = (id, index) => {
+    if (id === 'galleria') {
+      onGalleryNavigate && onGalleryNavigate(null);
+    } else if (id === 'video-edits') {
+      setSelectedAlbum(null);
+      setSelectedVideoIndex(null);
+    } else if (id.startsWith('album-')) {
+      setSelectedVideoIndex(null);
+    }
+  };
 
   return (
-    <div className="w-full h-full p-8 overflow-auto">
+    <div ref={containerRef} className="w-full h-full p-8 overflow-auto">
       <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          Epic Video Edits
-        </motion.h1>
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={getBreadcrumbs()} onNavigate={handleBreadcrumbNavigate} />
 
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
-        >
-          Professional video editing and motion graphics
-        </motion.p>
+        {/* Gallery Navigation */}
+        <GalleryNavigation currentGallery="video-edits" onNavigate={onGalleryNavigate} />
 
-        {/* Collapsible Categories */}
-        <div className="space-y-4">
-          {categories.map((category, categoryIndex) => {
-            const isOpen = openCategory === category.id;
+        {/* Gallery View - Album Selection */}
+        {!selectedAlbum ? (
+          <>
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-6xl font-bold mb-4"
+            >
+              Epic Video Edits
+            </motion.h1>
 
-            return (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * categoryIndex }}
-                className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl overflow-hidden"
-              >
-                {/* Category Header - Clickable */}
-                <button
-                  onClick={() => setOpenCategory(isOpen ? null : category.id)}
-                  className="w-full px-8 py-6 flex items-center justify-between hover:bg-white/5 transition-colors"
+            <motion.p
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-xl text-gray-400 mb-12"
+            >
+              Professional video editing and motion graphics
+            </motion.p>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {albums.map((album, index) => (
+                <motion.div
+                  key={album.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  onClick={() => setSelectedAlbum(album)}
+                  className="group cursor-pointer"
+                  whileHover={{ y: -8 }}
                 >
-                  <div className="flex items-center gap-4">
-                    <span className="text-4xl">{category.icon}</span>
-                    <div className="text-left">
-                      <h2 className="text-2xl font-bold">{category.name}</h2>
-                      <p className="text-sm text-gray-400">{category.clips.length} clips</p>
+                  <div className="luxury-card overflow-hidden">
+                    <div className="aspect-video bg-gradient-to-br from-orange-600 to-red-600 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden">
+                      <span className="text-6xl">{album.icon}</span>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Play className="w-16 h-16 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-xl mb-2">{album.name}</h3>
+                    <p className="text-sm text-gray-400 mb-2">{album.description}</p>
+                    <p className="text-xs text-gray-500">{album.clips.length} videos</p>
+                    <div className="mt-3 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                      View Album →
                     </div>
                   </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Album View - Instagram Grid */}
+            <div className="mb-8">
+              <h2 className="text-4xl font-bold mb-2">{selectedAlbum.name}</h2>
+              <p className="text-gray-400 mb-8">{allClips.length} video edits</p>
+            </div>
 
+            {/* Album Navigation Arrows */}
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300]">
+              <button
+                onClick={() => navigateAlbum('prev')}
+                className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+                title="Previous album"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300]">
+              <button
+                onClick={() => navigateAlbum('next')}
+                className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+                title="Next album"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Instagram-style Grid - NO VIDEO PLAYER, just thumbnails */}
+            <div className="grid grid-cols-3 gap-1">
+              {allClips.map((clip, index) => {
+                const videoInfo = getVideoInfo(clip.url);
+
+                return (
                   <motion.div
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ duration: 0.3 }}
+                    key={clip.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.05 * index }}
+                    onClick={() => setSelectedVideoIndex(index)}
+                    className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 rounded cursor-pointer relative group overflow-hidden"
                   >
-                    <ChevronDown className="w-6 h-6 text-gray-400" />
-                  </motion.div>
-                </button>
-
-                {/* Category Content - Collapsible */}
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-8 pb-8 pt-4">
-                        <div className="grid md:grid-cols-2 gap-6">
-                          {category.clips.map((clip, clipIndex) => {
-                            const videoInfo = getVideoInfo(clip.url);
-
-                            return (
-                              <motion.div
-                                key={clip.id}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.1 * clipIndex }}
-                                onClick={() => setSelectedVideo(clip)}
-                                className="bg-gradient-to-br from-gray-900 to-black rounded-xl overflow-hidden border border-gray-700 hover:border-green-500/50 transition-all cursor-pointer group"
-                              >
-                                {/* Thumbnail */}
-                                <div className="aspect-video bg-gradient-to-br from-gray-700 to-gray-800 relative overflow-hidden">
-                                  {videoInfo?.thumbnail ? (
-                                    <img
-                                      src={videoInfo.thumbnail}
-                                      alt={clip.title}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      loading="lazy"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <Play className="w-20 h-20 text-gray-600" />
-                                    </div>
-                                  )}
-
-                                  {/* Play overlay */}
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center">
-                                      <Play className="w-8 h-8 text-white ml-1" />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Post Info - Instagram Style */}
-                                <div className="p-4">
-                                  {/* Title and description */}
-                                  <h3 className="font-bold text-lg mb-2">{clip.title}</h3>
-                                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                                    {clip.description}
-                                  </p>
-
-                                  {/* Actions - Instagram style */}
-                                  <div className="flex items-center gap-6 text-gray-400">
-                                    <button className="flex items-center gap-2 hover:text-red-400 transition-colors">
-                                      <Heart className="w-5 h-5" />
-                                      <span className="text-sm">{clip.likes}</span>
-                                    </button>
-                                    <button className="flex items-center gap-2 hover:text-green-400 transition-colors">
-                                      <MessageCircle className="w-5 h-5" />
-                                      <span className="text-sm">{clip.comments}</span>
-                                    </button>
-                                    <button className="flex items-center gap-2 hover:text-blue-400 transition-colors ml-auto">
-                                      <ExternalLink className="w-5 h-5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
+                    {videoInfo?.thumbnail ? (
+                      <img
+                        src={videoInfo.thumbnail}
+                        alt={clip.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Play className="w-12 h-12 text-gray-600" />
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </div>
+                    )}
 
-        {/* Video Lightbox */}
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Play className="w-12 h-12 text-white" />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Video Lightbox - Single Video View */}
         <AnimatePresence>
-          {selectedVideo && (
+          {selectedVideoIndex !== null && allClips[selectedVideoIndex] && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4"
-              onClick={() => setSelectedVideo(null)}
+              onClick={() => setSelectedVideoIndex(null)}
             >
               {/* Close button */}
               <button
-                onClick={() => setSelectedVideo(null)}
+                onClick={() => setSelectedVideoIndex(null)}
                 className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -314,7 +370,7 @@ export default function VideoEditsSection() {
 
               {/* Video counter */}
               <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm mono text-sm">
-                {allClips.findIndex(c => c.id === selectedVideo.id) + 1} / {allClips.length}
+                {selectedVideoIndex + 1} / {allClips.length}
               </div>
 
               {/* Navigation buttons */}
@@ -344,7 +400,7 @@ export default function VideoEditsSection() {
 
               {/* Video Player */}
               <motion.div
-                key={selectedVideo.id}
+                key={selectedVideoIndex}
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
@@ -352,7 +408,8 @@ export default function VideoEditsSection() {
                 onClick={(e) => e.stopPropagation()}
               >
                 {(() => {
-                  const videoInfo = getVideoInfo(selectedVideo.url);
+                  const video = allClips[selectedVideoIndex];
+                  const videoInfo = getVideoInfo(video.url);
 
                   if (videoInfo?.embed) {
                     return (
@@ -370,9 +427,9 @@ export default function VideoEditsSection() {
                       <div className="text-center">
                         <Play className="w-20 h-20 mx-auto mb-4" />
                         <p>Video player not available</p>
-                        {selectedVideo.url && (
+                        {video.url && (
                           <a
-                            href={selectedVideo.url}
+                            href={video.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-green-400 hover:underline mt-2 inline-block"
@@ -388,23 +445,22 @@ export default function VideoEditsSection() {
 
               {/* Video info */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-black/50 backdrop-blur-sm text-center max-w-2xl">
-                <div className="text-xs text-green-400 mb-1 mono">{selectedVideo.category}</div>
-                <h3 className="font-bold text-lg mb-1">{selectedVideo.title}</h3>
-                <p className="text-sm text-gray-400">{selectedVideo.description}</p>
-                <div className="flex items-center gap-4 justify-center mt-3 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <Heart className="w-4 h-4" />
-                    {selectedVideo.likes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle className="w-4 h-4" />
-                    {selectedVideo.comments}
-                  </span>
-                </div>
+                <div className="text-xs text-orange-400 mb-1 mono">{selectedAlbum.name}</div>
+                <h3 className="font-bold text-lg mb-1">{allClips[selectedVideoIndex].title}</h3>
+                <p className="text-sm text-gray-400">{allClips[selectedVideoIndex].description}</p>
+              </div>
+
+              {/* Keyboard hints */}
+              <div className="absolute bottom-4 right-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-xs mono text-gray-400">
+                <div>← → : Navigate</div>
+                <div>ESC : Close</div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Scroll Controls */}
+        <ScrollControls containerRef={containerRef} />
       </div>
     </div>
   );

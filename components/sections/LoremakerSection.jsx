@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, User, Sparkles } from 'lucide-react';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
+import GalleryNavigation from '@/components/ui/GalleryNavigation';
+import ScrollControls from '@/components/ui/ScrollControls';
 
 // Configuration for Google Sheets integration
 const SHEETS_CONFIG = {
@@ -47,11 +50,12 @@ async function fetchCharacters() {
   }
 }
 
-export default function LoremakerSection() {
+export default function LoremakerSection({ onGalleryNavigate }) {
   const [characters, setCharacters] = useState([]);
   const [displayedCharacters, setDisplayedCharacters] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     async function loadCharacters() {
@@ -81,9 +85,36 @@ export default function LoremakerSection() {
     return character.image;
   };
 
+  // Breadcrumbs
+  const getBreadcrumbs = () => {
+    const crumbs = [
+      { id: 'galleria', label: 'Galleria' },
+      { id: 'loremaker', label: 'Loremaker Universe' },
+    ];
+
+    if (selectedCharacter) {
+      crumbs.push({ id: 'character', label: selectedCharacter.name });
+    }
+
+    return crumbs;
+  };
+
+  const handleBreadcrumbNavigate = (id, index) => {
+    if (id === 'galleria') {
+      onGalleryNavigate && onGalleryNavigate(null);
+    } else if (id === 'loremaker') {
+      setSelectedCharacter(null);
+    }
+  };
+
   return (
-    <div className="w-full h-full p-8 overflow-auto">
+    <div ref={containerRef} className="w-full h-full p-8 overflow-auto">
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={getBreadcrumbs()} onNavigate={handleBreadcrumbNavigate} />
+
+        {/* Gallery Navigation */}
+        <GalleryNavigation currentGallery="loremaker" onNavigate={onGalleryNavigate} />
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -232,6 +263,9 @@ export default function LoremakerSection() {
           {characters.length > 12 && `Showing 12 of ${characters.length} characters • `}
           Characters are loaded from Google Sheets
         </motion.div>
+
+        {/* Scroll Controls */}
+        <ScrollControls containerRef={containerRef} />
       </div>
     </div>
   );

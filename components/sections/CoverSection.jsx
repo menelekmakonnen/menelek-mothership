@@ -10,10 +10,16 @@ const slides = [
     gradient: 'from-purple-900 via-blue-900 to-indigo-900',
   },
   {
+    id: 'galleria',
+    title: 'Galleria',
+    description: 'Explore my visual universe across multiple mediums',
+    gradient: 'from-orange-900 via-amber-900 to-yellow-900',
+  },
+  {
     id: 'films',
     title: 'Films & Music Videos',
     description: 'Cinematic storytelling and visual artistry',
-    gradient: 'from-red-900 via-orange-900 to-yellow-900',
+    gradient: 'from-red-900 via-rose-900 to-pink-900',
   },
   {
     id: 'loremaker',
