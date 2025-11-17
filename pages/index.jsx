@@ -1,5 +1,5 @@
 import { useCameraContext } from '@/context/CameraContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 
 // Camera components
@@ -27,6 +27,7 @@ import AIProjectsSection from '@/components/sections/AIProjectsSection';
 import VideoEditsSection from '@/components/sections/VideoEditsSection';
 import PhotographySection from '@/components/sections/PhotographySection';
 import AIAlbumsSection from '@/components/sections/AIAlbumsSection';
+import GalleriaSection from '@/components/sections/GalleriaSection';
 import BlogSection from '@/components/sections/BlogSection';
 
 export default function Home() {
@@ -40,6 +41,46 @@ export default function Home() {
     getIsoNoise,
     getWhiteBalanceFilter,
   } = useCameraContext();
+
+  // Gallery navigation state
+  const [currentGallery, setCurrentGallery] = useState(null);
+
+  // Handle gallery navigation
+  const handleGalleryNavigate = (galleryId) => {
+    if (!galleryId) {
+      // Return to Galleria home
+      setCurrentGallery(null);
+      setCurrentSection(6); // Galleria section index
+      return;
+    }
+
+    // Navigate to specific gallery
+    switch (galleryId) {
+      case 'photography':
+        setCurrentSection(7);
+        break;
+      case 'ai-albums':
+        setCurrentSection(8);
+        break;
+      case 'video-edits':
+        setCurrentSection(9);
+        break;
+      case 'films':
+        setCurrentSection(3);
+        break;
+      case 'loremaker':
+        setCurrentSection(4);
+        break;
+      default:
+        break;
+    }
+    setCurrentGallery(galleryId);
+  };
+
+  // Handle gallery selection from Galleria home
+  const handleGallerySelect = (galleryId) => {
+    handleGalleryNavigate(galleryId);
+  };
 
   // Apply theme to document
   useEffect(() => {
@@ -55,12 +96,13 @@ export default function Home() {
     <CoverSection key="cover" onSectionSelect={(index) => setCurrentSection(index)} />,
     <IntroductionSection key="intro" />,
     <LinksSection key="links" />,
-    <FilmsSection key="films" />,
-    <LoremakerSection key="loremaker" />,
+    <FilmsSection key="films" onGalleryNavigate={handleGalleryNavigate} />,
+    <LoremakerSection key="loremaker" onGalleryNavigate={handleGalleryNavigate} />,
     <AIProjectsSection key="ai-projects" />,
-    <VideoEditsSection key="video-edits" />,
-    <PhotographySection key="photography" />,
-    <AIAlbumsSection key="ai-albums" />,
+    <GalleriaSection key="galleria" onGallerySelect={handleGallerySelect} />,
+    <PhotographySection key="photography" onGalleryNavigate={handleGalleryNavigate} />,
+    <AIAlbumsSection key="ai-albums" onGalleryNavigate={handleGalleryNavigate} />,
+    <VideoEditsSection key="video-edits" onGalleryNavigate={handleGalleryNavigate} />,
     <BlogSection key="blog" />,
   ];
 

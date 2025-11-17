@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { Sparkles, Wand2, Cpu, Zap, X, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Sparkles, Wand2, Cpu, Zap, X, ChevronLeft, ChevronRight, Loader, Play, Pause, Maximize } from 'lucide-react';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
+import GalleryNavigation from '@/components/ui/GalleryNavigation';
+import ScrollControls from '@/components/ui/ScrollControls';
 
 // Google Drive API configuration
 const DRIVE_CONFIG = {
@@ -124,7 +127,7 @@ async function fetchAlbumImages(folderId) {
   }
 }
 
-export default function AIAlbumsSection() {
+export default function AIAlbumsSection({ onGalleryNavigate }) {
   const [albums, setAlbums] = useState([]);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [albumImages, setAlbumImages] = useState([]);
@@ -132,6 +135,9 @@ export default function AIAlbumsSection() {
   const [loading, setLoading] = useState(true);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [loadedImages, setLoadedImages] = useState(new Set());
+  const [slideshowActive, setSlideshowActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef(null);
 
   // Load albums on mount
   useEffect(() => {
@@ -181,7 +187,28 @@ export default function AIAlbumsSection() {
     return () => observer.disconnect();
   }, [albumImages, loadedImages]);
 
-  // Navigate lightbox
+  // Slideshow effect
+  useEffect(() => {
+    if (!slideshowActive || selectedImageIndex === null) return;
+
+    const interval = setInterval(() => {
+      navigateLightbox('next');
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [slideshowActive, selectedImageIndex]);
+
+  // Navigate album view - cycles through albums only
+  const navigateAlbum = (direction) => {
+    if (!selectedAlbum) return;
+    const currentIndex = albums.findIndex(a => a.id === selectedAlbum.id);
+    const newIndex = direction === 'next'
+      ? (currentIndex + 1) % albums.length
+      : (currentIndex - 1 + albums.length) % albums.length;
+    setSelectedAlbum(albums[newIndex]);
+  };
+
+  // Navigate single image view - cycles through images only
   const navigateLightbox = (direction) => {
     if (selectedImageIndex === null) return;
     const newIndex = direction === 'next'
@@ -190,133 +217,325 @@ export default function AIAlbumsSection() {
     setSelectedImageIndex(newIndex);
   };
 
-  // Keyboard navigation
+  // Keyboard navigation - context-aware
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (selectedImageIndex === null) return;
-      if (e.key === 'ArrowRight') navigateLightbox('next');
-      if (e.key === 'ArrowLeft') navigateLightbox('prev');
-      if (e.key === 'Escape') setSelectedImageIndex(null);
+      // Single image view navigation
+      if (selectedImageIndex !== null) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateLightbox('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateLightbox('prev');
+        }
+        if (e.key === 'Escape') {
+          setSelectedImageIndex(null);
+          setSlideshowActive(false);
+          setIsFullscreen(false);
+        }
+        if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          setIsFullscreen(!isFullscreen);
+        }
+        if (e.key === ' ') {
+          e.preventDefault();
+          setSlideshowActive(!slideshowActive);
+        }
+      }
+      // Album view navigation
+      else if (selectedAlbum && selectedImageIndex === null) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateAlbum('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateAlbum('prev');
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImageIndex, albumImages]);
+  }, [selectedImageIndex, selectedAlbum, albums, albumImages, isFullscreen, slideshowActive]);
 
-  // Album view with images
-  if (selectedAlbum) {
-    return (
-      <div className="w-full h-full p-8 overflow-auto">
-        <div className="max-w-7xl mx-auto">
-          <button
-            onClick={() => {
-              setSelectedAlbum(null);
-              setAlbumImages([]);
-            }}
-            className="text-green-400 hover:underline mb-6 flex items-center gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to AI Albums
-          </button>
+  // Breadcrumbs
+  const getBreadcrumbs = () => {
+    const crumbs = [
+      { id: 'galleria', label: 'Galleria' },
+      { id: 'ai-albums', label: 'AI Albums' },
+    ];
 
-          <h2 className="text-4xl font-bold mb-2">{selectedAlbum.name}</h2>
-          <p className="text-gray-400 mb-8">{albumImages.length} AI-generated images</p>
+    if (selectedAlbum) {
+      crumbs.push({ id: `album-${selectedAlbum.id}`, label: selectedAlbum.name });
+    }
 
-          {imagesLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader className="w-8 h-8 animate-spin text-green-400" />
+    if (selectedImageIndex !== null && albumImages[selectedImageIndex]) {
+      crumbs.push({ id: 'image', label: albumImages[selectedImageIndex].name.substring(0, 20) + '...' });
+    }
+
+    return crumbs;
+  };
+
+  const handleBreadcrumbNavigate = (id, index) => {
+    if (id === 'galleria') {
+      onGalleryNavigate && onGalleryNavigate(null);
+    } else if (id === 'ai-albums') {
+      setSelectedAlbum(null);
+      setSelectedImageIndex(null);
+    } else if (id.startsWith('album-')) {
+      setSelectedImageIndex(null);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="w-full h-full p-8 overflow-auto">
+      <div className="max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={getBreadcrumbs()} onNavigate={handleBreadcrumbNavigate} />
+
+        {/* Gallery Navigation */}
+        <GalleryNavigation currentGallery="ai-albums" onNavigate={onGalleryNavigate} />
+
+        {/* Gallery View - Album Selection */}
+        {!selectedAlbum ? (
+          <>
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-6xl font-bold mb-4"
+            >
+              AI Albums
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-xl text-gray-400 mb-12"
+            >
+              AI-generated visual art and experiments
+            </motion.p>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader className="w-8 h-8 animate-spin text-green-400" />
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {albums.map((album, index) => {
+                  const Icon = album.icon;
+                  return (
+                    <motion.div
+                      key={album.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      onClick={() => setSelectedAlbum(album)}
+                      className="group cursor-pointer"
+                      whileHover={{ y: -8 }}
+                    >
+                      <div className={`aspect-square bg-gradient-to-br ${album.gradient} rounded-2xl overflow-hidden mb-4 relative group-hover:scale-105 transition-transform`}>
+                        {album.coverImage ? (
+                          <img
+                            src={getDriveImageUrl(album.coverImage, 'w600')}
+                            alt={album.name}
+                            className="w-full h-full object-cover opacity-80"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full p-8 flex flex-col items-center justify-center">
+                            <Icon className="w-20 h-20 text-white mb-4" />
+                            <div className="text-white/80 text-sm mono">AI GENERATED</div>
+                          </div>
+                        )}
+
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Sparkles className="w-16 h-16 text-white" />
+                        </div>
+                      </div>
+
+                      <h3 className="font-bold text-xl mb-2">{album.name}</h3>
+                      <p className="text-sm text-gray-400">{album.count} images</p>
+
+                      <div className="mt-3 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        View Album →
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Album View */}
+            <div className="mb-8">
+              <h2 className="text-4xl font-bold mb-2">{selectedAlbum.name}</h2>
+              <p className="text-gray-400 mb-8">{albumImages.length} AI-generated images</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {albumImages.map((image, i) => (
-                <motion.div
-                  key={image.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.02 * i }}
-                  onClick={() => setSelectedImageIndex(i)}
-                  className={`aspect-square bg-gradient-to-br ${selectedAlbum.gradient} rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform relative group`}
-                >
-                  <img
-                    data-src={image.thumbnail}
-                    alt={image.name}
-                    className="w-full h-full object-cover opacity-90"
-                    loading="lazy"
-                  />
 
-                  {/* AI badge */}
-                  <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded text-xs mono flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    AI
-                  </div>
-
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Sparkles className="w-10 h-10 text-white" />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {/* Lightbox */}
-          <AnimatePresence>
-            {selectedImageIndex !== null && albumImages[selectedImageIndex] && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4"
-                onClick={() => setSelectedImageIndex(null)}
+            {/* Album Navigation Arrows */}
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300]">
+              <button
+                onClick={() => navigateAlbum('prev')}
+                className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+                title="Previous album"
               >
-                {/* Close button */}
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300]">
+              <button
+                onClick={() => navigateAlbum('next')}
+                className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+                title="Next album"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
+
+            {imagesLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader className="w-8 h-8 animate-spin text-green-400" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {albumImages.map((image, i) => (
+                  <motion.div
+                    key={image.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.02 * i }}
+                    onClick={() => setSelectedImageIndex(i)}
+                    className={`aspect-square bg-gradient-to-br ${selectedAlbum.gradient} rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform relative group`}
+                  >
+                    <img
+                      data-src={image.thumbnail}
+                      alt={image.name}
+                      className="w-full h-full object-cover opacity-90"
+                      loading="lazy"
+                    />
+
+                    {/* AI badge */}
+                    <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded text-xs mono flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      AI
+                    </div>
+
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Sparkles className="w-10 h-10 text-white" />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Lightbox - Single Image View */}
+        <AnimatePresence>
+          {selectedImageIndex !== null && albumImages[selectedImageIndex] && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className={`fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4 ${
+                isFullscreen ? 'p-0' : ''
+              }`}
+              onClick={() => {
+                if (!slideshowActive) {
+                  setSelectedImageIndex(null);
+                  setIsFullscreen(false);
+                }
+              }}
+            >
+              {/* Close button */}
+              {!isFullscreen && (
                 <button
-                  onClick={() => setSelectedImageIndex(null)}
+                  onClick={() => {
+                    setSelectedImageIndex(null);
+                    setSlideshowActive(false);
+                    setIsFullscreen(false);
+                  }}
                   className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
+              )}
 
-                {/* Image counter */}
-                <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm mono text-sm flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  {selectedImageIndex + 1} / {albumImages.length}
-                </div>
+              {/* Image counter */}
+              <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm mono text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                {selectedImageIndex + 1} / {albumImages.length}
+              </div>
 
-                {/* Navigation buttons */}
+              {/* Slideshow controls */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigateLightbox('prev');
+                    setSlideshowActive(!slideshowActive);
                   }}
-                  className="absolute left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  className="px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors flex items-center gap-2"
+                  title={slideshowActive ? "Pause slideshow" : "Start slideshow"}
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  {slideshowActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  <span className="text-sm mono">{slideshowActive ? 'Pause' : 'Play'}</span>
                 </button>
-
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigateLightbox('next');
+                    setIsFullscreen(!isFullscreen);
                   }}
-                  className="absolute right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  className="px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors flex items-center gap-2"
+                  title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 >
-                  <ChevronRight className="w-6 h-6" />
+                  <Maximize className="w-4 h-4" />
+                  <span className="text-sm mono">{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
                 </button>
+              </div>
 
-                {/* Image */}
-                <motion.img
-                  key={selectedImageIndex}
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  src={albumImages[selectedImageIndex].url}
-                  alt={albumImages[selectedImageIndex].name}
-                  className="max-w-full max-h-full object-contain"
-                  onClick={(e) => e.stopPropagation()}
-                />
+              {/* Navigation buttons */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigateLightbox('prev');
+                }}
+                className="absolute left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
 
-                {/* Image name */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigateLightbox('next');
+                }}
+                className="absolute right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+
+              {/* Image */}
+              <motion.img
+                key={selectedImageIndex}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                src={albumImages[selectedImageIndex].url}
+                alt={albumImages[selectedImageIndex].name}
+                className={`max-w-full max-h-full object-contain ${isFullscreen ? 'w-full h-full' : ''}`}
+                onClick={(e) => e.stopPropagation()}
+              />
+
+              {/* Image name */}
+              {!isFullscreen && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-black/50 backdrop-blur-sm text-center max-w-2xl">
                   <div className="flex items-center gap-2 justify-center mb-1">
                     <Sparkles className="w-4 h-4 text-purple-400" />
@@ -324,85 +543,23 @@ export default function AIAlbumsSection() {
                   </div>
                   <p className="text-sm text-gray-300">{albumImages[selectedImageIndex].name}</p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    );
-  }
+              )}
 
-  // Main albums view
-  return (
-    <div className="w-full h-full p-8 overflow-auto">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          AI Albums
-        </motion.h1>
+              {/* Keyboard hints */}
+              {!isFullscreen && (
+                <div className="absolute bottom-4 right-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-xs mono text-gray-400">
+                  <div>← → : Navigate</div>
+                  <div>SPACE : Slideshow</div>
+                  <div>F : Fullscreen</div>
+                  <div>ESC : Close</div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
-        >
-          AI-generated visual art and experiments
-        </motion.p>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader className="w-8 h-8 animate-spin text-green-400" />
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {albums.map((album, index) => {
-              const Icon = album.icon;
-              return (
-                <motion.div
-                  key={album.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                  onClick={() => setSelectedAlbum(album)}
-                  className="group cursor-pointer"
-                  whileHover={{ y: -8 }}
-                >
-                  <div className={`aspect-square bg-gradient-to-br ${album.gradient} rounded-2xl overflow-hidden mb-4 relative group-hover:scale-105 transition-transform`}>
-                    {album.coverImage ? (
-                      <img
-                        src={getDriveImageUrl(album.coverImage, 'w600')}
-                        alt={album.name}
-                        className="w-full h-full object-cover opacity-80"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full p-8 flex flex-col items-center justify-center">
-                        <Icon className="w-20 h-20 text-white mb-4" />
-                        <div className="text-white/80 text-sm mono">AI GENERATED</div>
-                      </div>
-                    )}
-
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Sparkles className="w-16 h-16 text-white" />
-                    </div>
-                  </div>
-
-                  <h3 className="font-bold text-xl mb-2">{album.name}</h3>
-                  <p className="text-sm text-gray-400">{album.count} images</p>
-
-                  <div className="mt-3 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    View Album →
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
+        {/* Scroll Controls */}
+        <ScrollControls containerRef={containerRef} />
       </div>
     </div>
   );
