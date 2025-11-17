@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { Grid, Grid2x2, Grid3x3, Maximize, X, ChevronLeft, ChevronRight, Folder, Image as ImageIcon, Loader } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Grid, Grid2x2, Grid3x3, Maximize, X, ChevronLeft, ChevronRight, Folder, Image as ImageIcon, Loader, Play, Pause } from 'lucide-react';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
+import GalleryNavigation from '@/components/ui/GalleryNavigation';
+import ScrollControls from '@/components/ui/ScrollControls';
 
 // Google Drive API configuration
 const DRIVE_CONFIG = {
@@ -123,7 +126,7 @@ async function fetchFolderImages(folderId) {
   }
 }
 
-export default function PhotographySection() {
+export default function PhotographySection({ onGalleryNavigate }) {
   const [viewMode, setViewMode] = useState('grid-4');
   const [albums, setAlbums] = useState([]);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
@@ -132,6 +135,9 @@ export default function PhotographySection() {
   const [loading, setLoading] = useState(true);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [loadedImages, setLoadedImages] = useState(new Set());
+  const [slideshowActive, setSlideshowActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef(null);
 
   const viewModes = [
     { id: 'single', label: 'Single', icon: Maximize },
@@ -188,7 +194,28 @@ export default function PhotographySection() {
     return () => observer.disconnect();
   }, [albumImages, loadedImages]);
 
-  // Navigate lightbox
+  // Slideshow effect
+  useEffect(() => {
+    if (!slideshowActive || selectedImageIndex === null) return;
+
+    const interval = setInterval(() => {
+      navigateLightbox('next');
+    }, 3000); // Change image every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [slideshowActive, selectedImageIndex]);
+
+  // Navigate album view - cycles through albums only
+  const navigateAlbum = (direction) => {
+    if (!selectedAlbum) return;
+    const currentIndex = albums.findIndex(a => a.id === selectedAlbum.id);
+    const newIndex = direction === 'next'
+      ? (currentIndex + 1) % albums.length
+      : (currentIndex - 1 + albums.length) % albums.length;
+    setSelectedAlbum(albums[newIndex]);
+  };
+
+  // Navigate single image view - cycles through images only
   const navigateLightbox = (direction) => {
     if (selectedImageIndex === null) return;
     const newIndex = direction === 'next'
@@ -197,42 +224,111 @@ export default function PhotographySection() {
     setSelectedImageIndex(newIndex);
   };
 
-  // Keyboard navigation
+  // Keyboard navigation - context-aware
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (selectedImageIndex === null) return;
-      if (e.key === 'ArrowRight') navigateLightbox('next');
-      if (e.key === 'ArrowLeft') navigateLightbox('prev');
-      if (e.key === 'Escape') setSelectedImageIndex(null);
+      // Single image view navigation
+      if (selectedImageIndex !== null) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateLightbox('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateLightbox('prev');
+        }
+        if (e.key === 'Escape') {
+          setSelectedImageIndex(null);
+          setSlideshowActive(false);
+          setIsFullscreen(false);
+        }
+        if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          setIsFullscreen(!isFullscreen);
+        }
+        if (e.key === ' ') {
+          e.preventDefault();
+          setSlideshowActive(!slideshowActive);
+        }
+      }
+      // Album view navigation
+      else if (selectedAlbum && selectedImageIndex === null) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateAlbum('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateAlbum('prev');
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImageIndex, albumImages]);
+  }, [selectedImageIndex, selectedAlbum, albums, albumImages, isFullscreen, slideshowActive]);
+
+  // Breadcrumbs
+  const getBreadcrumbs = () => {
+    const crumbs = [
+      { id: 'galleria', label: 'Galleria' },
+      { id: 'photography', label: 'Photography' },
+    ];
+
+    if (selectedAlbum) {
+      crumbs.push({ id: `album-${selectedAlbum.id}`, label: selectedAlbum.name });
+    }
+
+    if (selectedImageIndex !== null && albumImages[selectedImageIndex]) {
+      crumbs.push({ id: 'image', label: albumImages[selectedImageIndex].name.substring(0, 20) + '...' });
+    }
+
+    return crumbs;
+  };
+
+  const handleBreadcrumbNavigate = (id, index) => {
+    if (id === 'galleria') {
+      // Navigate back to Galleria home
+      onGalleryNavigate && onGalleryNavigate(null);
+    } else if (id === 'photography') {
+      // Navigate back to photography gallery view
+      setSelectedAlbum(null);
+      setSelectedImageIndex(null);
+    } else if (id.startsWith('album-')) {
+      // Navigate back to album view
+      setSelectedImageIndex(null);
+    }
+  };
 
   return (
-    <div className="w-full h-full p-8 overflow-auto">
+    <div ref={containerRef} className="w-full h-full p-8 overflow-auto">
       <div className="max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold mb-4"
-        >
-          Photography
-        </motion.h1>
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={getBreadcrumbs()} onNavigate={handleBreadcrumbNavigate} />
 
-        <motion.p
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-8"
-        >
-          Capturing moments through the lens
-        </motion.p>
+        {/* Gallery Navigation */}
+        <GalleryNavigation currentGallery="photography" onNavigate={onGalleryNavigate} />
 
-        {/* Album Selection View */}
+        {/* Gallery View - Album Selection */}
         {!selectedAlbum ? (
           <>
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-6xl font-bold mb-4"
+            >
+              Photography
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-xl text-gray-400 mb-8"
+            >
+              Capturing moments through the lens
+            </motion.p>
+
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader className="w-8 h-8 animate-spin text-green-400" />
@@ -288,18 +384,8 @@ export default function PhotographySection() {
         ) : (
           <>
             {/* Album View with Controls */}
-            <div className="mb-8 flex items-center justify-between">
+            <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
               <div>
-                <button
-                  onClick={() => {
-                    setSelectedAlbum(null);
-                    setAlbumImages([]);
-                  }}
-                  className="text-green-400 hover:underline mb-2 flex items-center gap-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Back to Albums
-                </button>
                 <h2 className="text-3xl font-bold">{selectedAlbum.name}</h2>
                 <p className="text-gray-400">{albumImages.length} photos</p>
               </div>
@@ -324,6 +410,27 @@ export default function PhotographySection() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Album Navigation Arrows */}
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[1300]">
+              <button
+                onClick={() => navigateAlbum('prev')}
+                className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+                title="Previous album"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[1300]">
+              <button
+                onClick={() => navigateAlbum('next')}
+                className="camera-hud p-3 rounded-full hover:scale-110 transition-transform"
+                title="Next album"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
             </div>
 
             {/* Photo Grid */}
@@ -365,27 +472,66 @@ export default function PhotographySection() {
           </>
         )}
 
-        {/* Lightbox */}
+        {/* Lightbox - Single Image View */}
         <AnimatePresence>
           {selectedImageIndex !== null && albumImages[selectedImageIndex] && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4"
-              onClick={() => setSelectedImageIndex(null)}
+              className={`fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4 ${
+                isFullscreen ? 'p-0' : ''
+              }`}
+              onClick={() => {
+                if (!slideshowActive) {
+                  setSelectedImageIndex(null);
+                  setIsFullscreen(false);
+                }
+              }}
             >
               {/* Close button */}
-              <button
-                onClick={() => setSelectedImageIndex(null)}
-                className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              {!isFullscreen && (
+                <button
+                  onClick={() => {
+                    setSelectedImageIndex(null);
+                    setSlideshowActive(false);
+                    setIsFullscreen(false);
+                  }}
+                  className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              )}
 
               {/* Image counter */}
               <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm mono text-sm">
                 {selectedImageIndex + 1} / {albumImages.length}
+              </div>
+
+              {/* Slideshow controls */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSlideshowActive(!slideshowActive);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors flex items-center gap-2"
+                  title={slideshowActive ? "Pause slideshow" : "Start slideshow"}
+                >
+                  {slideshowActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  <span className="text-sm mono">{slideshowActive ? 'Pause' : 'Play'}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFullscreen(!isFullscreen);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors flex items-center gap-2"
+                  title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                >
+                  <Maximize className="w-4 h-4" />
+                  <span className="text-sm mono">{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+                </button>
               </div>
 
               {/* Navigation buttons */}
@@ -417,17 +563,32 @@ export default function PhotographySection() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 src={albumImages[selectedImageIndex].url}
                 alt={albumImages[selectedImageIndex].name}
-                className="max-w-full max-h-full object-contain"
+                className={`max-w-full max-h-full object-contain ${isFullscreen ? 'w-full h-full' : ''}`}
                 onClick={(e) => e.stopPropagation()}
               />
 
               {/* Image name */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-black/50 backdrop-blur-sm text-center max-w-2xl">
-                <p className="text-sm text-gray-300">{albumImages[selectedImageIndex].name}</p>
-              </div>
+              {!isFullscreen && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-black/50 backdrop-blur-sm text-center max-w-2xl">
+                  <p className="text-sm text-gray-300">{albumImages[selectedImageIndex].name}</p>
+                </div>
+              )}
+
+              {/* Keyboard hints */}
+              {!isFullscreen && (
+                <div className="absolute bottom-4 right-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-xs mono text-gray-400">
+                  <div>← → : Navigate</div>
+                  <div>SPACE : Slideshow</div>
+                  <div>F : Fullscreen</div>
+                  <div>ESC : Close</div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Scroll Controls */}
+        <ScrollControls containerRef={containerRef} />
       </div>
     </div>
   );

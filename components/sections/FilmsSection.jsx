@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { Play, Film, Music, ExternalLink, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Film, Music, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
+import GalleryNavigation from '@/components/ui/GalleryNavigation';
+import ScrollControls from '@/components/ui/ScrollControls';
 
 // Helper function to extract video ID and platform
 function getVideoInfo(url) {
@@ -25,7 +28,7 @@ function getVideoInfo(url) {
     return {
       platform: 'vimeo',
       id: videoId,
-      thumbnail: null, // Vimeo requires API call for thumbnail
+      thumbnail: null,
       embed: `https://player.vimeo.com/video/${videoId}`,
     };
   }
@@ -33,7 +36,7 @@ function getVideoInfo(url) {
   return null;
 }
 
-// Placeholder video data - will be replaced with actual video URLs
+// Placeholder video data
 const videos = [
   {
     id: 1,
@@ -91,15 +94,16 @@ const videos = [
   },
 ];
 
-export default function FilmsSection() {
+export default function FilmsSection({ onGalleryNavigate }) {
   const [filter, setFilter] = useState('all');
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(null);
+  const containerRef = useRef(null);
 
   const filteredVideos = filter === 'all'
     ? videos
     : videos.filter(v => v.type === filter);
 
-  // Navigate video lightbox
+  // Navigate video lightbox - cycles through videos only
   const navigateVideo = (direction) => {
     if (selectedVideoIndex === null) return;
     const newIndex = direction === 'next'
@@ -112,8 +116,14 @@ export default function FilmsSection() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (selectedVideoIndex === null) return;
-      if (e.key === 'ArrowRight') navigateVideo('next');
-      if (e.key === 'ArrowLeft') navigateVideo('prev');
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateVideo('next');
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateVideo('prev');
+      }
       if (e.key === 'Escape') setSelectedVideoIndex(null);
     };
 
@@ -121,9 +131,37 @@ export default function FilmsSection() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedVideoIndex, filteredVideos]);
 
+  // Breadcrumbs
+  const getBreadcrumbs = () => {
+    const crumbs = [
+      { id: 'galleria', label: 'Galleria' },
+      { id: 'films', label: 'Films & Music Videos' },
+    ];
+
+    if (selectedVideoIndex !== null && filteredVideos[selectedVideoIndex]) {
+      crumbs.push({ id: 'video', label: filteredVideos[selectedVideoIndex].title.substring(0, 20) + '...' });
+    }
+
+    return crumbs;
+  };
+
+  const handleBreadcrumbNavigate = (id, index) => {
+    if (id === 'galleria') {
+      onGalleryNavigate && onGalleryNavigate(null);
+    } else if (id === 'films') {
+      setSelectedVideoIndex(null);
+    }
+  };
+
   return (
-    <div className="w-full h-full p-8 overflow-auto">
+    <div ref={containerRef} className="w-full h-full p-8 overflow-auto">
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={getBreadcrumbs()} onNavigate={handleBreadcrumbNavigate} />
+
+        {/* Gallery Navigation */}
+        <GalleryNavigation currentGallery="films" onNavigate={onGalleryNavigate} />
+
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -190,7 +228,6 @@ export default function FilmsSection() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                       onError={(e) => {
-                        // Fallback if thumbnail fails to load
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
                       }}
@@ -208,11 +245,7 @@ export default function FilmsSection() {
                   {/* Play button overlay */}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center">
-                      {video.url ? (
-                        <Play className="w-8 h-8 text-white ml-1" />
-                      ) : (
-                        <ExternalLink className="w-7 h-7 text-white" />
-                      )}
+                      <Play className="w-8 h-8 text-white ml-1" />
                     </div>
                   </div>
 
@@ -248,7 +281,7 @@ export default function FilmsSection() {
           })}
         </div>
 
-        {/* Video Lightbox */}
+        {/* Video Lightbox - Single Video View */}
         <AnimatePresence>
           {selectedVideoIndex !== null && filteredVideos[selectedVideoIndex] && (
             <motion.div
@@ -348,9 +381,18 @@ export default function FilmsSection() {
                   <p className="text-sm text-gray-400">{filteredVideos[selectedVideoIndex].description}</p>
                 )}
               </div>
+
+              {/* Keyboard hints */}
+              <div className="absolute bottom-4 right-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-xs mono text-gray-400">
+                <div>← → : Navigate</div>
+                <div>ESC : Close</div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Scroll Controls */}
+        <ScrollControls containerRef={containerRef} />
       </div>
     </div>
   );
