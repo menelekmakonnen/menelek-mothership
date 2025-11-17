@@ -118,15 +118,6 @@ export default function PhotographySection() {
 
   useEffect(() => {
     if (!albumFolders.length) return;
-    const sample = albumFolders[Math.floor(Math.random() * albumFolders.length)];
-    const cover = resolveCoverImage(sample);
-    if (cover) {
-      updateGalleriaSectionMeta('photography', { previewImage: cover });
-    }
-  }, [albumFolders, resolveCoverImage, updateGalleriaSectionMeta]);
-
-  useEffect(() => {
-    if (!albumFolders.length) return;
     albumFolders.forEach((album) => {
       loadFolder(album.id);
     });
@@ -170,6 +161,15 @@ export default function PhotographySection() {
     },
     [findFirstImage, getFolder]
   );
+
+  useEffect(() => {
+    if (!albumFolders.length) return;
+    const sample = albumFolders[Math.floor(Math.random() * albumFolders.length)];
+    const cover = resolveCoverImage(sample);
+    if (cover) {
+      updateGalleriaSectionMeta('photography', { previewImage: cover });
+    }
+  }, [albumFolders, resolveCoverImage, updateGalleriaSectionMeta]);
 
   const openAlbumPicker = useCallback(() => {
     setAlbumPickerOpen(true);
