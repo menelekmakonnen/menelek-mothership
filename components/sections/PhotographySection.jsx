@@ -525,6 +525,21 @@ export default function PhotographySection() {
     [stopSlideshow]
   );
 
+  const handleImageWheel = useCallback(
+    (direction) => {
+      if (!preparedGalleryImages.length) return;
+      stopSlideshow();
+      setActiveImageIndex((index) => {
+        if (index === null) return index;
+        if (direction === 'next') {
+          return (index + 1) % preparedGalleryImages.length;
+        }
+        return (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length;
+      });
+    },
+    [preparedGalleryImages.length, stopSlideshow]
+  );
+
   useEffect(() => {
     if (activeImageIndex === null) return;
     const handleKeyDown = (event) => {
@@ -547,21 +562,6 @@ export default function PhotographySection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeImageIndex, cycleAlbum, handleImageWheel, preparedGalleryImages.length]);
-
-  const handleImageWheel = useCallback(
-    (direction) => {
-      if (!preparedGalleryImages.length) return;
-      stopSlideshow();
-      setActiveImageIndex((index) => {
-        if (index === null) return index;
-        if (direction === 'next') {
-          return (index + 1) % preparedGalleryImages.length;
-        }
-        return (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length;
-      });
-    },
-    [preparedGalleryImages.length, stopSlideshow]
-  );
 
   const handleZoomWheel = useCallback(
     (event) => {
