@@ -107,13 +107,6 @@ export default function FullscreenLightbox({
     return items;
   }, [breadcrumbs, galleriaDetail?.title, galleriaSectionId, openGalleriaHome, openGalleriaSection, showGalleriaNav]);
 
-  if (!portalElement) {
-    return null;
-  }
-
-  const ActiveIcon = galleriaDetail?.icon || GalleryHorizontalEnd;
-  const activeTitle = galleriaMeta?.label || galleriaDetail?.title || 'Galleria';
-
   const handleNavigate = (direction) => {
     if (direction === 'prev') {
       if (typeof onNavigateLeft === 'function') {
@@ -161,6 +154,13 @@ export default function FullscreenLightbox({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNavigate, handleScrollJump, showGalleriaNav]);
+
+  if (!portalElement) {
+    return null;
+  }
+
+  const ActiveIcon = galleriaDetail?.icon || GalleryHorizontalEnd;
+  const activeTitle = galleriaMeta?.label || galleriaDetail?.title || 'Galleria';
 
   const lightbox = (
     <BlurLayer
