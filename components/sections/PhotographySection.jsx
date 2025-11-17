@@ -7,6 +7,8 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Loader2,
+  PauseCircle,
+  PlayCircle,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -55,6 +57,7 @@ export default function PhotographySection() {
   const [albumSortMode, setAlbumSortMode] = useState('name');
   const [gallerySortMode, setGallerySortMode] = useState('name');
   const [frameSortMode, setFrameSortMode] = useState('original');
+  const [isSlideshowActive, setSlideshowActive] = useState(false);
   const {
     registerGalleriaSection,
     updateGalleriaSectionMeta,
@@ -197,6 +200,7 @@ export default function PhotographySection() {
     setActiveAlbum(null);
     setActiveGallery(null);
     setActiveImageIndex(null);
+    setSlideshowActive(false);
   }, []);
 
   const closePhotographyOverlay = useCallback(() => {
@@ -204,6 +208,7 @@ export default function PhotographySection() {
     setActiveGallery(null);
     setActiveAlbum(null);
     setAlbumPickerOpen(false);
+    setSlideshowActive(false);
   }, []);
 
   const openDefaultAlbum = useCallback(
@@ -333,6 +338,7 @@ export default function PhotographySection() {
   }, [activeImageIndex, preparedGalleryImages]);
 
   const galleryOpenRef = useRef(false);
+  const slideshowTimerRef = useRef(null);
   useEffect(() => {
     const isOpen = Boolean(activeGallery);
     if (isOpen && !galleryOpenRef.current) {
@@ -351,6 +357,78 @@ export default function PhotographySection() {
   }, [activeImageIndex, scrollToActiveLayer]);
 
   const activeImage = activeImageIndex !== null ? preparedGalleryImages[activeImageIndex] : null;
+
+  const stopSlideshow = useCallback(() => {
+    setSlideshowActive(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isSlideshowActive || activeImageIndex === null || !preparedGalleryImages.length) {
+      if (slideshowTimerRef.current) {
+        clearInterval(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+      return undefined;
+    }
+
+    slideshowTimerRef.current = setInterval(() => {
+      setActiveImageIndex((index) => {
+        if (index === null) return index;
+        return (index + 1) % preparedGalleryImages.length;
+      });
+    }, 4500);
+
+    return () => {
+      if (slideshowTimerRef.current) {
+        clearInterval(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+    };
+  }, [isSlideshowActive, activeImageIndex, preparedGalleryImages.length]);
+
+  useEffect(() => {
+    if (activeImageIndex === null || !activeGallery) {
+      stopSlideshow();
+    }
+  }, [activeGallery, activeImageIndex, stopSlideshow]);
+
+  useEffect(
+    () => () => {
+      if (slideshowTimerRef.current) {
+        clearInterval(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+    },
+    []
+  );
+
+  const toggleSlideshow = useCallback(() => {
+    if (!isSlideshowActive && activeImageIndex === null) {
+      setActiveImageIndex(0);
+    }
+    setSlideshowActive((prev) => !prev);
+  }, [activeImageIndex, isSlideshowActive]);
+
+  const startGallerySlideshow = useCallback(() => {
+    const targetGallery = activeGallery || galleryFolders[0];
+    if (!targetGallery) return;
+    if (!activeGallery || targetGallery.id !== activeGallery.id) {
+      setActiveGallery(targetGallery);
+      setActiveImageIndex(0);
+    } else if (activeImageIndex === null) {
+      setActiveImageIndex(0);
+    }
+    setSlideshowActive(true);
+    scrollToActiveLayer();
+  }, [activeGallery, activeImageIndex, galleryFolders, scrollToActiveLayer]);
+
+  const handleManualFrameSelect = useCallback(
+    (index) => {
+      stopSlideshow();
+      setActiveImageIndex(index);
+    },
+    [stopSlideshow]
+  );
 
   useEffect(() => {
     if (activeImageIndex === null) return;
@@ -372,6 +450,7 @@ export default function PhotographySection() {
   const handleImageWheel = useCallback(
     (direction) => {
       if (!preparedGalleryImages.length) return;
+      stopSlideshow();
       setActiveImageIndex((index) => {
         if (index === null) return index;
         if (direction === 'next') {
@@ -380,7 +459,7 @@ export default function PhotographySection() {
         return (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length;
       });
     },
-    [preparedGalleryImages.length]
+    [preparedGalleryImages.length, stopSlideshow]
   );
 
   const renderAlbumCard = (album, { onOpen } = {}) => {
@@ -440,6 +519,7 @@ export default function PhotographySection() {
         key={gallery.id}
         type="button"
         onClick={() => {
+          stopSlideshow();
           setActiveGallery(gallery);
           setActiveImageIndex(null);
           scrollToActiveLayer();
@@ -494,6 +574,14 @@ export default function PhotographySection() {
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
               </select>
+              <button
+                type="button"
+                onClick={startGallerySlideshow}
+                className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-white/80 transition hover:border-white/50"
+              >
+                <PlayCircle className="h-3.5 w-3.5" />
+                <span>Slideshow</span>
+              </button>
             </div>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 overflow-y-auto pr-2">
@@ -809,14 +897,30 @@ export default function PhotographySection() {
                     Frame {activeImageIndex + 1} of {preparedGalleryImages.length} · {activeAlbum?.title || 'MMM Media'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveImageIndex(null)}
-                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
-                  aria-label="Close lightbox"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={toggleSlideshow}
+                    className={`camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.35em] ${
+                      isSlideshowActive ? 'text-emerald-200' : 'text-white/80'
+                    }`}
+                  >
+                    {isSlideshowActive ? (
+                      <PauseCircle className="h-4 w-4" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4" />
+                    )}
+                    {isSlideshowActive ? 'Pause' : 'Play'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveImageIndex(null)}
+                    className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                    aria-label="Close lightbox"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
@@ -832,11 +936,7 @@ export default function PhotographySection() {
                     <>
                       <button
                         type="button"
-                        onClick={() =>
-                          setActiveImageIndex((index) =>
-                            index === null ? null : (index - 1 + preparedGalleryImages.length) % preparedGalleryImages.length
-                          )
-                        }
+                        onClick={() => handleImageWheel('prev')}
                         className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 rounded-full bg-black/70 p-3 text-white transition hover:bg-black/80"
                         aria-label="Previous image"
                       >
@@ -844,11 +944,7 @@ export default function PhotographySection() {
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          setActiveImageIndex((index) =>
-                            index === null ? null : (index + 1) % preparedGalleryImages.length
-                          )
-                        }
+                        onClick={() => handleImageWheel('next')}
                         className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 rounded-full bg-black/70 p-3 text-white transition hover:bg-black/80"
                         aria-label="Next image"
                       >
@@ -870,7 +966,7 @@ export default function PhotographySection() {
                           <button
                             key={image.id || `${image.frameIndex}-${index}`}
                             type="button"
-                            onClick={() => setActiveImageIndex(index)}
+                            onClick={() => handleManualFrameSelect(index)}
                             className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
                               isCurrent
                                 ? 'border-white/45 bg-white/12 text-white'
@@ -913,6 +1009,7 @@ export default function PhotographySection() {
                               if (gallery.id === activeGallery?.id) return;
                               const nextGallery = galleryFolders.find((item) => item.id === gallery.id) || null;
                               if (!nextGallery) return;
+                              stopSlideshow();
                               setActiveGallery(nextGallery);
                               setActiveImageIndex(0);
                               scrollToActiveLayer();

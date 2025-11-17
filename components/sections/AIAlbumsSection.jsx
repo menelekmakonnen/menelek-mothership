@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Loader2, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Loader2, PauseCircle, PlayCircle, Sparkles, X } from 'lucide-react';
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
@@ -35,6 +35,7 @@ export default function AIAlbumsSection() {
   const [favoriteFrames, setFavoriteFrames] = useState({});
   const [albumSortMode, setAlbumSortMode] = useState('name');
   const [imageSortMode, setImageSortMode] = useState('original');
+  const [isSlideshowActive, setSlideshowActive] = useState(false);
   const {
     registerGalleriaSection,
     updateGalleriaSectionMeta,
@@ -57,11 +58,13 @@ export default function AIAlbumsSection() {
     setAlbumBrowserOpen(true);
     setSelectedAlbum(null);
     setSelectedImageIndex(null);
+    setSlideshowActive(false);
     autoScrollToActiveLayer();
   }, [autoScrollToActiveLayer]);
 
   const closeAlbumBrowser = useCallback(() => {
     setAlbumBrowserOpen(false);
+    setSlideshowActive(false);
   }, []);
 
   useEffect(() => {
@@ -167,6 +170,13 @@ export default function AIAlbumsSection() {
     setSelectedImageIndex(null);
     setSelectedAlbum(null);
     setAlbumBrowserOpen(false);
+    setSlideshowActive(false);
+  }, []);
+
+  const exitAlbumView = useCallback(() => {
+    setSelectedAlbum(null);
+    setSelectedImageIndex(null);
+    setSlideshowActive(false);
   }, []);
 
   const openDefaultAiAlbum = useCallback(
@@ -286,6 +296,73 @@ export default function AIAlbumsSection() {
   }, [preparedAlbumImages, selectedImageIndex]);
 
   const activeImage = selectedImageIndex !== null ? preparedAlbumImages[selectedImageIndex] : null;
+  const slideshowTimerRef = useRef(null);
+
+  const stopSlideshow = useCallback(() => {
+    setSlideshowActive(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isSlideshowActive || selectedImageIndex === null || !preparedAlbumImages.length) {
+      if (slideshowTimerRef.current) {
+        clearInterval(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+      return undefined;
+    }
+
+    slideshowTimerRef.current = setInterval(() => {
+      setSelectedImageIndex((index) => {
+        if (index === null) return index;
+        return (index + 1) % preparedAlbumImages.length;
+      });
+    }, 4500);
+
+    return () => {
+      if (slideshowTimerRef.current) {
+        clearInterval(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+    };
+  }, [isSlideshowActive, preparedAlbumImages.length, selectedImageIndex]);
+
+  useEffect(() => {
+    if (selectedImageIndex === null) {
+      stopSlideshow();
+    }
+  }, [selectedImageIndex, stopSlideshow]);
+
+  useEffect(
+    () => () => {
+      if (slideshowTimerRef.current) {
+        clearInterval(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+    },
+    []
+  );
+
+  const toggleSlideshow = useCallback(() => {
+    if (!isSlideshowActive && selectedImageIndex === null && preparedAlbumImages.length) {
+      setSelectedImageIndex(0);
+    }
+    setSlideshowActive((prev) => !prev);
+  }, [isSlideshowActive, preparedAlbumImages.length, selectedImageIndex]);
+
+  const launchAlbumSlideshow = useCallback(() => {
+    if (!preparedAlbumImages.length) return;
+    setSelectedImageIndex(0);
+    setSlideshowActive(true);
+    autoScrollToActiveLayer();
+  }, [autoScrollToActiveLayer, preparedAlbumImages.length]);
+
+  const handleManualSelect = useCallback(
+    (index) => {
+      stopSlideshow();
+      setSelectedImageIndex(index);
+    },
+    [stopSlideshow]
+  );
   const activeFavoriteKey = activeImage?.favoriteKey || null;
   const isActiveFavorite = activeFavoriteKey ? Boolean(favoriteFrames[activeFavoriteKey]) : false;
 
@@ -324,6 +401,7 @@ export default function AIAlbumsSection() {
   const handleAiWheel = useCallback(
     (direction) => {
       if (!preparedAlbumImages.length) return;
+      stopSlideshow();
       setSelectedImageIndex((index) => {
         if (index === null) return index;
         if (direction === 'next') {
@@ -332,7 +410,7 @@ export default function AIAlbumsSection() {
         return (index - 1 + preparedAlbumImages.length) % preparedAlbumImages.length;
       });
     },
-    [preparedAlbumImages.length]
+    [preparedAlbumImages.length, stopSlideshow]
   );
 
   const toggleFavorite = useCallback((key) => {
@@ -554,7 +632,7 @@ export default function AIAlbumsSection() {
             key={selectedAlbum.id}
             layerId={`ai-album-${selectedAlbum.id}`}
             depth={5200}
-            onClose={() => setSelectedAlbum(null)}
+            onClose={exitAlbumView}
             innerClassName="p-0"
             galleriaSectionId="ai-albums"
             showGalleriaChrome
@@ -569,7 +647,7 @@ export default function AIAlbumsSection() {
               <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
                 <div className="space-y-2">
                   <button
-                    onClick={() => setSelectedAlbum(null)}
+                    onClick={exitAlbumView}
                     className="flex items-center gap-2 text-sm mono text-green-300 hover:text-green-100"
                   >
                     <ArrowLeft className="h-4 w-4" /> Back to AI Albums
@@ -580,20 +658,29 @@ export default function AIAlbumsSection() {
                     <p className="text-sm text-rose-300">Unable to load this album. Please try again shortly.</p>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedAlbum(null)}
-                  className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
-                  aria-label="Close album"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={launchAlbumSlideshow}
+                    className="camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.35em] text-white/80"
+                  >
+                    <PlayCircle className="h-4 w-4" /> Slideshow
+                  </button>
+                  <button
+                    onClick={exitAlbumView}
+                    className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
+                    aria-label="Close album"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                   {preparedAlbumImages.map((image, index) => {
                     const isFavorite = Boolean(favoriteFrames[image.favoriteKey]);
-                    const openFrame = () => setSelectedImageIndex(index);
+                    const openFrame = () => handleManualSelect(index);
                     return (
                       <motion.div
                         key={image.id || `${image.frameIndex}-${index}`}
@@ -714,6 +801,20 @@ export default function AIAlbumsSection() {
                   )}
                   <button
                     type="button"
+                    onClick={toggleSlideshow}
+                    className={`camera-hud flex items-center gap-2 rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.35em] ${
+                      isSlideshowActive ? 'text-emerald-200' : 'text-white/80'
+                    }`}
+                  >
+                    {isSlideshowActive ? (
+                      <PauseCircle className="h-4 w-4" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4" />
+                    )}
+                    {isSlideshowActive ? 'Pause' : 'Play'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setSelectedImageIndex(null)}
                     className="camera-hud flex h-11 w-11 items-center justify-center rounded-full"
                     aria-label="Close lightbox"
@@ -769,7 +870,7 @@ export default function AIAlbumsSection() {
                           <button
                             key={image.id || `${image.frameIndex}-${index}`}
                             type="button"
-                            onClick={() => setSelectedImageIndex(index)}
+                            onClick={() => handleManualSelect(index)}
                             className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition-all ${
                               isCurrent
                                 ? 'border-white/45 bg-white/12 text-white'
@@ -818,6 +919,7 @@ export default function AIAlbumsSection() {
                           if (album.id === selectedAlbum?.id) return;
                           setSelectedImageIndex(null);
                           setSelectedAlbum(album);
+                          setSlideshowActive(false);
                           autoScrollToActiveLayer();
                         }}
                         className={`rounded-full px-4 py-2 text-xs mono uppercase tracking-[0.35em] transition-all ${
@@ -840,11 +942,7 @@ export default function AIAlbumsSection() {
                 <>
                   <button
                     type="button"
-                    onClick={() =>
-                      setSelectedImageIndex((index) =>
-                        index === null ? index : (index - 1 + preparedAlbumImages.length) % preparedAlbumImages.length
-                      )
-                    }
+                    onClick={() => handleAiWheel('prev')}
                     className="absolute left-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="Previous image"
                   >
@@ -852,11 +950,7 @@ export default function AIAlbumsSection() {
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setSelectedImageIndex((index) =>
-                        index === null ? index : (index + 1) % preparedAlbumImages.length
-                      )
-                    }
+                    onClick={() => handleAiWheel('next')}
                     className="absolute right-6 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="Next image"
                   >
