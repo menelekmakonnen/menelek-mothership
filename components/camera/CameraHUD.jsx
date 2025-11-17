@@ -256,7 +256,10 @@ export default function CameraHUD() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[2500] pointer-events-none">
-      <div className="absolute left-4 -top-16 hidden md:flex pointer-events-auto">
+      <div
+        className="absolute left-6 hidden md:flex pointer-events-auto"
+        style={{ bottom: 'calc(100% + 12px)' }}
+      >
         <PowerControls orientation="vertical" variant="inline" />
       </div>
       <div className="camera-hud border-t px-4 py-3 flex items-center justify-between gap-4 mono text-xs pointer-events-auto">

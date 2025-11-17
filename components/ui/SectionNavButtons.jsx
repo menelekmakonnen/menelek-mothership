@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
-import { Move } from 'lucide-react';
+import { GalleryHorizontalEnd, GripVertical } from 'lucide-react';
 import { useCameraContext } from '@/context/CameraContext';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+const NAV_GALLERIA_MAP = {
+  1: 'films',
+  2: 'loremaker',
+  4: 'video-edits',
+  5: 'photography',
+  6: 'ai-albums',
+};
+
 export default function SectionNavButtons({ currentSection, onNavigate, navItems }) {
   const visibleSections = useMemo(() => navItems || [], [navItems]);
-  const { performFullReset } = useCameraContext();
+  const { performFullReset, openGalleriaHome, openGalleriaSection, activeGalleriaSection } =
+    useCameraContext();
 
   const navRef = useRef(null);
   const dragControls = useDragControls();
@@ -206,6 +215,16 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
     [markInteraction, onNavigate]
   );
 
+  const handleGalleriaLaunch = useCallback(() => {
+    markInteraction();
+    const targetSection = NAV_GALLERIA_MAP[currentSection];
+    if (targetSection) {
+      openGalleriaSection(targetSection, { viaNav: true, startInGallery: true });
+      return;
+    }
+    openGalleriaHome();
+  }, [currentSection, markInteraction, openGalleriaHome, openGalleriaSection]);
+
   return (
     <div className="fixed inset-0 z-[1400] pointer-events-none">
       <div
@@ -254,7 +273,7 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                 className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] mono uppercase tracking-[0.35em] text-white/70 hover:bg-white/15 transition-colors"
                 aria-label="Move navigation bar"
               >
-                <Move className="w-4 h-4" />
+                <GripVertical className="w-4 h-4" />
               </button>
 
               <div className="h-6 w-px bg-white/10" aria-hidden="true" />
@@ -332,6 +351,21 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                   })}
                 </AnimatePresence>
               </div>
+
+              <div className="h-6 w-px bg-white/10" aria-hidden="true" />
+
+              <button
+                type="button"
+                onClick={handleGalleriaLaunch}
+                className={`group relative flex h-11 w-11 items-center justify-center rounded-2xl border text-white transition ${
+                  activeGalleriaSection
+                    ? 'border-emerald-400/70 bg-emerald-500/20'
+                    : 'border-white/20 bg-white/5 hover:border-white/50'
+                }`}
+                aria-label="Open Galleria"
+              >
+                <GalleryHorizontalEnd className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </motion.div>

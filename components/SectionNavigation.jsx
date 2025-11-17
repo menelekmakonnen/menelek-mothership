@@ -239,6 +239,7 @@ export default function SectionNavigation({ sections, contentStyle = {}, section
     paddingTop: isZoomedIn ? `calc(${navOffset} + 64px)` : navOffset,
     paddingBottom: baseBottomPadding,
     minHeight: '100vh',
+    filter: contentStyle?.filter || undefined,
   };
 
   const stageBackgroundStyle = {

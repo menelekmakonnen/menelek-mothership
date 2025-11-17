@@ -570,7 +570,7 @@ export default function PhotographySection() {
                   transition={{ delay: 0.015 * index }}
                   className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/55"
                 >
-                  <div className="relative aspect-square w-full">
+                  <div className="relative aspect-[2/3] w-full">
                     {preview ? (
                       <img src={preview} alt={image.alt} className="h-full w-full object-cover" loading="lazy" />
                     ) : (

@@ -401,7 +401,7 @@ export default function AIAlbumsSection() {
                 }}
                 className="group rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.8)] p-6 text-left transition-colors hover:border-white/25"
               >
-                <div className="relative mb-5 aspect-square overflow-hidden rounded-2xl">
+                <div className="relative mb-5 aspect-[2/3] overflow-hidden rounded-2xl">
                   {(() => {
                     const albumData = getFolder(album.id);
                     const coverCandidate = albumData?.items.find((item) => item.type === 'file') || null;
@@ -609,7 +609,7 @@ export default function AIAlbumsSection() {
                         initial={{ opacity: 0, scale: 0.85 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.01 * index }}
-                        className="relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_16px_40px_rgba(0,0,0,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        className="relative aspect-[2/3] cursor-pointer overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_16px_40px_rgba(0,0,0,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                       >
                         {(() => {
                           const preview = getPreviewSrc(image);
