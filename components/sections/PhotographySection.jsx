@@ -362,6 +362,51 @@ export default function PhotographySection() {
     setSlideshowActive(false);
   }, []);
 
+  const cycleAlbum = useCallback(
+    (direction) => {
+      if (!albumFolders.length) return false;
+      const currentIndex = activeAlbum
+        ? albumFolders.findIndex((album) => album.id === activeAlbum.id)
+        : 0;
+      const nextIndex = (currentIndex + direction + albumFolders.length) % albumFolders.length;
+      const nextAlbum = albumFolders[nextIndex];
+      if (!nextAlbum) return false;
+      openAlbum(nextAlbum);
+      return true;
+    },
+    [activeAlbum, albumFolders, openAlbum]
+  );
+
+  const jumpToGallery = useCallback(
+    (gallery) => {
+      if (!gallery) return false;
+      stopSlideshow();
+      setActiveGallery(gallery);
+      setActiveImageIndex(0);
+      scrollToActiveLayer();
+      return true;
+    },
+    [scrollToActiveLayer, stopSlideshow]
+  );
+
+  const cycleGallery = useCallback(
+    (direction) => {
+      if (!galleryFolders.length) {
+        return cycleAlbum(direction);
+      }
+      const currentIndex = activeGallery
+        ? galleryFolders.findIndex((gallery) => gallery.id === activeGallery.id)
+        : 0;
+      const nextIndex = (currentIndex + direction + galleryFolders.length) % galleryFolders.length;
+      const nextGallery = galleryFolders[nextIndex];
+      if (!nextGallery) {
+        return cycleAlbum(direction);
+      }
+      return jumpToGallery(nextGallery);
+    },
+    [activeGallery, cycleAlbum, galleryFolders, jumpToGallery]
+  );
+
   useEffect(() => {
     if (!isSlideshowActive || activeImageIndex === null || !preparedGalleryImages.length) {
       if (slideshowTimerRef.current) {
@@ -760,6 +805,8 @@ export default function PhotographySection() {
             innerClassName="p-0"
             galleriaSectionId="photography"
             showGalleriaChrome
+            galleriaLevel="gallery"
+            breadcrumbs={[{ label: 'Gallery View' }]}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -829,6 +876,13 @@ export default function PhotographySection() {
             innerClassName="p-0"
             galleriaSectionId="photography"
             showGalleriaChrome
+            galleriaLevel="album"
+            breadcrumbs={[
+              { label: 'Gallery View', action: openAlbumPicker },
+              { label: activeAlbum.title || 'Album' },
+            ]}
+            onNavigateLeft={() => cycleAlbum(-1)}
+            onNavigateRight={() => cycleAlbum(1)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -879,6 +933,14 @@ export default function PhotographySection() {
             galleriaSectionId="photography"
             showGalleriaChrome
             onWheelNavigate={handleImageWheel}
+            galleriaLevel="single"
+            breadcrumbs={[
+              { label: 'Gallery View', action: openAlbumPicker },
+              activeAlbum && { label: activeAlbum.title },
+              activeGallery && { label: activeGallery.title || 'Gallery' },
+            ].filter(Boolean)}
+            onNavigateLeft={() => cycleGallery(-1)}
+            onNavigateRight={() => cycleGallery(1)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}

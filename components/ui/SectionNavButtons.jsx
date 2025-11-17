@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
-import { GalleryHorizontalEnd, GripVertical } from 'lucide-react';
+import { GalleryHorizontalEnd } from 'lucide-react';
 import { useCameraContext } from '@/context/CameraContext';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -184,8 +184,11 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
     [clampFloatPosition, floatPosition, isFloating, markInteraction]
   );
 
-  const handleHandlePointerDown = useCallback(
+  const handleSurfacePointerDown = useCallback(
     (event) => {
+      if (event.pointerType === 'touch' || event.button !== 0) return;
+      const isNavButton = event.target.closest('[data-nav-button="true"]');
+      if (isNavButton) return;
       event.preventDefault();
       const now = Date.now();
       if (now - lastTapRef.current < 320) {
@@ -194,17 +197,12 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
         return;
       }
       lastTapRef.current = now;
-      if (isCollapsed) {
-        markInteraction();
-        requestAnimationFrame(() => {
-          dragControls.start(event);
-        });
-      } else {
-        markInteraction();
+      markInteraction();
+      requestAnimationFrame(() => {
         dragControls.start(event);
-      }
+      });
     },
-    [dragControls, isCollapsed, markInteraction, resetNavPosition]
+    [dragControls, markInteraction, resetNavPosition]
   );
 
   const handleNavigate = useCallback(
@@ -259,21 +257,30 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
               setHoveredId(null);
             }
           }}
-          onPointerDownCapture={() => {
+          onPointerDownCapture={(event) => {
             if (isCollapsed) {
               markInteraction();
             }
+            handleSurfacePointerDown(event);
           }}
         >
-          <div className="camera-hud rounded-full border border-white/10 px-3 sm:px-4 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl bg-[color:var(--nav-blend-color)]/90">
+          <div
+            className="camera-hud rounded-full border border-white/10 px-3 sm:px-4 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl bg-[color:var(--nav-blend-color)]/90"
+            onPointerDownCapture={handleSurfacePointerDown}
+          >
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                onPointerDown={handleHandlePointerDown}
-                className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] mono uppercase tracking-[0.35em] text-white/70 hover:bg-white/15 transition-colors"
-                aria-label="Move navigation bar"
+                onClick={handleGalleriaLaunch}
+                className={`group relative flex h-11 w-11 items-center justify-center rounded-2xl border text-white transition ${
+                  activeGalleriaSection
+                    ? 'border-emerald-400/70 bg-emerald-500/20'
+                    : 'border-white/20 bg-white/5 hover:border-white/50'
+                }`}
+                aria-label="Open Galleria"
+                data-nav-button="true"
               >
-                <GripVertical className="w-4 h-4" />
+                <GalleryHorizontalEnd className="h-5 w-5" />
               </button>
 
               <div className="h-6 w-px bg-white/10" aria-hidden="true" />
@@ -316,9 +323,10 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                         }}
                         className={`group relative flex ${
                           isActive ? 'h-12 w-12 border-white/40' : 'h-11 w-11 border-white/15'
-                        } items-center justify-center rounded-2xl border bg-gradient-to-br ${section.gradient} text-white shadow-lg transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30 ${
+                        } items-center justify-center rounded-2xl border bg-gradient-to-br ${section.gradient} text-white shadow-lg transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30${
                           isActive ? 'ring-2 ring-white/30' : ''
                         }`}
+                        data-nav-button="true"
                         whileHover={{ scale: 1.06 }}
                         whileTap={{ scale: 0.94 }}
                         initial={{ opacity: 0, scale: 0.85, y: 12 }}
@@ -351,21 +359,6 @@ export default function SectionNavButtons({ currentSection, onNavigate, navItems
                   })}
                 </AnimatePresence>
               </div>
-
-              <div className="h-6 w-px bg-white/10" aria-hidden="true" />
-
-              <button
-                type="button"
-                onClick={handleGalleriaLaunch}
-                className={`group relative flex h-11 w-11 items-center justify-center rounded-2xl border text-white transition ${
-                  activeGalleriaSection
-                    ? 'border-emerald-400/70 bg-emerald-500/20'
-                    : 'border-white/20 bg-white/5 hover:border-white/50'
-                }`}
-                aria-label="Open Galleria"
-              >
-                <GalleryHorizontalEnd className="h-5 w-5" />
-              </button>
             </div>
           </div>
         </motion.div>
