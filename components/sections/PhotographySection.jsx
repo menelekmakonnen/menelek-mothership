@@ -335,6 +335,23 @@ export default function PhotographySection() {
   }, [activeAlbum, loadFolder]);
 
   const activeAlbumData = activeAlbum ? getFolder(activeAlbum.id) : null;
+  const aggregatedAlbumImages = useMemo(() => {
+    if (!activeAlbum) return [];
+    return collectGalleryImages(activeAlbum.id);
+  }, [activeAlbum, activeAlbumData, collectGalleryImages]);
+
+  const defaultGalleryEntry = useMemo(() => {
+    if (!activeAlbum || !aggregatedAlbumImages.length) return null;
+    const randomFrame = aggregatedAlbumImages[Math.floor(Math.random() * aggregatedAlbumImages.length)];
+    return {
+      id: `all-${activeAlbum.id}`,
+      title: 'All Frames',
+      virtual: true,
+      coverOverride: resolveItemImage(randomFrame),
+      imageCount: aggregatedAlbumImages.length,
+    };
+  }, [activeAlbum, aggregatedAlbumImages]);
+
   const galleryFolders = useMemo(() => {
     if (!activeAlbumData && !defaultGalleryEntry) return [];
     const folders = activeAlbumData
@@ -368,23 +385,6 @@ export default function PhotographySection() {
     if (!activeGallery || activeGallery.virtual) return;
     loadFolder(activeGallery.id);
   }, [activeGallery, loadFolder]);
-
-  const aggregatedAlbumImages = useMemo(() => {
-    if (!activeAlbum) return [];
-    return collectGalleryImages(activeAlbum.id);
-  }, [activeAlbum, activeAlbumData, collectGalleryImages]);
-
-  const defaultGalleryEntry = useMemo(() => {
-    if (!activeAlbum || !aggregatedAlbumImages.length) return null;
-    const randomFrame = aggregatedAlbumImages[Math.floor(Math.random() * aggregatedAlbumImages.length)];
-    return {
-      id: `all-${activeAlbum.id}`,
-      title: 'All Frames',
-      virtual: true,
-      coverOverride: resolveItemImage(randomFrame),
-      imageCount: aggregatedAlbumImages.length,
-    };
-  }, [activeAlbum, aggregatedAlbumImages]);
 
   const activeGalleryData = activeGallery && !activeGallery.virtual ? getFolder(activeGallery.id) : null;
   const galleryImages = useMemo(() => {
