@@ -16,6 +16,7 @@ import {
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
+import { SORT_OPTIONS, sortCollectionByMode } from '@/lib/sortHelpers';
 import { useCameraContext } from '@/context/CameraContext';
 
 const MMM_MEDIA_ROOT = '1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4';
@@ -55,14 +56,62 @@ export default function PhotographySection() {
   const [activeGallery, setActiveGallery] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(null);
   const [isAlbumPickerOpen, setAlbumPickerOpen] = useState(false);
-  const [albumSortMode, setAlbumSortMode] = useState('name');
-  const [gallerySortMode, setGallerySortMode] = useState('name');
-  const [frameSortMode, setFrameSortMode] = useState('original');
+  const [albumSortMode, setAlbumSortMode] = useState('az');
+  const [gallerySortMode, setGallerySortMode] = useState('az');
+  const [frameSortMode, setFrameSortMode] = useState('az');
+  const [albumSortNonce, setAlbumSortNonce] = useState(0);
+  const [gallerySortNonce, setGallerySortNonce] = useState(0);
+  const [frameSortNonce, setFrameSortNonce] = useState(0);
   const [isSlideshowActive, setSlideshowActive] = useState(false);
   const [imageZoom, setImageZoom] = useState(1);
   const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
   const panStateRef = useRef(null);
   const imageSurfaceRef = useRef(null);
+  const handleAlbumSortChange = useCallback((event) => {
+    const next = event.target.value;
+    if (next === 'random') {
+      setAlbumSortNonce((nonce) => nonce + 1);
+    }
+    setAlbumSortMode(next);
+  }, []);
+  const handleAlbumSortClick = useCallback(
+    (event) => {
+      if (event.target.value === 'random' && albumSortMode === 'random') {
+        setAlbumSortNonce((nonce) => nonce + 1);
+      }
+    },
+    [albumSortMode]
+  );
+  const handleGallerySortChange = useCallback((event) => {
+    const next = event.target.value;
+    if (next === 'random') {
+      setGallerySortNonce((nonce) => nonce + 1);
+    }
+    setGallerySortMode(next);
+  }, []);
+  const handleGallerySortClick = useCallback(
+    (event) => {
+      if (event.target.value === 'random' && gallerySortMode === 'random') {
+        setGallerySortNonce((nonce) => nonce + 1);
+      }
+    },
+    [gallerySortMode]
+  );
+  const handleFrameSortChange = useCallback((event) => {
+    const next = event.target.value;
+    if (next === 'random') {
+      setFrameSortNonce((nonce) => nonce + 1);
+    }
+    setFrameSortMode(next);
+  }, []);
+  const handleFrameSortClick = useCallback(
+    (event) => {
+      if (event.target.value === 'random' && frameSortMode === 'random') {
+        setFrameSortNonce((nonce) => nonce + 1);
+      }
+    },
+    [frameSortMode]
+  );
   const {
     registerGalleriaSection,
     updateGalleriaSectionMeta,
@@ -118,29 +167,38 @@ export default function PhotographySection() {
     [getFolder]
   );
 
-  const sortFolders = useCallback((folders, mode) => {
-    if (!folders?.length) return [];
-    const clone = [...folders];
-    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
-    switch (mode) {
-      case 'newest':
-        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
-      case 'oldest':
-        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
-      case 'name-desc':
-        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
-      case 'name':
-      default:
-        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
-    }
-  }, []);
+  const collectGalleryImages = useCallback(
+    (folderId) => {
+      const walk = (targetId, depth = 0, bucket = []) => {
+        if (!targetId || depth > 6) return bucket;
+        const data = getFolder(targetId);
+        if (!data) return bucket;
+        data.items.forEach((item) => {
+          if (item.type === 'file' && resolveItemImage(item)) {
+            bucket.push(item);
+          } else if (item.type === 'folder') {
+            walk(item.id, depth + 1, bucket);
+          }
+        });
+        return bucket;
+      };
+      return walk(folderId, 0, []);
+    },
+    [getFolder]
+  );
+
+  const sortFolders = useCallback(
+    (folders, mode, nonce = 0) => sortCollectionByMode(folders, mode, nonce, (item) => item?.title || ''),
+    []
+  );
 
   const albumFolders = useMemo(() => {
     if (!rootFolder) return [];
     const folders = rootFolder.items.filter((item) => item.type === 'folder' && albumMeta[item.title]);
     const filtered = folders.filter((folder) => hasMedia(folder.id));
-    return sortFolders(filtered, albumSortMode);
-  }, [albumSortMode, hasMedia, rootFolder, sortFolders]);
+    const nonce = albumSortMode === 'random' ? albumSortNonce : 0;
+    return sortFolders(filtered, albumSortMode, nonce);
+  }, [albumSortMode, albumSortNonce, hasMedia, rootFolder, sortFolders]);
 
   useEffect(() => {
     if (!albumFolders.length) return;
@@ -173,9 +231,10 @@ export default function PhotographySection() {
       if (!folder) return null;
       const folderData = getFolder(folder.id);
       if (folderData) {
-        const fileCandidate = folderData.items.find((item) => item.type === 'file' && resolveItemImage(item));
-        if (fileCandidate) {
-          return resolveItemImage(fileCandidate);
+        const fileCandidates = folderData.items.filter((item) => item.type === 'file' && resolveItemImage(item));
+        if (fileCandidates.length) {
+          const randomFile = fileCandidates[Math.floor(Math.random() * fileCandidates.length)];
+          return resolveItemImage(randomFile);
         }
         const nestedFolders = folderData.items.filter((item) => item.type === 'folder');
         for (const nested of nestedFolders) {
@@ -277,10 +336,24 @@ export default function PhotographySection() {
 
   const activeAlbumData = activeAlbum ? getFolder(activeAlbum.id) : null;
   const galleryFolders = useMemo(() => {
-    if (!activeAlbumData) return [];
-    const folders = activeAlbumData.items.filter((item) => item.type === 'folder' && hasMedia(item.id));
-    return sortFolders(folders, gallerySortMode);
-  }, [activeAlbumData, gallerySortMode, hasMedia, sortFolders]);
+    if (!activeAlbumData && !defaultGalleryEntry) return [];
+    const folders = activeAlbumData
+      ? activeAlbumData.items.filter((item) => item.type === 'folder' && hasMedia(item.id))
+      : [];
+    const nonce = gallerySortMode === 'random' ? gallerySortNonce : 0;
+    const sorted = sortFolders(folders, gallerySortMode, nonce);
+    if (defaultGalleryEntry) {
+      return [defaultGalleryEntry, ...sorted];
+    }
+    return sorted;
+  }, [
+    activeAlbumData,
+    defaultGalleryEntry,
+    gallerySortMode,
+    gallerySortNonce,
+    hasMedia,
+    sortFolders,
+  ]);
 
   useEffect(() => {
     if (!galleryFolders.length) return;
@@ -292,34 +365,42 @@ export default function PhotographySection() {
   }, [galleryFolders, getFolder, loadFolder]);
 
   useEffect(() => {
-    if (!activeGallery) return;
+    if (!activeGallery || activeGallery.virtual) return;
     loadFolder(activeGallery.id);
   }, [activeGallery, loadFolder]);
 
-  const activeGalleryData = activeGallery ? getFolder(activeGallery.id) : null;
+  const aggregatedAlbumImages = useMemo(() => {
+    if (!activeAlbum) return [];
+    return collectGalleryImages(activeAlbum.id);
+  }, [activeAlbum, activeAlbumData, collectGalleryImages]);
+
+  const defaultGalleryEntry = useMemo(() => {
+    if (!activeAlbum || !aggregatedAlbumImages.length) return null;
+    const randomFrame = aggregatedAlbumImages[Math.floor(Math.random() * aggregatedAlbumImages.length)];
+    return {
+      id: `all-${activeAlbum.id}`,
+      title: 'All Frames',
+      virtual: true,
+      coverOverride: resolveItemImage(randomFrame),
+      imageCount: aggregatedAlbumImages.length,
+    };
+  }, [activeAlbum, aggregatedAlbumImages]);
+
+  const activeGalleryData = activeGallery && !activeGallery.virtual ? getFolder(activeGallery.id) : null;
   const galleryImages = useMemo(() => {
+    if (!activeGallery) return [];
+    if (activeGallery.virtual) {
+      return aggregatedAlbumImages;
+    }
     if (!activeGalleryData) return [];
     return activeGalleryData.items.filter((item) => item.type === 'file');
-  }, [activeGalleryData]);
+  }, [activeGallery, activeGalleryData, aggregatedAlbumImages]);
 
   const sortedGalleryImages = useMemo(() => {
     if (!galleryImages.length) return [];
-    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
-    const clone = [...galleryImages];
-    switch (frameSortMode) {
-      case 'name':
-        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
-      case 'name-desc':
-        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
-      case 'newest':
-        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
-      case 'oldest':
-        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
-      case 'original':
-      default:
-        return clone;
-    }
-  }, [frameSortMode, galleryImages]);
+    const nonce = frameSortMode === 'random' ? frameSortNonce : 0;
+    return sortCollectionByMode(galleryImages, frameSortMode, nonce, (item) => item?.title || '');
+  }, [frameSortMode, frameSortNonce, galleryImages]);
 
   const galleryQuickLook = useMemo(
     () =>
@@ -650,7 +731,7 @@ export default function PhotographySection() {
       icon: ImageIcon,
     };
     const Icon = meta.icon;
-    const cover = resolveCoverImage(album);
+    const cover = album.coverOverride || resolveCoverImage(album);
     const loadingCover = !cover && (isLoading(album.id) || !getFolder(album.id));
     const handleOpen = typeof onOpen === 'function' ? onOpen : openAlbum;
 
@@ -664,7 +745,7 @@ export default function PhotographySection() {
         onClick={() => handleOpen(album)}
         className="group text-left rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.78)] p-6 transition-all hover:-translate-y-1 hover:border-white/20"
       >
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
+        <div className="relative aspect-[9/16] overflow-hidden rounded-2xl">
           {cover ? (
             <img src={cover} alt={`${album.title} cover`} className="h-full w-full object-cover" loading="lazy" />
           ) : (
@@ -690,10 +771,13 @@ export default function PhotographySection() {
   };
 
   const renderGalleryCard = (gallery) => {
-    const cover = resolveCoverImage(gallery);
-    const galleryData = getFolder(gallery.id);
-    const imageCount = galleryData ? galleryData.items.filter((item) => item.type === 'file').length : 0;
-    const loadingGallery = !galleryData || isLoading(gallery.id);
+    const cover = gallery.coverOverride || resolveCoverImage(gallery);
+    const galleryData = gallery.virtual ? null : getFolder(gallery.id);
+    const imageCount = gallery.virtual
+      ? gallery.imageCount || aggregatedAlbumImages.length
+      : galleryData
+          ?.items.filter((item) => item.type === 'file').length ?? 0;
+    const loadingGallery = gallery.virtual ? false : !galleryData || isLoading(gallery.id);
 
     return (
       <motion.button
@@ -710,7 +794,7 @@ export default function PhotographySection() {
         transition={{ duration: 0.3 }}
         className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[rgba(8,10,16,0.78)] text-left shadow-[0_20px_50px_rgba(0,0,0,0.45)]"
       >
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative aspect-[9/16] overflow-hidden">
           {cover ? (
             <img src={cover} alt={`${gallery.title} cover`} className="h-full w-full object-cover" loading="lazy" />
           ) : (
@@ -747,13 +831,15 @@ export default function PhotographySection() {
               <span className="hidden sm:inline">Sort</span>
               <select
                 value={gallerySortMode}
-                onChange={(event) => setGallerySortMode(event.target.value)}
+                onChange={handleGallerySortChange}
+                onClick={handleGallerySortClick}
                 className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
               >
-                <option value="name">Name A–Z</option>
-                <option value="name-desc">Name Z–A</option>
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <button
                 type="button"
@@ -812,14 +898,15 @@ export default function PhotographySection() {
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-white/60">
               <select
                 value={frameSortMode}
-                onChange={(event) => setFrameSortMode(event.target.value)}
+                onChange={handleFrameSortChange}
+                onClick={handleFrameSortClick}
                 className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
               >
-                <option value="original">Curated</option>
-                <option value="name">Name A–Z</option>
-                <option value="name-desc">Name Z–A</option>
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -910,13 +997,15 @@ export default function PhotographySection() {
               <label className="hidden md:block">Sort</label>
               <select
                 value={albumSortMode}
-                onChange={(event) => setAlbumSortMode(event.target.value)}
+                onChange={handleAlbumSortChange}
+                onClick={handleAlbumSortClick}
                 className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.35em]"
               >
-                <option value="name">Name A–Z</option>
-                <option value="name-desc">Name Z–A</option>
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -972,13 +1061,15 @@ export default function PhotographySection() {
                   <span>Sort collections</span>
                   <select
                     value={albumSortMode}
-                    onChange={(event) => setAlbumSortMode(event.target.value)}
+                    onChange={handleAlbumSortChange}
+                    onClick={handleAlbumSortClick}
                     className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
                   >
-                    <option value="name">Name A–Z</option>
-                    <option value="name-desc">Name Z–A</option>
-                    <option value="newest">Newest</option>
-                    <option value="oldest">Oldest</option>
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">

@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Loader2, PauseCircle, Play
 import FullscreenLightbox from '@/components/ui/FullscreenLightbox';
 import useDriveFolderCache from '@/hooks/useDriveFolderCache';
 import { resolveDriveImage } from '@/lib/googleDrive';
+import { SORT_OPTIONS, sortCollectionByMode } from '@/lib/sortHelpers';
 import { useCameraContext } from '@/context/CameraContext';
 
 const AI_ALBUM_ROOT = '1LflEx48azcfu_EBnLv12SOYWhUMXYoBj';
@@ -33,8 +34,40 @@ export default function AIAlbumsSection() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [isAlbumBrowserOpen, setAlbumBrowserOpen] = useState(false);
   const [favoriteFrames, setFavoriteFrames] = useState({});
-  const [albumSortMode, setAlbumSortMode] = useState('name');
-  const [imageSortMode, setImageSortMode] = useState('original');
+  const [albumSortMode, setAlbumSortMode] = useState('az');
+  const [imageSortMode, setImageSortMode] = useState('az');
+  const [albumSortNonce, setAlbumSortNonce] = useState(0);
+  const [imageSortNonce, setImageSortNonce] = useState(0);
+  const handleAlbumSortChange = useCallback((event) => {
+    const next = event.target.value;
+    if (next === 'random') {
+      setAlbumSortNonce((nonce) => nonce + 1);
+    }
+    setAlbumSortMode(next);
+  }, []);
+  const handleAlbumSortClick = useCallback(
+    (event) => {
+      if (event.target.value === 'random' && albumSortMode === 'random') {
+        setAlbumSortNonce((nonce) => nonce + 1);
+      }
+    },
+    [albumSortMode]
+  );
+  const handleImageSortChange = useCallback((event) => {
+    const next = event.target.value;
+    if (next === 'random') {
+      setImageSortNonce((nonce) => nonce + 1);
+    }
+    setImageSortMode(next);
+  }, []);
+  const handleImageSortClick = useCallback(
+    (event) => {
+      if (event.target.value === 'random' && imageSortMode === 'random') {
+        setImageSortNonce((nonce) => nonce + 1);
+      }
+    },
+    [imageSortMode]
+  );
   const [isSlideshowActive, setSlideshowActive] = useState(false);
   const {
     registerGalleriaSection,
@@ -86,22 +119,30 @@ export default function AIAlbumsSection() {
     [getFolder]
   );
 
-  const sortFolders = useCallback((items, mode) => {
-    if (!items?.length) return [];
-    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
-    const clone = [...items];
-    switch (mode) {
-      case 'name-desc':
-        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
-      case 'newest':
-        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
-      case 'oldest':
-        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
-      case 'name':
-      default:
-        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
-    }
-  }, []);
+  const collectAlbumFrames = useCallback(
+    (folderId) => {
+      const walk = (targetId, depth = 0, bucket = []) => {
+        if (!targetId || depth > 6) return bucket;
+        const data = getFolder(targetId);
+        if (!data) return bucket;
+        data.items.forEach((item) => {
+          if (item.type === 'file' && getPreviewSrc(item)) {
+            bucket.push(item);
+          } else if (item.type === 'folder') {
+            walk(item.id, depth + 1, bucket);
+          }
+        });
+        return bucket;
+      };
+      return walk(folderId, 0, []);
+    },
+    [getFolder]
+  );
+
+  const sortFolders = useCallback(
+    (items, mode, nonce = 0) => sortCollectionByMode(items, mode, nonce, (item) => item?.title || ''),
+    []
+  );
 
   const aiContainer = useMemo(() => {
     if (!aiRoot) return null;
@@ -135,15 +176,50 @@ export default function AIAlbumsSection() {
     return aiRoot.items.filter((item) => item.type === 'folder');
   }, [aiContainer, getFolder, aiRoot, rootLevelAlbums]);
 
-  const albumEntries = useMemo(() => {
+  const aggregatedAiFrames = useMemo(() => {
     if (!rawAlbumEntries.length) return [];
+    const frames = [];
+    rawAlbumEntries.forEach((entry) => {
+      frames.push(...collectAlbumFrames(entry.id));
+    });
+    return frames;
+  }, [collectAlbumFrames, rawAlbumEntries]);
+
+  const defaultAiAlbum = useMemo(() => {
+    if (!aggregatedAiFrames.length) return null;
+    const randomFrame = aggregatedAiFrames[Math.floor(Math.random() * aggregatedAiFrames.length)];
+    return {
+      id: 'ai-all',
+      title: 'All Creations',
+      description: 'Every Drive-fed AI experiment in one stream.',
+      virtual: true,
+      coverOverride: getPreviewSrc(randomFrame),
+      images: aggregatedAiFrames,
+    };
+  }, [aggregatedAiFrames]);
+
+  const albumEntries = useMemo(() => {
+    if (!rawAlbumEntries.length && !defaultAiAlbum) return [];
     const filtered = rawAlbumEntries.filter((album) => hasAlbumMedia(album.id));
-    return sortFolders(filtered, albumSortMode);
-  }, [albumSortMode, hasAlbumMedia, rawAlbumEntries, sortFolders]);
+    const nonce = albumSortMode === 'random' ? albumSortNonce : 0;
+    const sorted = sortFolders(filtered, albumSortMode, nonce);
+    if (defaultAiAlbum) {
+      return [defaultAiAlbum, ...sorted];
+    }
+    return sorted;
+  }, [
+    albumSortMode,
+    albumSortNonce,
+    defaultAiAlbum,
+    hasAlbumMedia,
+    rawAlbumEntries,
+    sortFolders,
+  ]);
 
   useEffect(() => {
-    if (!albumEntries.length) return;
-    const sample = albumEntries[Math.floor(Math.random() * albumEntries.length)];
+    const realAlbums = albumEntries.filter((entry) => !entry.virtual);
+    if (!realAlbums.length) return;
+    const sample = realAlbums[Math.floor(Math.random() * realAlbums.length)];
     if (!sample) return;
     const albumData = getFolder(sample.id);
     let cover = null;
@@ -233,6 +309,7 @@ export default function AIAlbumsSection() {
   useEffect(() => {
     if (!albumEntries.length) return;
     albumEntries.forEach((album) => {
+      if (album.virtual) return;
       if (!getFolder(album.id)) {
         loadFolder(album.id);
       }
@@ -241,29 +318,19 @@ export default function AIAlbumsSection() {
 
   const selectedAlbumImages = useMemo(() => {
     if (!selectedAlbum) return [];
+    if (selectedAlbum.virtual) {
+      return selectedAlbum.images || aggregatedAiFrames;
+    }
     const albumData = getFolder(selectedAlbum.id);
     if (!albumData) return [];
     return albumData.items.filter((item) => item.type === 'file');
-  }, [getFolder, selectedAlbum]);
+  }, [aggregatedAiFrames, getFolder, selectedAlbum]);
 
   const sortedAlbumImages = useMemo(() => {
     if (!selectedAlbumImages.length) return [];
-    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
-    const clone = [...selectedAlbumImages];
-    switch (imageSortMode) {
-      case 'name':
-        return clone.sort((a, b) => collator.compare(a.title || '', b.title || ''));
-      case 'name-desc':
-        return clone.sort((a, b) => collator.compare(b.title || '', a.title || ''));
-      case 'newest':
-        return clone.sort((a, b) => new Date(b.modifiedTime || b.createdTime || 0) - new Date(a.modifiedTime || a.createdTime || 0));
-      case 'oldest':
-        return clone.sort((a, b) => new Date(a.modifiedTime || a.createdTime || 0) - new Date(b.modifiedTime || b.createdTime || 0));
-      case 'original':
-      default:
-        return clone;
-    }
-  }, [imageSortMode, selectedAlbumImages]);
+    const nonce = imageSortMode === 'random' ? imageSortNonce : 0;
+    return sortCollectionByMode(selectedAlbumImages, imageSortMode, nonce, (item) => item?.title || '');
+  }, [imageSortMode, imageSortNonce, selectedAlbumImages]);
 
   const preparedAlbumImages = useMemo(() => {
     const albumTitle = selectedAlbum?.title || 'AI Collection';
@@ -454,13 +521,15 @@ export default function AIAlbumsSection() {
               <label className="hidden md:block">Sort</label>
               <select
                 value={albumSortMode}
-                onChange={(event) => setAlbumSortMode(event.target.value)}
+                onChange={handleAlbumSortChange}
+                onClick={handleAlbumSortClick}
                 className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.35em]"
               >
-                <option value="name">Name A–Z</option>
-                <option value="name-desc">Name Z–A</option>
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -479,15 +548,65 @@ export default function AIAlbumsSection() {
                 }}
                 className="group rounded-3xl border border-white/10 bg-[rgba(10,12,18,0.8)] p-6 text-left transition-colors hover:border-white/25"
               >
-                <div className="relative mb-5 aspect-[2/3] overflow-hidden rounded-2xl">
+                <div className="relative mb-5 aspect-[9/16] overflow-hidden rounded-2xl">
                   {(() => {
-                    const albumData = getFolder(album.id);
-                    const coverCandidate = albumData?.items.find((item) => item.type === 'file') || null;
-                    const cover = getPreviewSrc(coverCandidate) || getPreviewSrc(album);
-                    if (cover) {
+                    if (album.coverOverride) {
                       return (
                         <img
-                          src={cover}
+                          src={album.coverOverride}
+                          alt={`${album.title} cover`}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      );
+                    }
+                    if (album.virtual) {
+                      if (album.images?.length) {
+                        const randomFrame = album.images[Math.floor(Math.random() * album.images.length)];
+                        const frameSrc = getPreviewSrc(randomFrame);
+                        if (frameSrc) {
+                          return (
+                            <img
+                              src={frameSrc}
+                              alt={`${album.title} cover`}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          );
+                        }
+                      }
+                      return (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500/70 via-fuchsia-500/65 to-indigo-600/70">
+                          <Sparkles className="h-16 w-16 text-white drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)]" />
+                        </div>
+                      );
+                    }
+                    const albumData = getFolder(album.id);
+                    const fileCandidates = albumData
+                      ? albumData.items.filter((item) => item.type === 'file' && getPreviewSrc(item))
+                      : [];
+                    if (fileCandidates.length) {
+                      const randomFile = fileCandidates[Math.floor(Math.random() * fileCandidates.length)];
+                      const cover = getPreviewSrc(randomFile);
+                      if (cover) {
+                        return (
+                          <img
+                            src={cover}
+                            alt={`${album.title} cover`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        );
+                      }
+                    }
+                    const fallback = getPreviewSrc(album);
+                    if (fallback) {
+                      return (
+                        <img
+                          src={fallback}
                           alt={`${album.title} cover`}
                           className="h-full w-full object-cover"
                           loading="lazy"
@@ -503,7 +622,9 @@ export default function AIAlbumsSection() {
                   })()}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_65%)]" />
                   <div className="absolute bottom-3 left-3 text-xs mono uppercase tracking-[0.35em] text-white/80">Open</div>
-                  {isLoading(album.id) && <Loader2 className="absolute right-3 top-3 h-5 w-5 animate-spin text-white/80" />}
+                  {!album.virtual && isLoading(album.id) && (
+                    <Loader2 className="absolute right-3 top-3 h-5 w-5 animate-spin text-white/80" />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">{album.title}</h3>
@@ -566,24 +687,36 @@ export default function AIAlbumsSection() {
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.4em] text-white/60">
                   <span>Sort albums</span>
-                  <select
-                    value={albumSortMode}
-                    onChange={(event) => setAlbumSortMode(event.target.value)}
-                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
-                  >
-                    <option value="name">Name A–Z</option>
-                    <option value="name-desc">Name Z–A</option>
-                    <option value="newest">Newest</option>
-                    <option value="oldest">Oldest</option>
-                  </select>
+                <select
+                  value={albumSortMode}
+                  onChange={handleAlbumSortChange}
+                  onClick={handleAlbumSortClick}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {albumEntries.map((album) => {
-                    const albumData = getFolder(album.id);
-                    const coverCandidate = albumData
-                      ? albumData.items.find((item) => item.type === 'file' && getPreviewSrc(item))
-                      : null;
-                    const cover = coverCandidate ? getPreviewSrc(coverCandidate) : getPreviewSrc(album);
+                    const albumData = album.virtual ? null : getFolder(album.id);
+                    const fileCandidates = albumData
+                      ? albumData.items.filter((item) => item.type === 'file' && getPreviewSrc(item))
+                      : [];
+                    let cover = album.coverOverride || null;
+                    if (!cover && album.virtual && album.images?.length) {
+                      const randomFrame = album.images[Math.floor(Math.random() * album.images.length)];
+                      cover = getPreviewSrc(randomFrame);
+                    }
+                    if (!cover && fileCandidates.length) {
+                      cover = getPreviewSrc(fileCandidates[Math.floor(Math.random() * fileCandidates.length)]);
+                    }
+                    if (!cover) {
+                      cover = getPreviewSrc(album);
+                    }
                     return (
                       <motion.button
                         key={album.id}
@@ -598,7 +731,7 @@ export default function AIAlbumsSection() {
                         }}
                         className="rounded-3xl border border-white/10 bg-[rgba(12,14,22,0.85)] p-5 text-left hover:border-white/35 transition"
                       >
-                        <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl bg-black/40">
+                        <div className="relative mb-4 aspect-[9/16] overflow-hidden rounded-2xl bg-black/40">
                           {cover ? (
                             <img src={cover} alt={`${album.title} cover`} className="h-full w-full object-cover" loading="lazy" />
                           ) : (
@@ -852,14 +985,15 @@ export default function AIAlbumsSection() {
                       <span>Order</span>
                       <select
                         value={imageSortMode}
-                        onChange={(event) => setImageSortMode(event.target.value)}
+                        onChange={handleImageSortChange}
+                        onClick={handleImageSortClick}
                         className="rounded-full border border-white/15 bg-white/5 px-3 py-1"
                       >
-                        <option value="original">Curated</option>
-                        <option value="name">Name A–Z</option>
-                        <option value="name-desc">Name Z–A</option>
-                        <option value="newest">Newest</option>
-                        <option value="oldest">Oldest</option>
+                        {SORT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="flex flex-col gap-3">
