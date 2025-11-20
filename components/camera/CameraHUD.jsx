@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Settings,
   Aperture,
   Gauge,
   Clock,
@@ -14,8 +13,11 @@ import {
   BarChart3,
   Shuffle,
   Repeat,
+  Home,
+  Power,
 } from 'lucide-react';
 import { useCameraContext } from '@/context/CameraContext';
+import { useGalleriaContext } from '@/context/GalleriaContext';
 
 const SHUTTER_STOPS = [8000, 4000, 2000, 1000, 500, 250, 125, 60, 30, 15, 8, 4, 2, 1, 0.5, 0.25, 0.125, 0.0625];
 
@@ -38,7 +40,9 @@ export default function CameraHUD() {
     setIso,
     setAperture,
     setShutterSpeed,
+    powerOff,
   } = useCameraContext();
+  const { openGalleria } = useGalleriaContext();
 
   if (hudVisibility === 'none') return null;
 
@@ -95,24 +99,21 @@ export default function CameraHUD() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
         {/* Left Section */}
         <div className="flex items-center gap-3">
-          <div className="hud-element cursor-default">
-            <Settings size={16} />
-            <div>
-              <div className="hud-reading">{cameraMode.toUpperCase()}</div>
-              <div className="hud-label text-xs">{currentLens.name}</div>
+          <div className="hud-element cursor-default min-w-[150px]">
+            <div className="flex items-center justify-between w-full">
+              <div>
+                <div className="hud-label text-[11px] uppercase tracking-[0.18em]">Body</div>
+                <div className="hud-reading">{cameraMode === 'dslr' ? 'DSLR' : 'Mirrorless'}</div>
+              </div>
+              <button
+                onClick={() => setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr')}
+                className="pill-btn px-3 py-1 text-[11px]"
+              >
+                <Repeat size={14} />
+              </button>
             </div>
+            <div className="hud-label text-xs mt-1 text-white/70">{currentLens.name}</div>
           </div>
-
-          <button
-            onClick={() => setCameraMode(cameraMode === 'dslr' ? 'mirrorless' : 'dslr')}
-            className="hud-element"
-          >
-            <Repeat size={16} />
-            <div>
-              <div className="hud-reading">{cameraMode === 'dslr' ? 'DSLR' : 'Mirrorless'}</div>
-              <div className="hud-label text-xs">Toggle body</div>
-            </div>
-          </button>
 
           <button onClick={() => changeLens(nextLens)} className="hud-element">
             <Shuffle size={16} />
@@ -126,17 +127,23 @@ export default function CameraHUD() {
         {/* Center Section - Camera Readings */}
         {(hudVisibility === 'standard' || hudVisibility === 'full') && (
           <div className="flex flex-wrap items-center gap-3 justify-center">
-            <div className="hud-element">
-              <Gauge size={16} />
+            <div className="hud-element slim">
+              <div className="flex items-center gap-2">
+                <Gauge size={16} />
+                <span className="hud-label text-[11px]">ISO</span>
+              </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => adjustIso(-100)} className="pill-btn">-</button>
-                <div className="hud-reading">ISO {iso}</div>
+                <div className="hud-reading">{iso}</div>
                 <button onClick={() => adjustIso(100)} className="pill-btn">+</button>
               </div>
             </div>
 
-            <div className="hud-element">
-              <Aperture size={16} />
+            <div className="hud-element slim">
+              <div className="flex items-center gap-2">
+                <Aperture size={16} />
+                <span className="hud-label text-[11px]">Aperture</span>
+              </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => adjustAperture(-0.2)} className="pill-btn">-</button>
                 <div className="hud-reading">f/{aperture.toFixed(1)}</div>
@@ -144,22 +151,17 @@ export default function CameraHUD() {
               </div>
             </div>
 
-            <div className="hud-element">
-              <Clock size={16} />
+            <div className="hud-element slim">
+              <div className="flex items-center gap-2">
+                <Clock size={16} />
+                <span className="hud-label text-[11px]">Shutter</span>
+              </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => adjustShutter(-1)} className="pill-btn">-</button>
                 <div className="hud-reading">{formatShutterSpeed(shutterSpeed)}</div>
                 <button onClick={() => adjustShutter(1)} className="pill-btn">+</button>
               </div>
             </div>
-
-            {exposureComp !== 0 && (
-              <div className="hud-element">
-                <div className="hud-reading">
-                  {exposureComp > 0 ? '+' : ''}{exposureComp} EV
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -167,13 +169,13 @@ export default function CameraHUD() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowHistogram(!showHistogram)}
-            className={`hud-element ${showHistogram ? 'border-accent' : ''}`}
+            className={`hud-element slim ${showHistogram ? 'border-accent' : ''}`}
           >
             <BarChart3 size={16} />
-            <div className="hud-reading">{showHistogram ? 'Histogram On' : 'Histogram Off'}</div>
+            <div className="hud-reading">{showHistogram ? 'Histogram' : 'Graph'}</div>
           </button>
 
-          <div className="hud-element cursor-default">
+          <div className="hud-element slim cursor-default">
             <BatteryIcon
               size={16}
               className={batteryLevel < 20 ? 'text-red-500' : ''}
@@ -182,13 +184,30 @@ export default function CameraHUD() {
           </div>
 
           <button
+            onClick={openGalleria}
+            className="hud-element icon-only"
+            title="Home"
+          >
+            <Home size={16} />
+          </button>
+
+          <button
+            onClick={powerOff}
+            className="hud-element icon-only"
+            title="Power"
+          >
+            <Power size={16} />
+          </button>
+
+          <button
             onClick={() => {
               const modes = ['none', 'minimal', 'standard', 'full'];
               const currentIndex = modes.indexOf(hudVisibility);
               const nextIndex = (currentIndex + 1) % modes.length;
               setHudVisibility(modes[nextIndex]);
             }}
-            className="hud-element"
+            className="hud-element icon-only"
+            title="HUD Modes"
           >
             {hudVisibility === 'full' ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>
@@ -198,9 +217,9 @@ export default function CameraHUD() {
       <AnimatePresence>
         {showHistogram && (
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
+            exit={{ opacity: 0, y: 4 }}
             className="w-full mt-2"
           >
             <div className="inline-flex items-end gap-1 glass-strong px-4 py-2 rounded-xl border border-accent/50 shadow-lg">

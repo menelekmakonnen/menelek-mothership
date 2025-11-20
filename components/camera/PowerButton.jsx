@@ -1,17 +1,17 @@
 import { motion } from 'framer-motion';
-import { Power } from 'lucide-react';
+import { Power, Instagram, Youtube, Linkedin } from 'lucide-react';
 import { useCameraContext } from '@/context/CameraContext';
 
 export default function PowerButton() {
   const { powerOn } = useCameraContext();
 
   return (
-    <div className="fixed inset-0 z-modal bg-black flex items-center justify-center">
+    <div className="fixed inset-0 z-modal bg-gradient-to-b from-black via-[#0a0a12] to-black flex items-center justify-center">
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.94, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="text-center"
+        className="text-center space-y-8"
       >
         <motion.button
           onClick={powerOn}
@@ -35,14 +35,58 @@ export default function PowerButton() {
           </div>
         </motion.button>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="mt-8 text-secondary font-mono text-sm uppercase tracking-wider"
-        >
-          Press to Power On
-        </motion.p>
+        <div className="space-y-2">
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+            className="text-secondary font-mono text-sm uppercase tracking-wider"
+          >
+            Daily boot required – press to power on
+          </motion.p>
+          <div className="flex items-center justify-center gap-3 text-xs text-white/60">
+            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <span>Calibrating lenses</span>
+            <div className="w-2 h-2 rounded-full bg-accent/70 animate-pulse" />
+            <span>Prime media cache</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-4 pt-2">
+          <a
+            href="https://instagram.com/menelek.makonnen"
+            target="_blank"
+            rel="noreferrer"
+            className="glass-strong px-3 py-2 rounded-full border border-accent/40 hover:border-accent transition"
+          >
+            <div className="flex items-center gap-2 text-sm text-white/80">
+              <Instagram size={16} />
+              <span>Instagram</span>
+            </div>
+          </a>
+          <a
+            href="https://youtube.com/@menelekmakonnen"
+            target="_blank"
+            rel="noreferrer"
+            className="glass-strong px-3 py-2 rounded-full border border-accent/40 hover:border-accent transition"
+          >
+            <div className="flex items-center gap-2 text-sm text-white/80">
+              <Youtube size={16} />
+              <span>YouTube</span>
+            </div>
+          </a>
+          <a
+            href="https://linkedin.com/in/menelekmakonnen"
+            target="_blank"
+            rel="noreferrer"
+            className="glass-strong px-3 py-2 rounded-full border border-accent/40 hover:border-accent transition"
+          >
+            <div className="flex items-center gap-2 text-sm text-white/80">
+              <Linkedin size={16} />
+              <span>LinkedIn</span>
+            </div>
+          </a>
+        </div>
       </motion.div>
     </div>
   );

@@ -131,29 +131,39 @@ export const CameraProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check for daily boot
+  // Check for daily boot and auto-on after the first boot of the day
   useEffect(() => {
-    const lastBootDate = localStorage.getItem('lastBootDate');
     const today = new Date().toDateString();
+    const lastBootDate = localStorage.getItem('lastBootDate');
+    const lastPowerOnDate = localStorage.getItem('lastPowerOnDate');
 
-    if (lastBootDate !== today) {
-      setHasBooted(false);
-      localStorage.setItem('lastBootDate', today);
-    } else {
+    if (lastBootDate === today) {
       setHasBooted(true);
+    }
+
+    if (lastPowerOnDate === today) {
+      setPowerState('on');
+      setHasBooted(true);
+    } else {
+      setPowerState('off');
     }
   }, []);
 
   // Power Management Functions
   const powerOn = useCallback(() => {
+    const today = new Date().toDateString();
+
     if (!hasBooted) {
       setPowerState('booting');
       setTimeout(() => {
         setPowerState('on');
         setHasBooted(true);
-      }, 3000);
+        localStorage.setItem('lastBootDate', today);
+        localStorage.setItem('lastPowerOnDate', today);
+      }, 2400);
     } else {
       setPowerState('on');
+      localStorage.setItem('lastPowerOnDate', today);
     }
   }, [hasBooted]);
 
