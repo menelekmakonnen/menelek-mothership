@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, ArrowLeft, Grid, List } from 'lucide-react';
+import { Play, ArrowLeft, Grid, List, Zap, Heart, Camera as CameraIcon, Sparkles as SparklesIcon } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
+
+// Icons for Epic Edits categories
+const EPIC_EDITS_ICONS = {
+  'epic-edits': Zap, // High-energy VFX
+  'beauty-travel': Heart, // Beauty & aesthetic
+  'bts': CameraIcon, // Behind the scenes
+  'ai-learning': SparklesIcon, // AI education
+};
 
 export default function GalleryView() {
   const {
@@ -164,6 +172,7 @@ export default function GalleryView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-8">
             {categories.map((category, index) => {
               const gradient = categoryGradients[category.id] || 'from-gray-700 via-gray-800 to-gray-900';
+              const CategoryIcon = EPIC_EDITS_ICONS[category.id] || Play;
 
               return (
                 <motion.div
@@ -178,6 +187,17 @@ export default function GalleryView() {
                   <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
                     {/* Gradient Background */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-40 group-hover:opacity-60 transition-opacity duration-500`}></div>
+
+                    {/* Centered Icon */}
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <motion.div
+                        whileHover={{ scale: 1.2, rotate: 10 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                        className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:border-white/20 transition-all duration-300"
+                      >
+                        <CategoryIcon size={48} className="text-white md:w-16 md:h-16" strokeWidth={1.5} />
+                      </motion.div>
+                    </div>
 
                     {/* Info Overlay */}
                     <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/90 to-transparent z-10">

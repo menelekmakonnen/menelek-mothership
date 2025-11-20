@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Play } from 'lucide-react';
+import { ArrowLeft, Play, Instagram, Zap, Heart, Camera as CameraIcon, Sparkles as SparklesIcon } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
+
+// Gradients for Epic Edits categories
+const CATEGORY_GRADIENTS = {
+  'epic-edits': { gradient: 'from-red-600 via-orange-600 to-yellow-600', icon: Zap },
+  'beauty-travel': { gradient: 'from-pink-500 via-rose-500 to-purple-500', icon: Heart },
+  'bts': { gradient: 'from-blue-600 via-indigo-600 to-purple-600', icon: CameraIcon },
+  'ai-learning': { gradient: 'from-green-500 via-teal-500 to-cyan-500', icon: SparklesIcon },
+};
 
 export default function AlbumView() {
   const {
@@ -77,52 +85,75 @@ export default function AlbumView() {
         {/* Items Grid */}
         {items.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8">
-            {items.map((item, index) => (
-              <motion.div
-                key={item.id || index}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.03 }}
-                whileHover={{ y: -12, scale: 1.02 }}
-                onClick={() => enterSingle(item, index)}
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
-                  {/* Media */}
-                  {item.type === 'video' ? (
-                    <video
-                      src={item.url}
-                      className="w-full h-full object-cover"
-                      muted
-                      loop
-                      onMouseEnter={(e) => e.target.play()}
-                      onMouseLeave={(e) => e.target.pause()}
-                    />
-                  ) : (
-                    <img
-                      src={item.url || item.thumbnailUrl || item.coverUrl}
-                      alt={item.name || item.title || `Item ${index + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      loading="lazy"
-                    />
-                  )}
+            {items.map((item, index) => {
+              // Get gradient and icon for Instagram items based on category
+              const categoryStyle = item.category ? CATEGORY_GRADIENTS[item.category] : null;
+              const isInstagram = item.type === 'instagram' || item.url?.includes('instagram.com');
 
-                  {/* Item Number Badge */}
-                  <div className="absolute top-3 right-3 px-2.5 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-xs font-mono text-white border border-white/10">
-                    {index + 1}
-                  </div>
+              return (
+                <motion.div
+                  key={item.id || index}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.03 }}
+                  whileHover={{ y: -12, scale: 1.02 }}
+                  onClick={() => enterSingle(item, index)}
+                  className="group cursor-pointer"
+                >
+                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
+                    {/* Instagram Items - Gradient Background with Icon */}
+                    {isInstagram ? (
+                      <>
+                        {/* Gradient Background */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${categoryStyle?.gradient || 'from-purple-600 via-pink-600 to-red-600'} opacity-60 group-hover:opacity-80 transition-opacity duration-500`}></div>
 
-                  {/* Hover Play Icon for Videos */}
-                  {item.type === 'video' && (
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <div className="w-20 h-20 rounded-full bg-purple-600/80 backdrop-blur-xl border-2 border-white/30 flex items-center justify-center">
-                        <Play size={32} className="text-white ml-1" fill="white" />
+                        {/* Centered Instagram Icon */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <motion.div
+                            whileHover={{ scale: 1.15, rotate: 10 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                            className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center"
+                          >
+                            <Instagram size={40} className="text-white" strokeWidth={1.5} />
+                          </motion.div>
+                        </div>
+                      </>
+                    ) : (
+                      /* Regular Media */
+                      item.type === 'video' ? (
+                        <video
+                          src={item.url}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          onMouseEnter={(e) => e.target.play()}
+                          onMouseLeave={(e) => e.target.pause()}
+                        />
+                      ) : (
+                        <img
+                          src={item.url || item.thumbnailUrl || item.coverUrl}
+                          alt={item.name || item.title || `Item ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          loading="lazy"
+                        />
+                      )
+                    )}
+
+                    {/* Item Number Badge */}
+                    <div className="absolute top-3 right-3 px-2.5 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-xs font-mono text-white border border-white/10">
+                      {index + 1}
+                    </div>
+
+                    {/* Hover Play Icon for All Items */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-purple-600/80 backdrop-blur-xl border-2 border-white/30 flex items-center justify-center">
+                        <Play size={28} className="text-white ml-1" fill="white" />
                       </div>
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            ))}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
