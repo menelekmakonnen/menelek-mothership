@@ -68,9 +68,10 @@ export default function SingleView() {
         {/* Close Button */}
         <button
           onClick={goBack}
-          className="absolute top-6 right-6 z-50 w-12 h-12 rounded-full glass-strong flex items-center justify-center hover:border-accent transition-colors"
+          className="absolute top-6 right-6 z-50 px-4 py-3 rounded-full glass-strong flex items-center gap-2 hover:border-accent transition-colors"
         >
-          <X size={24} className="text-white" />
+          <X size={20} className="text-white" />
+          <span className="text-sm font-medium">Close</span>
         </button>
 
         {/* Navigation Arrows */}
@@ -175,6 +176,15 @@ export default function SingleView() {
           <span className="text-sm font-medium">
             {isSlideshow ? 'Stop' : 'Slideshow'}
           </span>
+        </button>
+
+        {/* Back to Album */}
+        <button
+          onClick={goBack}
+          className="absolute bottom-6 right-6 px-4 py-2 glass-strong rounded-full flex items-center gap-2 hover:border-accent transition-colors"
+        >
+          <span className="text-sm font-medium">Back to album</span>
+          <ChevronRight size={16} />
         </button>
       </div>
 

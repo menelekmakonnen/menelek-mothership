@@ -72,15 +72,10 @@ export default function GalleriaView() {
         <div className="flex flex-col gap-3">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 w-fit backdrop-blur">
             <Sparkle size={14} className="text-accent" />
-            <span className="text-xs uppercase tracking-[0.3em] text-white/70">Menelek Makonnen — The Galleria</span>
+            <span className="text-xs uppercase tracking-[0.3em] text-white/70">Menelek Makonnen</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white">Full-frame access to every world you build.</h1>
-          <p className="text-secondary max-w-3xl">The home page <span className="text-white font-semibold">is</span> the galleria. Every vertical cover is a live portal that pulls fresh imagery on load, keeping the shell cinematic while respecting the 9:16 framing.</p>
-          <div className="flex flex-wrap gap-3 text-xs text-white/70 uppercase tracking-[0.2em]">
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10">Left/Right arrows cycle categories</span>
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10">Tap any cover to enter its gallery</span>
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10">HUD always floats above media</span>
-          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white">Cinematic gateways into every discipline.</h1>
+          <p className="text-secondary max-w-3xl">Choose a vertical cover to drop straight into photography, AI albums, films, edits, or the Loremaker universe. Each tile pulls real art and opens its dedicated gallery flow immediately.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
@@ -113,7 +108,7 @@ export default function GalleriaView() {
                 <div className="absolute inset-0 p-4 flex flex-col justify-between">
                   <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-white/70">
                     <span className="flex items-center gap-2">
-                      <Sparkle size={14} /> {category.type === 'gallery' ? 'Multi-Level' : 'Direct'}
+                      <Sparkle size={14} /> {category.type === 'gallery' ? 'Gallery' : 'Reel Deck'}
                     </span>
                     <span>{category.countLabel}</span>
                   </div>
@@ -130,7 +125,7 @@ export default function GalleriaView() {
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-white/80">
-                      <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur">9:16 ready</span>
+                      <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur">Immersive view</span>
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/20 text-accent border border-accent/50">
                         Enter
                         <ArrowRight size={14} />
@@ -141,30 +136,6 @@ export default function GalleriaView() {
               </motion.button>
             );
           })}
-        </div>
-
-        <div className="glass border border-glass-border/80 rounded-2xl p-6 flex flex-wrap gap-4 items-center justify-between text-sm text-secondary">
-          <div className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center">
-              <Sparkle size={18} className="text-accent" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-white/60">Always Live</p>
-              <p className="text-base text-white">Fresh cover pulls keep the home grid evolving with your latest uploads.</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {MEDIA_CATEGORIES.map((category) => (
-              <span
-                key={`chip-${category.id}`}
-                className={`px-3 py-2 rounded-full border text-xs uppercase tracking-[0.18em] ${
-                  category.id === activeCategoryId ? 'border-accent text-accent bg-accent/15' : 'border-white/10 text-white/70 bg-white/5'
-                }`}
-              >
-                {category.name}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     </div>
