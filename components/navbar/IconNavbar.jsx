@@ -6,21 +6,18 @@ import {
   Film,
   Sparkles,
   Palette,
-  BookOpen,
-  Mail,
-  User,
+  Video,
+  Home,
 } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
 
 const NAV_ITEMS = [
-  { id: 'galleria', icon: Grid3x3, label: 'Galleria', action: 'openGalleria' },
-  { id: 'photography', icon: Camera, label: 'Photography', action: 'openGalleria' },
-  { id: 'films', icon: Film, label: 'Films', action: 'openGalleria' },
-  { id: 'ai', icon: Sparkles, label: 'AI Albums', action: 'openGalleria' },
-  { id: 'loremaker', icon: Palette, label: 'Loremaker', action: 'external' },
-  { id: 'about', icon: User, label: 'About', action: 'scroll' },
-  { id: 'blog', icon: BookOpen, label: 'Blog', action: 'scroll' },
-  { id: 'contact', icon: Mail, label: 'Contact', action: 'scroll' },
+  { id: 'home', icon: Home, label: 'Home', categoryId: null },
+  { id: 'films', icon: Film, label: 'Films', categoryId: 'films' },
+  { id: 'photography', icon: Camera, label: 'Photography', categoryId: 'photography' },
+  { id: 'ai-albums', icon: Sparkles, label: 'AI Albums', categoryId: 'ai-albums' },
+  { id: 'video-edits', icon: Video, label: 'Video Edits', categoryId: 'video-edits' },
+  { id: 'loremaker', icon: Palette, label: 'Loremaker', categoryId: 'loremaker' },
 ];
 
 export default function IconNavbar() {
@@ -28,20 +25,33 @@ export default function IconNavbar() {
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
   const dragRef = useRef(null);
-  const { openGalleria } = useGalleriaContext();
+  const { enterGallery, goBack, viewLevel } = useGalleriaContext();
 
   const handleDoubleClick = () => {
     setPosition({ x: 0, y: 0 });
   };
 
   const handleItemClick = (item) => {
-    if (item.action === 'openGalleria') {
-      openGalleria();
-    } else if (item.action === 'external' && item.id === 'loremaker') {
-      window.open('https://loremaker.cloud', '_blank');
-    } else if (item.action === 'scroll') {
-      // Scroll to section (placeholder for future implementation)
-      console.log(`Scroll to ${item.id}`);
+    // Home button - reset to GalleriaView (home page)
+    if (item.id === 'home') {
+      // Navigate back to home (which is GalleriaView)
+      // Since we're on GalleriaView by default, this is essentially a no-op
+      // But if we're deep in navigation, we should go back
+      if (viewLevel !== 'galleria') {
+        // Keep going back until we're at galleria level
+        goBack();
+        setTimeout(() => {
+          if (viewLevel !== 'galleria') {
+            goBack();
+          }
+        }, 100);
+      }
+      return;
+    }
+
+    // Category navigation - directly enter the gallery for that category
+    if (item.categoryId) {
+      enterGallery({ id: item.categoryId });
     }
   };
 
@@ -89,7 +99,7 @@ export default function IconNavbar() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 glass-strong rounded-lg whitespace-nowrap"
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 glass-strong rounded-lg whitespace-nowrap z-50"
                   >
                     <p className="text-xs font-medium text-hud-text">{item.label}</p>
                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-hud-bg rotate-45 border-l border-t border-hud-border" />
