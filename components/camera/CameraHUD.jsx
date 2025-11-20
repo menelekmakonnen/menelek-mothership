@@ -10,7 +10,8 @@ import {
   BatteryMedium,
   BatteryFull,
   Eye,
-  EyeOff
+  EyeOff,
+  Power
 } from 'lucide-react';
 import { useCameraContext } from '@/context/CameraContext';
 
@@ -25,6 +26,8 @@ export default function CameraHUD() {
     currentLens,
     batteryLevel,
     cameraMode,
+    powerState,
+    setPowerState,
   } = useCameraContext();
 
   if (hudVisibility === 'none') return null;
@@ -105,6 +108,18 @@ export default function CameraHUD() {
           />
           <div className="hud-reading">{batteryLevel}%</div>
         </div>
+
+        {/* Power Button */}
+        <button
+          onClick={() => setPowerState(powerState === 'on' ? 'off' : 'on')}
+          className="hud-element"
+          title={powerState === 'on' ? 'Power Off' : 'Power On'}
+        >
+          <Power
+            size={16}
+            className={powerState === 'on' ? 'text-green-400' : 'text-red-400'}
+          />
+        </button>
 
         {/* HUD Visibility Toggle */}
         <button

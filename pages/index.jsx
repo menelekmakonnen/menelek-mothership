@@ -16,39 +16,37 @@ export default function Home() {
   useMediaData();
 
   return (
-    <>
-      {/* Boot Sequence */}
-      {powerState === 'booting' && <BootSequence />}
+    <div className="fixed inset-0 overflow-hidden">
+      {powerState === 'on' ? (
+        <>
+          {/* Icon Navbar */}
+          <IconNavbar />
 
-      {/* Power Button */}
-      {powerState === 'off' && <PowerButton />}
+          {/* Galleria Router (handles all view navigation) */}
+          <div className="h-full w-full camera-viewport">
+            <GalleriaRouter />
+          </div>
 
-      {/* Main Content - Galleria IS the home page */}
-      <AnimatePresence mode="wait">
-        {powerState === 'on' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="fixed inset-0 overflow-hidden"
-          >
-            {/* Icon Navbar */}
-            <IconNavbar />
+          {/* Interactive Camera Effects */}
+          <InteractiveCameraEffects />
 
-            {/* Galleria Router (handles all view navigation) */}
-            <div className="h-full w-full camera-viewport">
-              <GalleriaRouter />
+          {/* Camera HUD */}
+          <CameraHUD />
+        </>
+      ) : (
+        <>
+          {/* Power Off Screen */}
+          <div className="fixed inset-0 bg-black flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-6xl mb-6 opacity-30">⚫</div>
+              <p className="text-secondary text-sm font-mono">Camera is off</p>
+              <p className="text-tertiary text-xs font-mono mt-2">Click power button in HUD to turn on</p>
             </div>
-
-            {/* Interactive Camera Effects */}
-            <InteractiveCameraEffects />
-
-            {/* Camera HUD */}
-            <CameraHUD />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          </div>
+          {/* Show HUD even when off so user can turn it back on */}
+          <CameraHUD />
+        </>
+      )}
+    </div>
   );
 }
