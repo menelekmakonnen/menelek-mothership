@@ -39,6 +39,16 @@ export default function GalleryView() {
   }, [currentCategory, mediaData, sortMode, applySorting]);
 
   const handleItemClick = (item) => {
+    if (item.externalUrl) {
+      window.open(item.externalUrl, '_blank');
+      return;
+    }
+
+    if (currentCategory?.id === 'loremaker' && item.url) {
+      window.open(item.url, '_blank');
+      return;
+    }
+
     if (currentCategory.type === 'gallery') {
       // Has albums - enter album view
       enterAlbum(item);
@@ -126,6 +136,9 @@ export default function GalleryView() {
                   <h3 className="font-bold text-lg mb-1">{item.name || item.title}</h3>
                   {item.itemCount && (
                     <p className="text-sm opacity-75">{item.itemCount} items</p>
+                  )}
+                  {item.externalUrl && (
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-accent mt-1">Opens Google Drive</p>
                   )}
                 </div>
               </motion.div>

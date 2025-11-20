@@ -25,7 +25,9 @@ export default function InteractiveCameraEffects() {
 
     // Lens Zoom Effect
     const zoomFactor = currentLens.zoom || 1;
+    const safeZoom = Math.min(1.18, 1 + (zoomFactor - 1) * 0.35);
     root.style.setProperty('--lens-zoom', zoomFactor);
+    root.style.setProperty('--lens-zoom-safe', safeZoom);
 
     // Aperture Blur (affects background elements)
     const blurAmount = Math.max(0, (1 / aperture) * 5);
