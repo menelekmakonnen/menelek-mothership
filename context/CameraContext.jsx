@@ -49,9 +49,9 @@ const LENSES = [
 ];
 
 export const CameraProvider = ({ children }) => {
-  // Power & Boot State
-  const [powerState, setPowerState] = useState('off'); // 'off' | 'booting' | 'on' | 'standby'
-  const [hasBooted, setHasBooted] = useState(false);
+  // Power & Boot State - DEFAULT TO ON (site loads directly into Galleria)
+  const [powerState, setPowerState] = useState('on'); // 'off' | 'booting' | 'on' | 'standby'
+  const [hasBooted, setHasBooted] = useState(true);
   const [batteryLevel, setBatteryLevel] = useState(100);
 
   // Camera Settings
@@ -131,32 +131,7 @@ export const CameraProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check for daily boot and auto-power on
-  useEffect(() => {
-    const lastBootDate = localStorage.getItem('lastBootDate');
-    const today = new Date().toDateString();
-    const autoPowerOn = localStorage.getItem('autoPowerOn');
-
-    if (lastBootDate !== today) {
-      setHasBooted(false);
-      localStorage.setItem('lastBootDate', today);
-    } else {
-      setHasBooted(true);
-      // Auto power on if user was previously powered on
-      if (autoPowerOn === 'true') {
-        setPowerState('on');
-      }
-    }
-  }, []);
-
-  // Save power state to localStorage
-  useEffect(() => {
-    if (powerState === 'on') {
-      localStorage.setItem('autoPowerOn', 'true');
-    } else if (powerState === 'off') {
-      localStorage.setItem('autoPowerOn', 'false');
-    }
-  }, [powerState]);
+  // Site always starts powered on - no boot screen needed
 
   // Power Management Functions
   const powerOn = useCallback(() => {
