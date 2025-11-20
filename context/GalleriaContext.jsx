@@ -43,7 +43,7 @@ export const MEDIA_CATEGORIES = [
 
 export const GalleriaProvider = ({ children }) => {
   // Galleria State
-  const [isGalleriaOpen, setIsGalleriaOpen] = useState(false);
+  const [isGalleriaOpen, setIsGalleriaOpen] = useState(true);
 
   // View Level: 'galleria' | 'gallery' | 'album' | 'single'
   const [viewLevel, setViewLevel] = useState('galleria');
@@ -91,14 +91,28 @@ export const GalleriaProvider = ({ children }) => {
     setIsZoomed(false);
   }, []);
 
+  // Default to first category when entering the galleria shell
+  useEffect(() => {
+    if (isGalleriaOpen && viewLevel === 'galleria' && !currentCategory) {
+      setCurrentCategory(MEDIA_CATEGORIES[0]);
+    }
+  }, [isGalleriaOpen, viewLevel, currentCategory]);
+
   // Navigation Functions
   const enterGallery = useCallback((category) => {
+    setIsGalleriaOpen(true);
     setCurrentCategory(category);
     setViewLevel('gallery');
     setCurrentGallery(null);
     setCurrentAlbum(null);
     setCurrentItem(null);
   }, []);
+
+  const openCategoryById = useCallback((categoryId) => {
+    const nextCategory = MEDIA_CATEGORIES.find(cat => cat.id === categoryId);
+    if (!nextCategory) return;
+    enterGallery(nextCategory);
+  }, [enterGallery]);
 
   const enterAlbum = useCallback((album) => {
     setCurrentAlbum(album);
@@ -138,12 +152,12 @@ export const GalleriaProvider = ({ children }) => {
       // Navigate to previous category
       const currentIndex = MEDIA_CATEGORIES.findIndex(cat => cat.id === currentCategory?.id);
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : MEDIA_CATEGORIES.length - 1;
-      setCurrentCategory(MEDIA_CATEGORIES[prevIndex]);
+      enterGallery(MEDIA_CATEGORIES[prevIndex]);
     } else if (viewLevel === 'gallery') {
       // Navigate to previous gallery (cross-category)
       const currentCatIndex = MEDIA_CATEGORIES.findIndex(cat => cat.id === currentCategory?.id);
       const prevCatIndex = currentCatIndex > 0 ? currentCatIndex - 1 : MEDIA_CATEGORIES.length - 1;
-      setCurrentCategory(MEDIA_CATEGORIES[prevCatIndex]);
+      enterGallery(MEDIA_CATEGORIES[prevCatIndex]);
     } else if (viewLevel === 'album') {
       // Navigate to previous album (within + cross gallery)
       // Implementation depends on album structure
@@ -162,12 +176,12 @@ export const GalleriaProvider = ({ children }) => {
       // Navigate to next category
       const currentIndex = MEDIA_CATEGORIES.findIndex(cat => cat.id === currentCategory?.id);
       const nextIndex = (currentIndex + 1) % MEDIA_CATEGORIES.length;
-      setCurrentCategory(MEDIA_CATEGORIES[nextIndex]);
+      enterGallery(MEDIA_CATEGORIES[nextIndex]);
     } else if (viewLevel === 'gallery') {
       // Navigate to next gallery (cross-category)
       const currentCatIndex = MEDIA_CATEGORIES.findIndex(cat => cat.id === currentCategory?.id);
       const nextCatIndex = (currentCatIndex + 1) % MEDIA_CATEGORIES.length;
-      setCurrentCategory(MEDIA_CATEGORIES[nextCatIndex]);
+      enterGallery(MEDIA_CATEGORIES[nextCatIndex]);
     } else if (viewLevel === 'album') {
       // Navigate to next album (within + cross gallery)
       // Implementation depends on album structure
@@ -296,6 +310,7 @@ export const GalleriaProvider = ({ children }) => {
     resetZoom,
     setMediaData,
     applySorting,
+    openCategoryById,
   };
 
   return <GalleriaContext.Provider value={value}>{children}</GalleriaContext.Provider>;

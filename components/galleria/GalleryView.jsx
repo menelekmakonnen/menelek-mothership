@@ -39,6 +39,11 @@ export default function GalleryView() {
   }, [currentCategory, mediaData, sortMode, applySorting]);
 
   const handleItemClick = (item) => {
+    if (currentCategory?.id === 'loremaker' && item.url) {
+      window.open(item.url, '_blank');
+      return;
+    }
+
     if (currentCategory.type === 'gallery') {
       // Has albums - enter album view
       enterAlbum(item);

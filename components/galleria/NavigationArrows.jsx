@@ -3,10 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
 
 export default function NavigationArrows() {
-  const { viewLevel, navigateLeft, navigateRight } = useGalleriaContext();
-
-  // Don't show arrows at galleria level (main category view)
-  if (viewLevel === 'galleria') return null;
+  const { navigateLeft, navigateRight } = useGalleriaContext();
 
   return (
     <>
