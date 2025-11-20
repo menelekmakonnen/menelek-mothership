@@ -73,6 +73,17 @@ export const GalleriaProvider = ({ children }) => {
     loremaker: { characters: [] },
   });
 
+  // Debug: Log when mediaData changes
+  useEffect(() => {
+    console.log('🔔 GalleriaContext - mediaData updated:', {
+      photographyCount: mediaData.photography?.galleries?.length || 0,
+      aiAlbumsCount: mediaData['ai-albums']?.galleries?.length || 0,
+      filmsCount: mediaData.films?.items?.length || 0,
+      videoEditsCount: mediaData['video-edits']?.categories?.length || 0,
+      loremakeCount: mediaData.loremaker?.characters?.length || 0,
+    });
+  }, [mediaData]);
+
   // Open/Close Galleria
   const openGalleria = useCallback(() => {
     setIsGalleriaOpen(true);
