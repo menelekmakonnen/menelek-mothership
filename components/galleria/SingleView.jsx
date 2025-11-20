@@ -12,6 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
+import ImageSafe from '@/components/common/ImageSafe';
 
 export default function SingleView() {
   const {
@@ -160,8 +161,8 @@ export default function SingleView() {
         onMouseLeave={() => setIsHoveringImage(false)}
         onWheel={(e) => handleWheel(e, 'image')}
       >
-        <img
-          src={currentItem?.url || currentItem?.coverUrl}
+        <ImageSafe
+          variants={currentItem?.imageVariants || [currentItem?.url, currentItem?.coverUrl].filter(Boolean)}
           alt={currentItem?.name || currentItem?.title || currentItem?.character}
           className="max-w-full max-h-full"
           style={{
@@ -170,6 +171,7 @@ export default function SingleView() {
             transition: 'transform 0.2s ease-out',
             cursor: isHoveringImage ? (isZoomed ? 'zoom-out' : 'zoom-in') : 'default',
           }}
+          fallbackText={currentItem?.name || currentItem?.title || currentItem?.character}
         />
       </motion.div>
     );

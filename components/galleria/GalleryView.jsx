@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, ArrowLeft, Grid, List, Zap, Heart, Camera as CameraIcon, Sparkles as SparklesIcon } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
+import ImageSafe from '@/components/common/ImageSafe';
 
 // Icons for Epic Edits categories
 const EPIC_EDITS_ICONS = {
@@ -325,21 +326,12 @@ export default function GalleryView() {
                   className="group cursor-pointer"
                 >
                   <div className="relative aspect-[3/4] rounded-xl md:rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
-                    {character.coverUrl ? (
-                      <img
-                        src={character.coverUrl}
-                        alt={character.character}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        onError={(e) => {
-                          console.error('Failed to load character image:', character.coverUrl);
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900 to-pink-900">
-                        <p className="text-white/50 text-sm">No Image</p>
-                      </div>
-                    )}
+                    <ImageSafe
+                      variants={character.imageVariants || [character.coverUrl]}
+                      alt={character.character}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      fallbackText={character.character}
+                    />
 
                     <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 lg:p-5 bg-gradient-to-t from-black via-black/90 to-transparent">
                       <h3 className="text-sm md:text-base lg:text-lg font-bold text-white mb-1 leading-tight line-clamp-2">{character.character}</h3>

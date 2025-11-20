@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Play, Instagram, Zap, Heart, Camera as CameraIcon, Sparkles as SparklesIcon } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
+import ImageSafe from '@/components/common/ImageSafe';
 
 // Gradients for Epic Edits categories
 const CATEGORY_GRADIENTS = {
@@ -130,11 +131,11 @@ export default function AlbumView() {
                           onMouseLeave={(e) => e.target.pause()}
                         />
                       ) : (
-                        <img
-                          src={item.url || item.thumbnailUrl || item.coverUrl}
+                        <ImageSafe
+                          variants={item.imageVariants || [item.url, item.thumbnailUrl, item.coverUrl].filter(Boolean)}
                           alt={item.name || item.title || `Item ${index + 1}`}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                          loading="lazy"
+                          fallbackText={item.name || item.title}
                         />
                       )
                     )}
