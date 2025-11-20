@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Settings,
   Aperture,
@@ -9,6 +8,7 @@ import {
   BatteryLow,
   BatteryMedium,
   BatteryFull,
+  Power,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -25,7 +25,12 @@ export default function CameraHUD() {
     currentLens,
     batteryLevel,
     cameraMode,
+    powerState,
+    powerOn,
+    powerOff,
   } = useCameraContext();
+
+  const isPowered = powerState === 'on' || powerState === 'standby';
 
   if (hudVisibility === 'none') return null;
 
@@ -97,6 +102,23 @@ export default function CameraHUD() {
 
       {/* Right Section */}
       <div className="flex items-center gap-4">
+        {/* Power Toggle */}
+        <button
+          onClick={() => (isPowered ? powerOff() : powerOn())}
+          className={`hud-element ${isPowered ? 'border border-accent/50' : ''}`}
+        >
+          <Power size={16} className={isPowered ? 'text-accent' : 'text-hud-text'} />
+          <div>
+            <div className="hud-reading">{isPowered ? 'ON' : 'OFF'}</div>
+            <div className="hud-label text-xs">Power</div>
+          </div>
+          <span
+            className={`ml-1 inline-flex h-2 w-2 rounded-full ${
+              isPowered ? 'bg-accent shadow-[0_0_8px_var(--accent-glow)]' : 'bg-hud-text/40'
+            }`}
+          />
+        </button>
+
         {/* Battery */}
         <div className="hud-element cursor-default">
           <BatteryIcon

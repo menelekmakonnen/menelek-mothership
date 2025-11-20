@@ -41,9 +41,11 @@ export const MEDIA_CATEGORIES = [
   },
 ];
 
+const getCategoryById = (id) => MEDIA_CATEGORIES.find(cat => cat.id === id) || null;
+
 export const GalleriaProvider = ({ children }) => {
   // Galleria State
-  const [isGalleriaOpen, setIsGalleriaOpen] = useState(false);
+  const [isGalleriaOpen, setIsGalleriaOpen] = useState(true);
 
   // View Level: 'galleria' | 'gallery' | 'album' | 'single'
   const [viewLevel, setViewLevel] = useState('galleria');
@@ -85,13 +87,18 @@ export const GalleriaProvider = ({ children }) => {
   }, [mediaData]);
 
   // Open/Close Galleria
-  const openGalleria = useCallback(() => {
+  const openGalleria = useCallback((categoryId = null) => {
+    const category = categoryId ? getCategoryById(categoryId) : null;
+
     setIsGalleriaOpen(true);
-    setViewLevel('galleria');
-    setCurrentCategory(null);
+    setViewLevel(category ? 'gallery' : 'galleria');
+    setCurrentCategory(category);
     setCurrentGallery(null);
     setCurrentAlbum(null);
     setCurrentItem(null);
+    setIsSlideshow(false);
+    setZoomLevel(1);
+    setIsZoomed(false);
   }, []);
 
   const closeGalleria = useCallback(() => {

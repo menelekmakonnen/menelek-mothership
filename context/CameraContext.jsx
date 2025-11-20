@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 const CameraContext = createContext();
 
@@ -49,10 +49,11 @@ const LENSES = [
 ];
 
 export const CameraProvider = ({ children }) => {
-  // Power & Boot State - DEFAULT TO ON (site loads directly into Galleria)
-  const [powerState, setPowerState] = useState('on'); // 'off' | 'booting' | 'on' | 'standby'
-  const [hasBooted, setHasBooted] = useState(true);
+  // Power & Boot State - auto-boot straight into the galleria experience
+  const [powerState, setPowerState] = useState('booting'); // 'off' | 'booting' | 'on' | 'standby'
+  const [hasBooted, setHasBooted] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(100);
+  const initialBootTriggered = useRef(false);
 
   // Camera Settings
   const [iso, setIso] = useState(400);
@@ -131,8 +132,6 @@ export const CameraProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Site always starts powered on - no boot screen needed
-
   // Power Management Functions
   const powerOn = useCallback(() => {
     setPowerState('booting');
@@ -193,6 +192,14 @@ export const CameraProvider = ({ children }) => {
     };
     return filters[whiteBalance] || 'none';
   }, [whiteBalance]);
+
+  // Auto boot on first mount so the galleria shows immediately
+  useEffect(() => {
+    if (!initialBootTriggered.current) {
+      initialBootTriggered.current = true;
+      powerOn();
+    }
+  }, [powerOn]);
 
   const value = {
     // Power & Boot

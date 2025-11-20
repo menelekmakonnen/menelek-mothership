@@ -43,7 +43,7 @@ export default function GalleriaRouter() {
             transition={{ duration: 0.4 }}
             className="h-full w-full"
           >
-            <GalleriaView isHomePage />
+            <GalleriaView />
           </motion.div>
         )}
 
