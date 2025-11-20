@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Sparkles, Film, Video, Palette, ArrowRight } from 'lucide-react';
+import { Camera, Sparkles, Film, Video, Palette, ArrowRight, Play } from 'lucide-react';
 import { useGalleriaContext, MEDIA_CATEGORIES } from '@/context/GalleriaContext';
 
 const CATEGORY_ICONS = {
@@ -10,29 +10,42 @@ const CATEGORY_ICONS = {
   loremaker: Palette,
 };
 
-// Get cover images from actual media data
+// Use actual working cover images
 const getCoverImage = (categoryId, mediaData) => {
   switch(categoryId) {
     case 'films':
-      return mediaData?.films?.items?.[0]?.coverUrl || 'https://img.youtube.com/vi/A8cGpNe2JAE/maxresdefault.jpg';
+      // Use the first film's YouTube thumbnail
+      return 'https://img.youtube.com/vi/A8cGpNe2JAE/maxresdefault.jpg';
     case 'video-edits':
-      return mediaData?.['video-edits']?.categories?.[0]?.coverUrl || 'https://via.placeholder.com/400x600/8B5CF6/ffffff?text=Epic+Edits';
+      // Use placeholder with gradient
+      return null; // We'll use gradient instead
     case 'photography':
-      return 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=600&fit=crop';
+      // Use placeholder with gradient
+      return null;
     case 'ai-albums':
-      return 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=600&fit=crop';
+      // Use placeholder with gradient
+      return null;
     case 'loremaker':
-      return 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400&h=600&fit=crop';
+      // Use placeholder with gradient
+      return null;
     default:
-      return 'https://via.placeholder.com/400x600/1a1a1a/ffffff';
+      return null;
   }
 };
 
+const CATEGORY_GRADIENTS = {
+  photography: 'from-purple-600 via-pink-600 to-rose-600',
+  'ai-albums': 'from-cyan-500 via-blue-600 to-purple-600',
+  films: 'from-orange-500 via-red-600 to-pink-600',
+  'video-edits': 'from-green-500 via-emerald-600 to-teal-600',
+  loremaker: 'from-violet-500 via-fuchsia-600 to-pink-600',
+};
+
 const CATEGORY_DESCRIPTIONS = {
-  photography: 'Professional photography and visual storytelling',
+  photography: 'Beauty shoots, events, and professional photography',
   'ai-albums': 'AI-generated art and creative experiments',
-  films: 'Films, music videos, and cinematic work',
-  'video-edits': 'High-energy edits and visual effects',
+  films: 'Films, documentaries, and music videos',
+  'video-edits': 'Epic edits, BTS, beauty reels, and AI tutorials',
   loremaker: 'Characters and worldbuilding from the Loremaker Universe',
 };
 
@@ -40,114 +53,105 @@ export default function GalleriaView({ isHomePage }) {
   const { enterGallery, mediaData } = useGalleriaContext();
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-gray-950 via-black to-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-32">
+    <div className="min-h-screen w-full bg-black">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-16 pb-40">
         {/* Hero Header */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="text-center mb-16 pt-12"
+          className="text-center mb-20 pt-16"
         >
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight">
-            <span
-              className="bg-gradient-to-r from-white via-gray-100 to-purple-400 bg-clip-text text-transparent"
-            >
+          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black mb-8 tracking-tighter">
+            <span className="bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent drop-shadow-2xl">
               Menelek Makonnen
             </span>
           </h1>
-          <p className="text-gray-400 text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
+          <p className="text-gray-400 text-lg sm:text-xl md:text-2xl max-w-4xl mx-auto font-light tracking-wide">
             Filmmaker • Creative Director • AI Educator • Photographer • Worldbuilder
           </p>
-          <div className="mt-8 h-px w-32 mx-auto bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
         </motion.div>
 
         {/* Category Grid */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 text-center">
-            Explore My Work
-          </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          {MEDIA_CATEGORIES.map((category, index) => {
+            const Icon = CATEGORY_ICONS[category.id];
+            const coverImage = getCoverImage(category.id, mediaData);
+            const gradient = CATEGORY_GRADIENTS[category.id];
+            const description = CATEGORY_DESCRIPTIONS[category.id];
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {MEDIA_CATEGORIES.map((category, index) => {
-              const Icon = CATEGORY_ICONS[category.id];
-              const coverImage = getCoverImage(category.id, mediaData);
-              const description = CATEGORY_DESCRIPTIONS[category.id];
-
-              return (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.6,
-                    delay: 0.4 + index * 0.1,
-                    ease: 'easeOut'
-                  }}
-                  whileHover={{ y: -12, scale: 1.03 }}
-                  onClick={() => enterGallery(category)}
-                  className="group cursor-pointer"
-                >
-                  {/* Card Container */}
-                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 shadow-2xl group-hover:shadow-purple-500/20 transition-all duration-500">
-                    {/* Cover Image */}
+            return (
+              <motion.div
+                key={category.id}
+                initial={{ opacity: 0, y: 60 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.7,
+                  delay: 0.2 + index * 0.15,
+                  ease: [0.19, 1, 0.22, 1]
+                }}
+                whileHover={{ y: -16, scale: 1.02 }}
+                onClick={() => enterGallery(category)}
+                className="group cursor-pointer"
+              >
+                {/* Card */}
+                <div className="relative aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
+                  {/* Background Layer */}
+                  {coverImage ? (
                     <div className="absolute inset-0">
                       <img
                         src={coverImage}
                         alt={category.name}
-                        className="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-110 transition-all duration-700"
+                        className="w-full h-full object-cover opacity-40 group-hover:opacity-60 group-hover:scale-110 transition-all duration-1000"
                       />
-                      {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-90"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/40"></div>
                     </div>
+                  ) : (
+                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20 group-hover:opacity-30 transition-opacity duration-500`}></div>
+                  )}
 
-                    {/* Icon Badge */}
-                    <div className="absolute top-4 right-4 z-10">
-                      <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center group-hover:bg-white/20 transition-all duration-300">
-                        <Icon size={24} className="text-white" />
-                      </div>
-                    </div>
+                  {/* Icon - Large and Centered */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <motion.div
+                      whileHover={{ scale: 1.15, rotate: 5 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                      className="w-32 h-32 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:border-white/20 transition-all duration-300"
+                    >
+                      <Icon size={64} className="text-white" strokeWidth={1.5} />
+                    </motion.div>
+                  </div>
 
-                    {/* Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-300 transition-colors duration-300">
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-gray-300 mb-4 line-clamp-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  {/* Content */}
+                  <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
+                    <div className="mb-4 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                      <p className="text-gray-300 text-sm leading-relaxed">
                         {description}
                       </p>
-
-                      {/* View Button */}
-                      <div className="flex items-center text-sm text-purple-400 font-medium opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        <span>Explore</span>
-                        <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-                      </div>
                     </div>
 
-                    {/* Hover Glow Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-purple-600/0 via-purple-600/0 to-purple-600/0 group-hover:from-purple-600/20 group-hover:via-purple-600/10 transition-all duration-500 pointer-events-none"></div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
+                    <h3 className="text-3xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-purple-400 transition-all duration-300">
+                      {category.name}
+                    </h3>
 
-        {/* Bottom Tagline */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
-          className="text-center mt-20"
-        >
-          <p className="text-gray-500 text-sm">
-            Built with passion. Powered by creativity.
-          </p>
-        </motion.div>
+                    {/* CTA */}
+                    <div className="flex items-center text-purple-400 font-medium opacity-0 group-hover:opacity-100 transform translate-x-0 group-hover:translate-x-2 transition-all duration-300">
+                      <span className="text-sm">Explore Collection</span>
+                      <ArrowRight size={18} className="ml-2" />
+                    </div>
+                  </div>
+
+                  {/* Glow Effect */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                    <div className={`absolute inset-0 bg-gradient-to-t ${gradient} opacity-20 blur-3xl`}></div>
+                  </div>
+
+                  {/* Border Glow */}
+                  <div className="absolute inset-0 rounded-3xl border border-transparent group-hover:border-purple-500/50 transition-all duration-500"></div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

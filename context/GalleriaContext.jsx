@@ -116,7 +116,12 @@ export const GalleriaProvider = ({ children }) => {
 
   const goBack = useCallback(() => {
     if (viewLevel === 'single') {
-      setViewLevel('album');
+      // If we have an album, go back to album view, otherwise gallery
+      if (currentAlbum) {
+        setViewLevel('album');
+      } else {
+        setViewLevel('gallery');
+      }
       setCurrentItem(null);
       setZoomLevel(1);
       setIsZoomed(false);
@@ -127,10 +132,9 @@ export const GalleriaProvider = ({ children }) => {
       setViewLevel('galleria');
       setCurrentCategory(null);
       setCurrentGallery(null);
-    } else {
-      closeGalleria();
+      setCurrentAlbum(null);
     }
-  }, [viewLevel, closeGalleria]);
+  }, [viewLevel, currentAlbum]);
 
   // Arrow Navigation (level-specific)
   const navigateLeft = useCallback(() => {

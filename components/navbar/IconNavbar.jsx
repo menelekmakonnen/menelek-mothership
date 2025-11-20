@@ -9,7 +9,7 @@ import {
   Video,
   Home,
 } from 'lucide-react';
-import { useGalleriaContext } from '@/context/GalleriaContext';
+import { useGalleriaContext, MEDIA_CATEGORIES } from '@/context/GalleriaContext';
 
 const NAV_ITEMS = [
   { id: 'home', icon: Home, label: 'Home', categoryId: null },
@@ -25,7 +25,7 @@ export default function IconNavbar() {
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
   const dragRef = useRef(null);
-  const { enterGallery, goBack, viewLevel } = useGalleriaContext();
+  const { enterGallery, viewLevel, setViewLevel, setCurrentCategory, setCurrentGallery, setCurrentAlbum, setCurrentItem } = useGalleriaContext();
 
   const handleDoubleClick = () => {
     setPosition({ x: 0, y: 0 });
@@ -34,24 +34,21 @@ export default function IconNavbar() {
   const handleItemClick = (item) => {
     // Home button - reset to GalleriaView (home page)
     if (item.id === 'home') {
-      // Navigate back to home (which is GalleriaView)
-      // Since we're on GalleriaView by default, this is essentially a no-op
-      // But if we're deep in navigation, we should go back
-      if (viewLevel !== 'galleria') {
-        // Keep going back until we're at galleria level
-        goBack();
-        setTimeout(() => {
-          if (viewLevel !== 'galleria') {
-            goBack();
-          }
-        }, 100);
-      }
+      // Reset to galleria view
+      setViewLevel('galleria');
+      setCurrentCategory(null);
+      setCurrentGallery(null);
+      setCurrentAlbum(null);
+      setCurrentItem(null);
       return;
     }
 
-    // Category navigation - directly enter the gallery for that category
+    // Category navigation - find the matching category object and enter it
     if (item.categoryId) {
-      enterGallery({ id: item.categoryId });
+      const category = MEDIA_CATEGORIES.find(cat => cat.id === item.categoryId);
+      if (category) {
+        enterGallery(category);
+      }
     }
   };
 
