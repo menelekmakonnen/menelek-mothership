@@ -83,28 +83,25 @@ export default function GalleriaView({ isHomePage }) {
                   style={{ touchAction: 'manipulation' }}
                 >
                   {/* Portrait Cover */}
-                  <div className="relative aspect-[9/16] rounded-xl lg:rounded-2xl overflow-hidden glass border border-glass-border">
+                  <div className="relative aspect-[9/16] rounded-xl lg:rounded-2xl overflow-hidden glass border border-glass-border pointer-events-none">
                     {/* Gradient Background */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-60 group-hover:opacity-80 transition-opacity duration-500`} />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-60 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none`} />
 
                     {/* Icon */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <motion.div
-                        whileHover={{ scale: 1.2, rotate: 5 }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
                         <Icon size={48} className="text-white/90 lg:w-16 lg:h-16" />
-                      </motion.div>
+                      </div>
                     </div>
 
                     {/* Title Overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none">
                       <h3 className="text-sm lg:text-base font-bold text-white">{category.name}</h3>
                     </div>
 
                     {/* Hover Glow */}
-                    <motion.div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                       style={{
                         background: 'radial-gradient(circle at center, var(--accent-glow), transparent 70%)',
                       }}
