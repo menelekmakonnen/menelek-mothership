@@ -280,7 +280,7 @@ export default function GalleryView() {
 
   // Handle Loremaker Universe (Character display)
   if (categoryId === 'loremaker') {
-    const characters = categoryData?.characters || [];
+    const characters = categoryData?.items || [];
 
     return (
       <div className="fixed inset-0 bg-black overflow-y-auto overflow-x-hidden">
@@ -299,21 +299,21 @@ export default function GalleryView() {
               <span className="font-medium">Back</span>
             </button>
 
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-white mb-4 tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-4 tracking-tight">
               Loremaker Universe
             </h1>
-            <p className="text-gray-400 text-xl mb-8">
+            <p className="text-gray-400 text-lg md:text-xl mb-8">
               {characters.length === 0 ? 'Loading characters...' : `${characters.length} ${characters.length === 1 ? 'character' : 'characters'}`}
             </p>
           </motion.div>
 
-          {/* Character Grid */}
+          {/* Character Grid - 2 cols mobile, 4-5 cols desktop */}
           {characters.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <p className="text-gray-500 text-xl">Characters coming soon...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
               {characters.map((character, index) => (
                 <motion.div
                   key={character.id || index}
@@ -324,17 +324,27 @@ export default function GalleryView() {
                   onClick={() => enterSingle(character, index)}
                   className="group cursor-pointer"
                 >
-                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
-                    <img
-                      src={character.coverImage}
-                      alt={character.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
+                  <div className="relative aspect-[3/4] rounded-xl md:rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
+                    {character.coverUrl ? (
+                      <img
+                        src={character.coverUrl}
+                        alt={character.character}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => {
+                          console.error('Failed to load character image:', character.coverUrl);
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900 to-pink-900">
+                        <p className="text-white/50 text-sm">No Image</p>
+                      </div>
+                    )}
 
-                    <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black via-black/90 to-transparent">
-                      <h3 className="text-lg font-bold text-white mb-1 leading-tight">{character.name}</h3>
+                    <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 lg:p-5 bg-gradient-to-t from-black via-black/90 to-transparent">
+                      <h3 className="text-sm md:text-base lg:text-lg font-bold text-white mb-1 leading-tight line-clamp-2">{character.character}</h3>
                       {character.alias && (
-                        <p className="text-sm text-gray-300">{character.alias}</p>
+                        <p className="text-xs md:text-sm text-gray-300 line-clamp-1">{character.alias}</p>
                       )}
                     </div>
                   </div>
