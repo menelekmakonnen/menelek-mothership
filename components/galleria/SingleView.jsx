@@ -172,12 +172,12 @@ export default function SingleView() {
         onWheel={(e) => handleWheel(e, 'mainImage')}
         style={{ paddingBottom: '180px', paddingRight: '160px' }} // Space for HUD + album row + sidebar
       >
-        {/* Close Button */}
+        {/* Close Button - More Prominent */}
         <button
           onClick={goBack}
-          className="absolute top-6 right-6 z-50 w-12 h-12 rounded-full glass-strong flex items-center justify-center hover:border-accent transition-colors"
+          className="absolute top-6 right-6 z-50 w-14 h-14 rounded-full bg-black/80 backdrop-blur-xl border-2 border-white/20 flex items-center justify-center hover:bg-purple-600 hover:border-purple-400 transition-all duration-300 shadow-2xl group"
         >
-          <X size={24} className="text-white" />
+          <X size={28} className="text-white group-hover:rotate-90 transition-transform duration-300" />
         </button>
 
         {/* Navigation Arrows */}

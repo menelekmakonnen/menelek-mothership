@@ -31,8 +31,8 @@ export default function AlbumView() {
   }, [currentAlbum, sortMode, applySorting]);
 
   return (
-    <div className="min-h-screen w-full bg-black">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-16 pb-32">
+    <div className="fixed inset-0 bg-black overflow-y-auto overflow-x-hidden">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-24 pb-32">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -82,9 +82,9 @@ export default function AlbumView() {
           </div>
         </motion.div>
 
-        {/* Items Grid */}
+        {/* Items Grid - Responsive: 2 cols mobile, 4+ cols desktop */}
         {items.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-6 lg:gap-8">
             {items.map((item, index) => {
               // Get gradient and icon for Instagram items based on category
               const categoryStyle = item.category ? CATEGORY_GRADIENTS[item.category] : null;
