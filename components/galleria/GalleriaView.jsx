@@ -75,7 +75,7 @@ export default function GalleriaView() {
             <span className="text-xs uppercase tracking-[0.3em] text-white/70">Menelek Makonnen</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white">Enter the work. Every discipline, instantly.</h1>
-          <p className="text-secondary max-w-3xl">Pick a cover to move directly into photography, AI albums, films, edits, or the Loremaker universe. Live Google Drive covers and sheet-fed characters keep each tile anchored in real projects.</p>
+          <p className="text-secondary max-w-3xl">Choose a card and step straight into photography, AI albums, films, edits, or the Loremaker universe. Each tile uses premium portrait imagery so the gallery always feels intentional and on-brand.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">

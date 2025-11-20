@@ -147,9 +147,9 @@ export default function CameraHUD() {
             <div className="hud-element">
               <Clock size={16} />
               <div className="flex items-center gap-2">
-                <button onClick={() => adjustShutter(1)} className="pill-btn">-</button>
+                <button onClick={() => adjustShutter(-1)} className="pill-btn">-</button>
                 <div className="hud-reading">{formatShutterSpeed(shutterSpeed)}</div>
-                <button onClick={() => adjustShutter(-1)} className="pill-btn">+</button>
+                <button onClick={() => adjustShutter(1)} className="pill-btn">+</button>
               </div>
             </div>
 
@@ -198,24 +198,21 @@ export default function CameraHUD() {
       <AnimatePresence>
         {showHistogram && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="w-full mt-3 px-4 py-2 glass-strong rounded-xl border border-accent/40"
+            exit={{ opacity: 0, y: 6 }}
+            className="w-full mt-2"
           >
-            <div className="flex items-center gap-3">
-              <div className="h-16 flex-1 flex gap-1 items-end">
-                {[14, 36, 58, 82, 64, 46, 72, 94, 68, 41].map((value, idx) => (
-                  <div
-                    key={`hist-${idx}`}
-                    style={{ height: `${value}%` }}
-                    className="flex-1 bg-gradient-to-t from-accent/50 via-accent/30 to-white/40 rounded-sm"
-                  />
-                ))}
-              </div>
-              <div className="flex flex-col text-xs text-hud-text/80">
-                <span>Midtones anchored</span>
-                <span>Auto-balanced for current frame</span>
+            <div className="inline-flex items-end gap-1 glass-strong px-4 py-2 rounded-xl border border-accent/50 shadow-lg">
+              {[18, 36, 62, 78, 64, 52, 68, 82, 58, 34].map((value, idx) => (
+                <div
+                  key={`hist-${idx}`}
+                  style={{ height: `${value}%` }}
+                  className="w-2 rounded-md bg-gradient-to-t from-accent/70 via-white/70 to-white/95 shadow-[0_10px_30px_-12px_var(--accent-glow)]"
+                />
+              ))}
+              <div className="ml-4 text-[11px] uppercase tracking-[0.2em] text-white/70">
+                Live exposure graph
               </div>
             </div>
           </motion.div>
