@@ -59,17 +59,28 @@ export default function SingleView() {
   // Get all items in current album
   const items = currentAlbum?.items || [];
 
-  // Get all albums from current gallery (for bottom row)
+  // Get all albums/items from current gallery (for bottom row)
   const getAlbumsInGallery = () => {
     if (!currentCategory) return [];
 
     const categoryId = currentCategory.id;
     const categoryData = mediaData[categoryId];
 
-    if (categoryId === 'video-edits') {
+    if (categoryId === 'films') {
+      // For films, return all film items as if they were albums
+      return (categoryData?.items || []).map(film => ({
+        ...film,
+        id: film.id,
+        name: film.title,
+        items: [film], // Wrap in array for consistency
+        coverUrl: film.coverUrl || film.thumbnailUrl,
+      }));
+    } else if (categoryId === 'video-edits') {
       return categoryData?.categories || [];
     } else if (categoryId === 'photography' || categoryId === 'ai-albums') {
       return categoryData?.galleries || [];
+    } else if (categoryId === 'loremaker') {
+      return []; // Loremaker doesn't have albums
     }
 
     return [];
