@@ -131,31 +131,42 @@ export const CameraProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check for daily boot
+  // Check for daily boot and auto-power on
   useEffect(() => {
     const lastBootDate = localStorage.getItem('lastBootDate');
     const today = new Date().toDateString();
+    const autoPowerOn = localStorage.getItem('autoPowerOn');
 
     if (lastBootDate !== today) {
       setHasBooted(false);
       localStorage.setItem('lastBootDate', today);
     } else {
       setHasBooted(true);
+      // Auto power on if user was previously powered on
+      if (autoPowerOn === 'true') {
+        setPowerState('on');
+      }
     }
   }, []);
 
+  // Save power state to localStorage
+  useEffect(() => {
+    if (powerState === 'on') {
+      localStorage.setItem('autoPowerOn', 'true');
+    } else if (powerState === 'off') {
+      localStorage.setItem('autoPowerOn', 'false');
+    }
+  }, [powerState]);
+
   // Power Management Functions
   const powerOn = useCallback(() => {
-    if (!hasBooted) {
-      setPowerState('booting');
-      setTimeout(() => {
-        setPowerState('on');
-        setHasBooted(true);
-      }, 3000);
-    } else {
+    setPowerState('booting');
+    setTimeout(() => {
       setPowerState('on');
-    }
-  }, [hasBooted]);
+      setHasBooted(true);
+      localStorage.setItem('lastBootDate', new Date().toDateString());
+    }, 2500); // Slightly shorter boot time
+  }, []);
 
   const powerOff = useCallback(() => {
     setPowerState('off');

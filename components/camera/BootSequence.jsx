@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Camera } from 'lucide-react';
 
 const BOOT_MESSAGES = [
@@ -17,7 +17,7 @@ export default function BootSequence() {
     if (messageIndex < BOOT_MESSAGES.length - 1) {
       const timeout = setTimeout(() => {
         setMessageIndex(messageIndex + 1);
-      }, 600);
+      }, 500); // Faster message transitions
       return () => clearTimeout(timeout);
     }
   }, [messageIndex]);
@@ -32,7 +32,7 @@ export default function BootSequence() {
             opacity: [0.5, 1, 0.5],
           }}
           transition={{
-            duration: 2,
+            duration: 1.5,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
@@ -42,28 +42,25 @@ export default function BootSequence() {
         </motion.div>
 
         {/* Boot Messages */}
-        <div className="h-24 flex items-center justify-center">
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={messageIndex}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="font-mono text-accent text-sm tracking-wider"
-            >
-              {BOOT_MESSAGES[messageIndex]}
-            </motion.p>
-          </AnimatePresence>
+        <div className="h-16 flex items-center justify-center">
+          <motion.p
+            key={messageIndex}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="font-mono text-accent text-sm tracking-wider"
+          >
+            {BOOT_MESSAGES[messageIndex]}
+          </motion.p>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-64 h-1 bg-bg-tertiary rounded-full overflow-hidden mx-auto">
+        <div className="w-64 h-1 bg-bg-tertiary rounded-full overflow-hidden mx-auto mt-8">
           <motion.div
             className="h-full bg-accent"
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}
-            transition={{ duration: 3, ease: 'easeInOut' }}
+            transition={{ duration: 2.5, ease: 'easeInOut' }}
           />
         </div>
       </div>
