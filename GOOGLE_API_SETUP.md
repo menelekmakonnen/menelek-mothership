@@ -67,34 +67,60 @@ NEXT_PUBLIC_GOOGLE_API_KEY=your_actual_api_key_here
 
 ## Step 6: Organize Your Google Drive Folder
 
-Your Photography folder should have this structure:
+Your Mmm Media Albums folder should have this structure:
 
 ```
-Photography (1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4)
+Mmm Media Albums (1G_6TgOtftLKwqRWjH-tFLuCgp_Oydor4)
 ├── Beauty/
-│   ├── image1.jpg
-│   ├── image2.jpg
+│   ├── 2024-01-15 Fashion Shoot/
+│   │   ├── image1.jpg
+│   │   ├── image2.jpg
+│   │   └── ...
+│   ├── 2024-02-20 Portrait Session/
+│   │   └── ...
 │   └── ...
-└── Professional/
+├── Professional/
+│   ├── 2024-03-10 Corporate Event/
+│   │   ├── image1.jpg
+│   │   └── ...
+│   └── ...
+└── AI Album Name/
     ├── image1.jpg
     ├── image2.jpg
     └── ...
 ```
 
+**Structure Explained:**
+- **Photography**: Beauty and Professional folders contain dated subfolders (format: YYYY-MM-DD Name)
+- **AI Albums**: Any other folders (besides Beauty/Professional) are treated as AI albums
+- Each dated subfolder or AI album folder contains the actual image files
+
 ## Step 7: Format Your Google Sheet
 
 Your Loremaker spreadsheet should have these columns (Row 1 = Headers):
 
-| A: Character Name | B: Description | C: Image URL | D: External Link (optional) |
-|-------------------|----------------|--------------|----------------------------|
-| Character 1       | Description... | Google Drive link or direct URL | https://... |
-| Character 2       | Description... | Google Drive link or direct URL | https://... |
+| Column | Field | Description |
+|--------|-------|-------------|
+| A | Char_ID | Usually empty |
+| B | Character | Character name (required) |
+| C | Alias | Character's alias/nickname |
+| D | Gender | Character's gender |
+| E | Alignment | Moral alignment |
+| F | Location | Where the character is located |
+| G | Powers | Character's powers/abilities |
+| H | Faction/Team | Group affiliation |
+| I | Era | Time period |
+| J | Status | Current status |
+| K | Short Description | Brief description |
+| L | Long Description | Detailed description |
+| M | Stories | Related stories |
+| N | Cover Image | Main character image (Google Drive link) |
+| O-AC | Gallery Images 1-15 | Additional images (Google Drive links) |
 
 **Important Notes:**
-- Column C can contain:
-  - Google Drive links (e.g., `https://drive.google.com/file/d/FILE_ID/view`)
-  - Direct image URLs (e.g., `https://i.imgur.com/image.jpg`)
-- The images linked in Column C must also be publicly accessible
+- All image columns can contain Google Drive links (e.g., `https://drive.google.com/file/d/FILE_ID/view`)
+- The Drive images must be publicly accessible
+- At minimum, provide Character (B) and Cover Image (N)
 
 ## Step 8: Test Your Integration
 
