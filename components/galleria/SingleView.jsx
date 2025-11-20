@@ -9,6 +9,7 @@ import {
   Pause,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
 } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
 
@@ -17,6 +18,8 @@ export default function SingleView() {
     currentItem,
     currentItemIndex,
     currentAlbum,
+    currentCategory,
+    mediaData,
     navigateLeft,
     navigateRight,
     goBack,
@@ -26,12 +29,34 @@ export default function SingleView() {
     isZoomed,
     isSlideshow,
     toggleSlideshow,
+    enterSingle,
   } = useGalleriaContext();
 
   const [isHoveringImage, setIsHoveringImage] = useState(false);
   const imageRef = useRef(null);
   const sidebarRef = useRef(null);
   const albumRowRef = useRef(null);
+
+  // Get all items in current album
+  const items = currentAlbum?.items || [];
+
+  // Get all albums from current gallery (for bottom row)
+  const getAlbumsInGallery = () => {
+    if (!currentCategory) return [];
+
+    const categoryId = currentCategory.id;
+    const categoryData = mediaData[categoryId];
+
+    if (categoryId === 'video-edits') {
+      return categoryData?.categories || [];
+    } else if (categoryId === 'photography' || categoryId === 'ai-albums') {
+      return categoryData?.galleries || [];
+    }
+
+    return [];
+  };
+
+  const albumsInGallery = getAlbumsInGallery();
 
   // Handle scroll wheel behavior
   const handleWheel = (e, area) => {
@@ -54,16 +79,79 @@ export default function SingleView() {
     }
   };
 
-  const items = currentAlbum?.items || [];
-  const albumsInGallery = []; // TODO: Get from gallery context
+  // Render media content based on type
+  const renderMediaContent = () => {
+    if (!currentItem) return null;
+
+    // YouTube video
+    if (currentItem.embedUrl && (currentItem.type === 'film' || currentItem.type === 'music-video' || currentItem.type === 'documentary')) {
+      return (
+        <div className="w-full h-full max-w-6xl max-h-[80vh] mx-auto">
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              src={currentItem.embedUrl}
+              title={currentItem.title}
+              className="absolute inset-0 w-full h-full rounded-lg"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Instagram embed
+    if (currentItem.embedUrl && currentItem.type === 'instagram') {
+      return (
+        <div className="w-full h-full max-w-lg max-h-[80vh] mx-auto">
+          <iframe
+            src={currentItem.embedUrl}
+            className="w-full h-full rounded-lg"
+            frameBorder="0"
+            scrolling="no"
+            allowTransparency="true"
+          />
+        </div>
+      );
+    }
+
+    // Regular image
+    return (
+      <motion.div
+        key={currentItem?.id || currentItemIndex}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="relative max-w-full max-h-full flex items-center justify-center"
+        ref={imageRef}
+        onMouseEnter={() => setIsHoveringImage(true)}
+        onMouseLeave={() => setIsHoveringImage(false)}
+        onWheel={(e) => handleWheel(e, 'image')}
+      >
+        <img
+          src={currentItem?.url || currentItem?.coverUrl}
+          alt={currentItem?.name || currentItem?.title || currentItem?.character}
+          className="max-w-full max-h-full"
+          style={{
+            objectFit: 'contain',
+            transform: `scale(${zoomLevel})`,
+            transition: 'transform 0.2s ease-out',
+            cursor: isHoveringImage ? (isZoomed ? 'zoom-out' : 'zoom-in') : 'default',
+          }}
+        />
+      </motion.div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
-      {/* Main Image Display */}
+      {/* Main Content Area */}
       <div
         className="flex-1 flex items-center justify-center relative overflow-hidden"
         onWheel={(e) => handleWheel(e, 'mainImage')}
-        style={{ paddingBottom: '200px' }} // Space for HUD + album row
+        style={{ paddingBottom: '180px', paddingRight: '160px' }} // Space for HUD + album row + sidebar
       >
         {/* Close Button */}
         <button
@@ -83,52 +171,17 @@ export default function SingleView() {
 
         <button
           onClick={navigateRight}
-          className="absolute right-6 top-1/2 -translate-y-1/2 z-50 w-16 h-16 rounded-full glass-strong flex items-center justify-center hover:border-accent transition-colors"
+          className="absolute right-40 top-1/2 -translate-y-1/2 z-50 w-16 h-16 rounded-full glass-strong flex items-center justify-center hover:border-accent transition-colors"
         >
           <ChevronRight size={32} className="text-white" />
         </button>
 
-        {/* Image/Video Display */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentItem?.id || currentItemIndex}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="relative max-w-full max-h-full flex items-center justify-center"
-            ref={imageRef}
-            onMouseEnter={() => setIsHoveringImage(true)}
-            onMouseLeave={() => setIsHoveringImage(false)}
-            onWheel={(e) => handleWheel(e, 'image')}
-          >
-            {currentItem?.type === 'video' ? (
-              <video
-                src={currentItem.url}
-                controls
-                autoPlay
-                className="max-w-full max-h-full"
-                style={{
-                  objectFit: 'contain',
-                  transform: `scale(${zoomLevel})`,
-                  transition: 'transform 0.2s ease-out',
-                }}
-              />
-            ) : (
-              <img
-                src={currentItem?.url}
-                alt={currentItem?.name || currentItem?.title}
-                className="max-w-full max-h-full"
-                style={{
-                  objectFit: 'contain',
-                  transform: `scale(${zoomLevel})`,
-                  transition: 'transform 0.2s ease-out',
-                  cursor: isHoveringImage ? 'zoom-in' : 'default',
-                }}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+        {/* Media Display */}
+        <div className="w-full h-full flex items-center justify-center p-8">
+          <AnimatePresence mode="wait">
+            {renderMediaContent()}
+          </AnimatePresence>
+        </div>
 
         {/* Zoom Controls */}
         {isZoomed && (
@@ -136,7 +189,7 @@ export default function SingleView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="absolute top-6 left-6 flex items-center gap-2"
+            className="absolute top-6 left-6 flex items-center gap-2 z-50"
           >
             <button
               onClick={() => handleZoom(-0.2)}
@@ -160,7 +213,7 @@ export default function SingleView() {
         )}
 
         {/* Item Counter */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 glass-strong rounded-full">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 glass-strong rounded-full z-50">
           <p className="text-sm font-mono text-white">
             {currentItemIndex + 1} / {items.length}
           </p>
@@ -169,21 +222,52 @@ export default function SingleView() {
         {/* Slideshow Button */}
         <button
           onClick={toggleSlideshow}
-          className="absolute bottom-6 left-6 px-4 py-2 glass-strong rounded-full flex items-center gap-2 hover:border-accent transition-colors"
+          className="absolute bottom-6 left-6 px-4 py-2 glass-strong rounded-full flex items-center gap-2 hover:border-accent transition-colors z-50"
         >
           {isSlideshow ? <Pause size={16} /> : <Play size={16} />}
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium text-white">
             {isSlideshow ? 'Stop' : 'Slideshow'}
           </span>
         </button>
+
+        {/* External Link Button (for Loremaker characters) */}
+        {currentItem?.externalLink && (
+          <a
+            href={currentItem.externalLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-6 right-40 px-4 py-2 glass-strong rounded-full flex items-center gap-2 hover:border-accent transition-colors z-50"
+          >
+            <ExternalLink size={16} className="text-white" />
+            <span className="text-sm font-medium text-white">View Character</span>
+          </a>
+        )}
+
+        {/* Media Info Overlay (Bottom Left) */}
+        {currentItem && (
+          <div className="absolute bottom-20 left-6 max-w-md glass-strong rounded-xl p-4 z-50">
+            <h3 className="text-lg font-bold text-white mb-1">
+              {currentItem.title || currentItem.name || currentItem.character}
+            </h3>
+            {currentItem.description && (
+              <p className="text-sm text-gray-300 mb-2">{currentItem.description}</p>
+            )}
+            {currentItem.role && (
+              <p className="text-xs text-gray-400">{currentItem.role}</p>
+            )}
+            {currentItem.runtime && (
+              <p className="text-xs text-gray-400">{currentItem.runtime} • {currentItem.year}</p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Sidebar - All Images */}
+      {/* Sidebar - All Images in Album */}
       <div
         ref={sidebarRef}
         onWheel={(e) => handleWheel(e, 'sidebar')}
-        className="fixed right-0 top-0 bottom-0 w-32 bg-black/50 backdrop-blur-xl overflow-y-auto no-scrollbar border-l border-white/10"
-        style={{ paddingBottom: '200px' }}
+        className="fixed right-0 top-0 bottom-0 w-32 bg-black/50 backdrop-blur-xl overflow-y-auto no-scrollbar border-l border-white/10 z-[999]"
+        style={{ paddingBottom: '180px' }}
       >
         <div className="p-2 space-y-2">
           {items.map((item, index) => (
@@ -192,11 +276,8 @@ export default function SingleView() {
               whileHover={{ scale: 1.05 }}
               onClick={() => {
                 // Navigate to this item
-                const diff = index - currentItemIndex;
-                if (diff > 0) {
-                  for (let i = 0; i < diff; i++) navigateRight();
-                } else if (diff < 0) {
-                  for (let i = 0; i < Math.abs(diff); i++) navigateLeft();
+                if (index !== currentItemIndex) {
+                  enterSingle(item, index);
                 }
               }}
               className={`relative aspect-[9/16] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
@@ -206,7 +287,7 @@ export default function SingleView() {
               }`}
             >
               <img
-                src={item.thumbnailUrl || item.url}
+                src={item.thumbnailUrl || item.coverUrl || item.url}
                 alt={`Thumbnail ${index + 1}`}
                 className="w-full h-full object-cover"
               />
@@ -222,8 +303,7 @@ export default function SingleView() {
       <div
         ref={albumRowRef}
         onWheel={(e) => handleWheel(e, 'albumRow')}
-        className="fixed bottom-20 left-0 right-32 h-40 bg-black/50 backdrop-blur-xl overflow-x-auto overflow-y-hidden no-scrollbar border-t border-white/10"
-        style={{ zIndex: 999 }}
+        className="fixed bottom-20 left-0 right-32 h-40 bg-black/50 backdrop-blur-xl overflow-x-auto overflow-y-hidden no-scrollbar border-t border-white/10 z-[998]"
       >
         <div className="flex gap-3 p-3 h-full">
           {albumsInGallery.length > 0 ? (
@@ -231,10 +311,20 @@ export default function SingleView() {
               <motion.div
                 key={album.id || index}
                 whileHover={{ scale: 1.05, y: -4 }}
-                className="relative flex-shrink-0 w-24 h-full rounded-lg overflow-hidden cursor-pointer border border-white/10 hover:border-accent transition-all"
+                onClick={() => {
+                  // Switch to this album but stay in single view
+                  if (album.items && album.items.length > 0) {
+                    enterSingle(album.items[0], 0);
+                  }
+                }}
+                className={`relative flex-shrink-0 w-24 h-full rounded-lg overflow-hidden cursor-pointer border transition-all ${
+                  album.id === currentAlbum?.id
+                    ? 'border-accent shadow-lg shadow-accent/50'
+                    : 'border-white/10 hover:border-accent'
+                }`}
               >
                 <img
-                  src={album.coverUrl}
+                  src={album.coverUrl || album.items?.[0]?.thumbnailUrl || album.items?.[0]?.coverUrl}
                   alt={album.name}
                   className="w-full h-full object-cover"
                 />
@@ -243,6 +333,9 @@ export default function SingleView() {
                     {album.name}
                   </p>
                 </div>
+                {album.id === currentAlbum?.id && (
+                  <div className="absolute inset-0 bg-accent/10" />
+                )}
               </motion.div>
             ))
           ) : (
