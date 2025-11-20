@@ -29,15 +29,6 @@ export default function GalleriaView({ isHomePage }) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Debug Panel */}
-      <div className="fixed bottom-24 right-6 z-[60] glass-strong p-4 rounded-lg text-xs font-mono max-w-xs">
-        <div className="text-accent font-bold mb-2">DEBUG PANEL</div>
-        <div>View Level: <span className="text-green-400">{viewLevel}</span></div>
-        <div>Current Category: <span className="text-green-400">{currentCategory?.id || 'none'}</span></div>
-        <div>isHomePage: <span className="text-green-400">{String(isHomePage)}</span></div>
-      </div>
-
-
       <div className="max-w-7xl mx-auto px-6 w-full flex-1 flex flex-col">
         {/* Header */}
         <motion.div

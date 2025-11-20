@@ -75,14 +75,6 @@ export default function GalleryView() {
 
   return (
     <div className="h-full overflow-y-auto pb-32">
-      {/* Debug Panel */}
-      <div className="fixed bottom-24 right-6 z-[60] glass-strong p-4 rounded-lg text-xs font-mono max-w-xs">
-        <div className="text-accent font-bold mb-2">GALLERY DEBUG</div>
-        <div>Category: <span className="text-green-400">{currentCategory?.id || 'none'}</span></div>
-        <div>Albums Count: <span className="text-green-400">{albums.length}</span></div>
-        <div>Has mediaData: <span className="text-green-400">{mediaData ? 'yes' : 'no'}</span></div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
