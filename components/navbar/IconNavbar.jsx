@@ -11,6 +11,7 @@ import {
   User,
 } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
+import MMNavicon from './MMNavicon';
 
 const NAV_ITEMS = [
   { id: 'galleria', icon: Grid3x3, label: 'Galleria', action: 'openGalleria' },
@@ -67,6 +68,12 @@ export default function IconNavbar() {
         className="glass-strong px-6 py-3 rounded-full shadow-xl"
       >
         <div className="flex items-center gap-2">
+          {/* MM Navicon */}
+          <MMNavicon />
+
+          {/* Divider */}
+          <div className="h-6 w-px bg-hud-border opacity-30 mx-2" />
+
           {NAV_ITEMS.map((item, index) => {
             const Icon = item.icon;
             return (

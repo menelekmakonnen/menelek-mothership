@@ -49,20 +49,9 @@ const LENSES = [
 ];
 
 export const CameraProvider = ({ children }) => {
-  // Power & Boot State - Check if returning visitor
-  const [powerState, setPowerState] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const hasVisited = localStorage.getItem('hasVisited');
-      return hasVisited ? 'on' : 'off'; // Returning visitors → 'on', First-time → 'off'
-    }
-    return 'off';
-  });
-  const [hasBooted, setHasBooted] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('hasVisited') ? true : false;
-    }
-    return false;
-  });
+  // Power & Boot State - ALWAYS ON (site loads directly to Galleria)
+  const [powerState, setPowerState] = useState('on');
+  const [hasBooted, setHasBooted] = useState(true);
   const [batteryLevel, setBatteryLevel] = useState(100);
 
   // Camera Settings
