@@ -110,6 +110,14 @@ export default function GalleryView() {
   if (categoryId === 'video-edits') {
     const categories = applySorting(categoryData?.categories || [], sortMode);
 
+    // Gradients for each Epic Edits category
+    const categoryGradients = {
+      'epic-edits': 'from-red-600 via-orange-600 to-yellow-600', // High-energy colors
+      'beauty-travel': 'from-pink-500 via-rose-500 to-purple-500', // Soft, aesthetic
+      'bts': 'from-blue-600 via-indigo-600 to-purple-600', // Documentary professional
+      'ai-learning': 'from-green-500 via-teal-500 to-cyan-500', // Tech/learning
+    };
+
     return (
       <div className="min-h-screen w-full bg-black">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-16 pb-32">
@@ -154,31 +162,32 @@ export default function GalleryView() {
 
           {/* Category Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-8">
-            {categories.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.6 }}
-                whileHover={{ y: -12, scale: 1.02 }}
-                onClick={() => enterAlbum(category)}
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
-                  <img
-                    src={category.coverUrl}
-                    alt={category.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
+            {categories.map((category, index) => {
+              const gradient = categoryGradients[category.id] || 'from-gray-700 via-gray-800 to-gray-900';
 
-                  {/* Info Overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/90 to-transparent">
-                    <h3 className="text-xl font-bold text-white mb-2 leading-tight">{category.name}</h3>
-                    <p className="text-sm text-gray-300">{category.items?.length || 0} videos</p>
+              return (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05, duration: 0.6 }}
+                  whileHover={{ y: -12, scale: 1.02 }}
+                  onClick={() => enterAlbum(category)}
+                  className="group cursor-pointer"
+                >
+                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
+                    {/* Gradient Background */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-40 group-hover:opacity-60 transition-opacity duration-500`}></div>
+
+                    {/* Info Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/90 to-transparent z-10">
+                      <h3 className="text-xl font-bold text-white mb-2 leading-tight">{category.name}</h3>
+                      <p className="text-sm text-gray-300">{category.items?.length || 0} videos</p>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </div>

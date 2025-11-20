@@ -57,6 +57,7 @@ export const GalleriaProvider = ({ children }) => {
 
   // Sorting & Display
   const [sortMode, setSortMode] = useState('default'); // 'default' | 'a-z' | 'z-a' | 'random'
+  const [randomSeed, setRandomSeed] = useState(0); // Force reshuffle on random mode
   const [isSlideshow, setIsSlideshow] = useState(false);
   const [slideshowInterval, setSlideshowInterval] = useState(3000);
 
@@ -185,6 +186,14 @@ export const GalleriaProvider = ({ children }) => {
     }
   }, [viewLevel, currentCategory, currentAlbum, currentItemIndex]);
 
+  // Custom sort mode setter that triggers reshuffle for random mode
+  const handleSetSortMode = useCallback((mode) => {
+    if (mode === 'random') {
+      setRandomSeed(prev => prev + 1); // Force reshuffle
+    }
+    setSortMode(mode);
+  }, []);
+
   // Sorting Functions
   const applySorting = useCallback((items, mode) => {
     if (!items) return [];
@@ -197,11 +206,16 @@ export const GalleriaProvider = ({ children }) => {
       case 'z-a':
         return sortedItems.sort((a, b) => (b.name || b.title || '').localeCompare(a.name || a.title || ''));
       case 'random':
-        return sortedItems.sort(() => Math.random() - 0.5);
+        // Fisher-Yates shuffle algorithm for true randomization
+        for (let i = sortedItems.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [sortedItems[i], sortedItems[j]] = [sortedItems[j], sortedItems[i]];
+        }
+        return sortedItems;
       default:
         return sortedItems;
     }
-  }, []);
+  }, [randomSeed]); // Depend on randomSeed to force re-computation
 
   // Slideshow Control
   const toggleSlideshow = useCallback(() => {
@@ -293,13 +307,20 @@ export const GalleriaProvider = ({ children }) => {
     goBack,
     navigateLeft,
     navigateRight,
-    setSortMode,
+    setSortMode: handleSetSortMode, // Use custom handler for random reshuffle
     toggleSlideshow,
     setSlideshowInterval,
     handleZoom,
     resetZoom,
     setMediaData,
     applySorting,
+
+    // Direct state setters (for special cases like IconNavbar)
+    setViewLevel,
+    setCurrentCategory,
+    setCurrentGallery,
+    setCurrentAlbum,
+    setCurrentItem,
   };
 
   return <GalleriaContext.Provider value={value}>{children}</GalleriaContext.Provider>;

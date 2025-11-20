@@ -37,6 +37,25 @@ export default function SingleView() {
   const sidebarRef = useRef(null);
   const albumRowRef = useRef(null);
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        goBack();
+      } else if (e.key === 'ArrowLeft') {
+        navigateLeft();
+      } else if (e.key === 'ArrowRight') {
+        navigateRight();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        toggleSlideshow();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goBack, navigateLeft, navigateRight, toggleSlideshow]);
+
   // Get all items in current album
   const items = currentAlbum?.items || [];
 
