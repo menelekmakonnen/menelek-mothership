@@ -9,7 +9,7 @@ export default function DynamicFavicon() {
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
-    let raf;
+    let intervalId;
     let currentLink = document.querySelector("link[rel='icon']");
     const originalHref = currentLink?.getAttribute('href');
 
@@ -29,50 +29,37 @@ export default function DynamicFavicon() {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, size, size);
 
-      for (let i = 0; i < 4; i += 1) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const r = 1 + Math.random() * 2;
-        ctx.fillStyle = `${accent}55`;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      const leftOffset = 8 + Math.sin(tick / 3) * 2;
-      const rightOffset = 32 + Math.cos(tick / 4) * 2;
+      ctx.strokeStyle = `${accent}aa`;
       ctx.lineWidth = 4;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
+      const jitter = 2 + Math.sin(tick / 2) * 1.2;
       const drawM = (x) => {
-        ctx.strokeStyle = accent;
         ctx.beginPath();
         ctx.moveTo(x, 46);
-        ctx.lineTo(x + 6, 18);
-        ctx.lineTo(x + 14, 34);
-        ctx.lineTo(x + 22, 18);
+        ctx.lineTo(x + 6 + jitter, 18);
+        ctx.lineTo(x + 14, 34 - jitter);
+        ctx.lineTo(x + 22 - jitter, 18);
         ctx.lineTo(x + 28, 46);
         ctx.stroke();
       };
 
-      drawM(leftOffset);
-      drawM(rightOffset);
+      drawM(10 + (tick % 3));
+      drawM(30 - (tick % 3));
 
       currentLink.href = canvas.toDataURL('image/png');
     };
 
     let tick = 0;
-    const loop = () => {
-      drawFrame(tick);
+    drawFrame(tick);
+    intervalId = setInterval(() => {
       tick += 1;
-      raf = requestAnimationFrame(() => loop());
-    };
-
-    loop();
+      drawFrame(tick);
+    }, 700);
 
     return () => {
-      cancelAnimationFrame(raf);
+      clearInterval(intervalId);
       if (originalHref) {
         currentLink.href = originalHref;
       }

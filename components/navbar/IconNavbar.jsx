@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Grid3x3, Film, Sparkles, Palette, Mail } from 'lucide-react';
+import { Camera, Grid3x3, Film, Sparkles, Palette } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
 
 const NAV_ITEMS = [
@@ -29,12 +29,12 @@ export default function IconNavbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="glass-strong px-5 py-2 rounded-full shadow-xl flex items-center gap-4"
+        className="glass-strong px-4 py-2 rounded-full shadow-xl flex items-center gap-3"
       >
-        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs tracking-[0.25em] uppercase text-white/80">
-          Menelek
+        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] tracking-[0.25em] uppercase text-white/80">
+          MM
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
@@ -45,7 +45,7 @@ export default function IconNavbar() {
                   onMouseEnter={() => setHoveredItem(item.id)}
                   onMouseLeave={() => setHoveredItem(null)}
                   onClick={() => handleItemClick(item)}
-                  className="p-3 rounded-full hover:bg-hud-element transition-colors duration-200"
+                  className="p-2.5 rounded-full hover:bg-hud-element transition-colors duration-200"
                   title={item.label}
                 >
                   <Icon size={20} className="text-hud-text" />
@@ -66,15 +66,6 @@ export default function IconNavbar() {
             );
           })}
         </div>
-        <button
-          onClick={() => (window.location.href = 'mailto:admin@menelekmakonnen.com')}
-          className="ml-4 px-4 py-2 rounded-full bg-accent/15 text-accent text-sm font-semibold border border-accent/40 hover:border-accent"
-        >
-          <div className="flex items-center gap-2">
-            <Mail size={16} />
-            <span>Contact</span>
-          </div>
-        </button>
       </motion.nav>
     </div>
   );

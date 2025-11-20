@@ -235,18 +235,17 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  min-height: 76px;
   background: var(--hud-bg);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-top: 1px solid var(--hud-border);
   z-index: var(--z-hud, 2000);
   font-family: 'JetBrains Mono', monospace;
   color: var(--hud-text);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
+  padding: 0.85rem 1.5rem;
   user-select: none;
 }
 
@@ -278,6 +277,46 @@ body {
 .hud-element:hover {
   background: rgba(0, 255, 136, 0.15);
   border-color: var(--hud-border);
+}
+
+.hud-drawer {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-radius: var(--border-radius-lg);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(18px);
+}
+
+.drawer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hud-inline-hist {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--hud-border);
+  width: 100%;
+  justify-content: center;
+}
+
+.hist-bar {
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), var(--accent));
+  box-shadow: 0 8px 16px -10px var(--accent);
 }
 
 .pill-btn {
