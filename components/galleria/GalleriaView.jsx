@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, Film, Video, Palette, ArrowRight, Play } from 'lucide-react';
 import { useGalleriaContext, MEDIA_CATEGORIES } from '@/context/GalleriaContext';
 
@@ -49,8 +50,38 @@ const CATEGORY_DESCRIPTIONS = {
   loremaker: 'Characters and worldbuilding from the Loremaker Universe',
 };
 
+// Cycling words for subtitle
+const CYCLING_WORDS = [
+  'Filmmaker',
+  'Producer',
+  'Director',
+  'Writer',
+  'Photographer',
+  'Friend',
+  'Brother',
+  'Son',
+  'Creative Director',
+  'Video Editor',
+  'Videographer',
+  'Cinematographer',
+  'Web Developer',
+  'Vibe Coder',
+];
+
 export default function GalleriaView({ isHomePage }) {
   const { enterGallery, mediaData } = useGalleriaContext();
+
+  // State for cycling word
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+
+  // Cycle through words every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentWordIndex((prev) => (prev + 1) % CYCLING_WORDS.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen w-full bg-black">
@@ -60,20 +91,35 @@ export default function GalleriaView({ isHomePage }) {
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="text-center mb-20 pt-16"
+          className="text-center mb-16 pt-20"
         >
-          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black mb-8 tracking-tighter">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black mb-6 tracking-tighter">
             <span className="bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent drop-shadow-2xl">
               Menelek Makonnen
             </span>
           </h1>
-          <p className="text-gray-400 text-lg sm:text-xl md:text-2xl max-w-4xl mx-auto font-light tracking-wide">
-            Filmmaker • Creative Director • AI Educator • Photographer • Worldbuilder
-          </p>
+          <div className="text-gray-300 text-xl sm:text-2xl md:text-3xl max-w-4xl mx-auto font-light tracking-wide flex items-center justify-center gap-3 flex-wrap">
+            <span>World Builder</span>
+            <span className="text-purple-500">•</span>
+            <span>AI Super Nerd</span>
+            <span className="text-purple-500">•</span>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={currentWordIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+                className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 font-semibold"
+              >
+                {CYCLING_WORDS[currentWordIndex]}
+              </motion.span>
+            </AnimatePresence>
+          </div>
         </motion.div>
 
-        {/* Category Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        {/* Category Grid - Responsive to fit all items without scrolling */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 lg:gap-8 max-w-[1800px] mx-auto">
           {MEDIA_CATEGORIES.map((category, index) => {
             const Icon = CATEGORY_ICONS[category.id];
             const coverImage = getCoverImage(category.id, mediaData);
@@ -90,12 +136,12 @@ export default function GalleriaView({ isHomePage }) {
                   delay: 0.2 + index * 0.15,
                   ease: [0.19, 1, 0.22, 1]
                 }}
-                whileHover={{ y: -16, scale: 1.02 }}
+                whileHover={{ y: -8, scale: 1.02 }}
                 onClick={() => enterGallery(category)}
                 className="group cursor-pointer"
               >
                 {/* Card */}
-                <div className="relative aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
+                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-gray-800/50 shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500">
                   {/* Background Layer */}
                   {coverImage ? (
                     <div className="absolute inset-0">
@@ -115,28 +161,28 @@ export default function GalleriaView({ isHomePage }) {
                     <motion.div
                       whileHover={{ scale: 1.15, rotate: 5 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                      className="w-32 h-32 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:border-white/20 transition-all duration-300"
+                      className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:border-white/20 transition-all duration-300"
                     >
-                      <Icon size={64} className="text-white" strokeWidth={1.5} />
+                      <Icon size={40} className="text-white md:w-12 md:h-12" strokeWidth={1.5} />
                     </motion.div>
                   </div>
 
                   {/* Content */}
-                  <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
-                    <div className="mb-4 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                      <p className="text-gray-300 text-sm leading-relaxed">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10">
+                    <div className="mb-2 md:mb-3 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 hidden md:block">
+                      <p className="text-gray-300 text-xs md:text-sm leading-relaxed line-clamp-2">
                         {description}
                       </p>
                     </div>
 
-                    <h3 className="text-3xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-purple-400 transition-all duration-300">
+                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-purple-400 transition-all duration-300 line-clamp-2">
                       {category.name}
                     </h3>
 
                     {/* CTA */}
                     <div className="flex items-center text-purple-400 font-medium opacity-0 group-hover:opacity-100 transform translate-x-0 group-hover:translate-x-2 transition-all duration-300">
-                      <span className="text-sm">Explore Collection</span>
-                      <ArrowRight size={18} className="ml-2" />
+                      <span className="text-xs md:text-sm">Explore</span>
+                      <ArrowRight size={16} className="ml-1 md:ml-2" />
                     </div>
                   </div>
 

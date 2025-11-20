@@ -104,20 +104,27 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  user-select: none; /* Make all text unselectable */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* Prevent scrolling */
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
-  overflow-x: hidden;
+  overflow: hidden; /* Prevent scrolling */
   transition: background var(--transition-smooth), color var(--transition-smooth);
+  height: 100vh;
+  width: 100vw;
 }
 
 /* ============================================

@@ -21,15 +21,8 @@ const NAV_ITEMS = [
 ];
 
 export default function IconNavbar() {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const dragRef = useRef(null);
   const { enterGallery, viewLevel, setViewLevel, setCurrentCategory, setCurrentGallery, setCurrentAlbum, setCurrentItem } = useGalleriaContext();
-
-  const handleDoubleClick = () => {
-    setPosition({ x: 0, y: 0 });
-  };
 
   const handleItemClick = (item) => {
     // Home button - reset to GalleriaView (home page)
@@ -53,20 +46,8 @@ export default function IconNavbar() {
   };
 
   return (
-    <motion.div
-      ref={dragRef}
-      drag
-      dragMomentum={false}
-      dragElastic={0}
-      onDragStart={() => setIsDragging(true)}
-      onDragEnd={() => setIsDragging(false)}
-      onDoubleClick={handleDoubleClick}
-      style={{
-        x: position.x,
-        y: position.y,
-      }}
-      className="fixed top-6 left-1/2 -translate-x-1/2 z-50"
-    >
+    <div className="fixed top-0 left-0 right-0 z-[9999] flex justify-center py-6 pointer-events-none">
+      <div className="pointer-events-auto">
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -106,14 +87,8 @@ export default function IconNavbar() {
             );
           })}
         </div>
-
-        {/* Drag Hint */}
-        {!isDragging && (
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-tertiary font-mono opacity-50">
-            Drag to move • Double-click to reset
-          </div>
-        )}
       </motion.nav>
-    </motion.div>
+      </div>
+    </div>
   );
 }
