@@ -49,9 +49,20 @@ const LENSES = [
 ];
 
 export const CameraProvider = ({ children }) => {
-  // Power & Boot State - DEFAULT TO ON (site loads directly into Galleria)
-  const [powerState, setPowerState] = useState('on'); // 'off' | 'booting' | 'on' | 'standby'
-  const [hasBooted, setHasBooted] = useState(true);
+  // Power & Boot State - Check if returning visitor
+  const [powerState, setPowerState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hasVisited = localStorage.getItem('hasVisited');
+      return hasVisited ? 'on' : 'off'; // Returning visitors → 'on', First-time → 'off'
+    }
+    return 'off';
+  });
+  const [hasBooted, setHasBooted] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('hasVisited') ? true : false;
+    }
+    return false;
+  });
   const [batteryLevel, setBatteryLevel] = useState(100);
 
   // Camera Settings
@@ -140,6 +151,7 @@ export const CameraProvider = ({ children }) => {
       setPowerState('on');
       setHasBooted(true);
       localStorage.setItem('lastBootDate', new Date().toDateString());
+      localStorage.setItem('hasVisited', 'true'); // Mark as visited
     }, 2500); // Slightly shorter boot time
   }, []);
 

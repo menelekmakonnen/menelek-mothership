@@ -16,9 +16,16 @@ export default function Home() {
   useMediaData();
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
-      {powerState === 'on' ? (
-        <>
+    <>
+      {/* Boot Sequence */}
+      {powerState === 'booting' && <BootSequence />}
+
+      {/* Power Button Screen */}
+      {powerState === 'off' && <PowerButton />}
+
+      {/* Main Content - Galleria IS the home page (shows when powered on) */}
+      {powerState === 'on' && (
+        <div className="fixed inset-0 overflow-hidden">
           {/* Icon Navbar */}
           <IconNavbar />
 
@@ -32,21 +39,8 @@ export default function Home() {
 
           {/* Camera HUD */}
           <CameraHUD />
-        </>
-      ) : (
-        <>
-          {/* Power Off Screen */}
-          <div className="fixed inset-0 bg-black flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-6xl mb-6 opacity-30">⚫</div>
-              <p className="text-secondary text-sm font-mono">Camera is off</p>
-              <p className="text-tertiary text-xs font-mono mt-2">Click power button in HUD to turn on</p>
-            </div>
-          </div>
-          {/* Show HUD even when off so user can turn it back on */}
-          <CameraHUD />
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }
