@@ -13,10 +13,20 @@ export const useGalleriaContext = () => {
 // Media Categories
 export const MEDIA_CATEGORIES = [
   {
+    id: 'films',
+    name: 'Films & Music Videos',
+    type: 'direct', // no albums, direct to grid view
+  },
+  {
     id: 'photography',
     name: 'Photography',
-    type: 'gallery', // has albums
+    type: 'gallery', // has albums (Beauty, Professional subfolders)
     defaultAlbum: 'All Frames',
+  },
+  {
+    id: 'video-edits',
+    name: 'Epic Video Edits',
+    type: 'gallery', // categories as albums (Epic Edits, Beauty & Travel, BTS, AI & Learning)
   },
   {
     id: 'ai-albums',
@@ -25,19 +35,9 @@ export const MEDIA_CATEGORIES = [
     defaultAlbum: 'All Creations',
   },
   {
-    id: 'films',
-    name: 'Films & Music Videos',
-    type: 'direct', // no albums, direct to items
-  },
-  {
-    id: 'video-edits',
-    name: 'Epic Video Edits',
-    type: 'categories', // categories treated as albums
-  },
-  {
     id: 'loremaker',
     name: 'Loremaker Universe',
-    type: 'characters', // special character display
+    type: 'characters', // special character display from Google Sheets
   },
 ];
 
