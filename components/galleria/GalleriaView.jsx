@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, Film, Video, Palette, ArrowRight, Play } from 'lucide-react';
 import { useGalleriaContext, MEDIA_CATEGORIES } from '@/context/GalleriaContext';
+import SocialLinks from '@/components/common/SocialLinks';
 
 const CATEGORY_ICONS = {
   photography: Camera,
@@ -72,12 +73,26 @@ export default function GalleriaView({ isHomePage }) {
   const { enterGallery, mediaData } = useGalleriaContext();
 
   // State for cycling word
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [currentWord, setCurrentWord] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * CYCLING_WORDS.length);
+    return CYCLING_WORDS[randomIndex];
+  });
 
   // Cycle through words every 3 seconds
   useEffect(() => {
+    const getNextWord = (previousWord) => {
+      if (CYCLING_WORDS.length === 1) return previousWord;
+
+      let nextWord = previousWord;
+      while (nextWord === previousWord) {
+        const randomIndex = Math.floor(Math.random() * CYCLING_WORDS.length);
+        nextWord = CYCLING_WORDS[randomIndex];
+      }
+      return nextWord;
+    };
+
     const interval = setInterval(() => {
-      setCurrentWordIndex((prev) => (prev + 1) % CYCLING_WORDS.length);
+      setCurrentWord((prev) => getNextWord(prev));
     }, 3000);
 
     return () => clearInterval(interval);
@@ -105,16 +120,20 @@ export default function GalleriaView({ isHomePage }) {
             <span className="text-purple-500">•</span>
             <AnimatePresence mode="wait">
               <motion.span
-                key={currentWordIndex}
+                key={currentWord}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5 }}
                 className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 font-semibold"
               >
-                {CYCLING_WORDS[currentWordIndex]}
+                {currentWord}
               </motion.span>
             </AnimatePresence>
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <SocialLinks compact className="max-w-2xl" />
           </div>
         </motion.div>
 

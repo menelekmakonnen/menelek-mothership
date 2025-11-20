@@ -1,17 +1,10 @@
 import { motion } from 'framer-motion';
-import { Power, Linkedin, Twitter, Instagram, Github, Mail } from 'lucide-react';
+import { Power } from 'lucide-react';
 import { useCameraContext } from '@/context/CameraContext';
+import SocialLinks from '@/components/common/SocialLinks';
 
 export default function PowerOffScreen() {
   const { dismissPowerOffScreen, powerOn } = useCameraContext();
-
-  const socialLinks = [
-    { icon: Linkedin, url: 'https://linkedin.com/in/menelekmakonnen', label: 'LinkedIn', color: 'hover:bg-blue-600' },
-    { icon: Twitter, url: 'https://twitter.com/menelekmakonnen', label: 'Twitter', color: 'hover:bg-sky-500' },
-    { icon: Instagram, url: 'https://instagram.com/menelekmakonnen', label: 'Instagram', color: 'hover:bg-pink-600' },
-    { icon: Github, url: 'https://github.com/menelekmakonnen', label: 'GitHub', color: 'hover:bg-gray-700' },
-    { icon: Mail, url: 'mailto:contact@menelekmakonnen.com', label: 'Email', color: 'hover:bg-purple-600' },
-  ];
 
   return (
     <div className="fixed inset-0 bg-black z-[10000] flex items-center justify-center">
@@ -59,25 +52,7 @@ export default function PowerOffScreen() {
           <p className="text-gray-400 text-sm text-center mb-6">
             Connect with me:
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            {socialLinks.map((social, index) => (
-              <motion.a
-                key={social.label}
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-                whileHover={{ scale: 1.1, y: -4 }}
-                whileTap={{ scale: 0.95 }}
-                className={`w-16 h-16 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center transition-all duration-300 ${social.color}`}
-                title={social.label}
-              >
-                <social.icon size={24} className="text-white" />
-              </motion.a>
-            ))}
-          </div>
+          <SocialLinks />
         </motion.div>
 
         {/* Actions */}
