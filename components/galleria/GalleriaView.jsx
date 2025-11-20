@@ -167,6 +167,7 @@ export default function GalleriaView({ isHomePage }) {
                       <img
                         src={coverImage}
                         alt={category.name}
+                        loading="lazy"
                         className="w-full h-full object-cover opacity-40 group-hover:opacity-60 group-hover:scale-110 transition-all duration-1000"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/40"></div>

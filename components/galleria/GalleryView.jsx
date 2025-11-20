@@ -90,6 +90,7 @@ export default function GalleryView() {
                   <img
                     src={item.coverUrl}
                     alt={item.title}
+                    loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
 
@@ -329,6 +330,7 @@ export default function GalleryView() {
                       <img
                         src={character.coverUrl}
                         alt={character.character}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                         onError={(e) => {
                           console.error('Failed to load character image:', character.coverUrl);

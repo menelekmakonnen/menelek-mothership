@@ -163,6 +163,7 @@ export default function SingleView() {
         <img
           src={currentItem?.url || currentItem?.coverUrl}
           alt={currentItem?.name || currentItem?.title || currentItem?.character}
+          loading="lazy"
           className="max-w-full max-h-full"
           style={{
             objectFit: 'contain',
@@ -319,6 +320,7 @@ export default function SingleView() {
               <img
                 src={item.thumbnailUrl || item.coverUrl || item.url}
                 alt={`Thumbnail ${index + 1}`}
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
               {index === currentItemIndex && (
@@ -356,6 +358,7 @@ export default function SingleView() {
                 <img
                   src={album.coverUrl || album.items?.[0]?.thumbnailUrl || album.items?.[0]?.coverUrl}
                   alt={album.name}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
