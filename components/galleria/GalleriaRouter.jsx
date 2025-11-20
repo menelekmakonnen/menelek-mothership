@@ -10,6 +10,8 @@ import NavigationArrows from './NavigationArrows';
 export default function GalleriaRouter() {
   const { viewLevel, goBack } = useGalleriaContext();
 
+  console.log('🔄 GalleriaRouter rendering with viewLevel:', viewLevel);
+
   return (
     <div className="h-full w-full relative">
       {/* Back Button (shows when not on home view) */}

@@ -93,12 +93,15 @@ export const GalleriaProvider = ({ children }) => {
 
   // Navigation Functions
   const enterGallery = useCallback((category) => {
+    console.log('🚀 enterGallery called with category:', category);
+    console.log('📊 Current viewLevel:', viewLevel);
     setCurrentCategory(category);
     setViewLevel('gallery');
+    console.log('✅ viewLevel set to: gallery');
     setCurrentGallery(null);
     setCurrentAlbum(null);
     setCurrentItem(null);
-  }, []);
+  }, [viewLevel]);
 
   const enterAlbum = useCallback((album) => {
     setCurrentAlbum(album);
