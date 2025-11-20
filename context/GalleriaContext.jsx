@@ -43,7 +43,7 @@ export const MEDIA_CATEGORIES = [
 
 export const GalleriaProvider = ({ children }) => {
   // Galleria State
-  const [isGalleriaOpen, setIsGalleriaOpen] = useState(false);
+  const [isGalleriaOpen, setIsGalleriaOpen] = useState(true);
 
   // View Level: 'galleria' | 'gallery' | 'album' | 'single'
   const [viewLevel, setViewLevel] = useState('galleria');
@@ -90,6 +90,13 @@ export const GalleriaProvider = ({ children }) => {
     setZoomLevel(1);
     setIsZoomed(false);
   }, []);
+
+  // Default to first category when entering the galleria shell
+  useEffect(() => {
+    if (isGalleriaOpen && viewLevel === 'galleria' && !currentCategory) {
+      setCurrentCategory(MEDIA_CATEGORIES[0]);
+    }
+  }, [isGalleriaOpen, viewLevel, currentCategory]);
 
   // Navigation Functions
   const enterGallery = useCallback((category) => {

@@ -7,7 +7,7 @@ import CameraHUD from '@/components/camera/CameraHUD';
 import PowerButton from '@/components/camera/PowerButton';
 import BootSequence from '@/components/camera/BootSequence';
 import InteractiveCameraEffects from '@/components/camera/InteractiveCameraEffects';
-import GalleriaView from '@/components/galleria/GalleriaView';
+import Galleria from '@/components/galleria/Galleria';
 
 export default function Home() {
   const { powerState } = useCameraContext();
@@ -36,9 +36,9 @@ export default function Home() {
             {/* Icon Navbar */}
             <IconNavbar />
 
-            {/* Galleria View (Main Home Page) */}
+            {/* Galleria Shell drives all levels on the home page */}
             <div className="h-full w-full camera-viewport">
-              <GalleriaView isHomePage />
+              <Galleria />
             </div>
 
             {/* Interactive Camera Effects */}

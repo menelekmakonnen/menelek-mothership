@@ -58,7 +58,7 @@ export default function IconNavbar() {
         x: position.x,
         y: position.y,
       }}
-      className="fixed top-6 left-1/2 -translate-x-1/2 z-50"
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-[1200]"
     >
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
