@@ -20,17 +20,22 @@ A full-screen, multi-level visual exploration experience with:
 - **Smart navigation** with level-specific arrow behaviors
 - **Sorting options**: Default, A-Z, Z-A, Random
 - **Smooth transitions** with zero blackouts
-- **Slideshow mode** with customizable intervals
-- **Zoom controls** in single view
+- **Slideshow mode** with customizable intervals (1s-10s), auto-advance, and fullscreen support
+- **Zoom controls** in single view with mouse wheel zoom and pan
+- **Google Drive integration** - Real-time loading of photos from Google Drive folders
+- **Loremaker integration** - Character data from Google Sheets with dynamic gallery images
+- **Instagram embeds** - Support for Instagram posts and reels in Epic Edits section
 
 ### Camera HUD
 Professional camera-inspired interface with:
 - **Power management** - Boot sequence, standby mode
-- **Camera settings** - ISO, aperture, shutter speed controls
+- **Interactive camera dials** - Click ISO/Aperture/Shutter to open circular control dials
+- **Camera settings** - ISO, aperture, shutter speed controls with real-time effects
 - **Lens system** - 5 professional lenses with real specs
 - **HUD visibility modes** - None, Minimal, Standard, Full
 - **Battery indicator** - Time-based drain simulation
 - **Theme system** - Dark/Light mode via flash control
+- **Animated favicon** - Dynamic "MM" logo with hue shift and glow effects
 
 ### Luxury Design
 - **Cinematic gradients** and smooth animations
@@ -49,19 +54,38 @@ Professional camera-inspired interface with:
 - **Icons**: Lucide React 0.344.0
 - **State Management**: React Context API
 
+## 🔌 API Endpoints
+
+The application includes server-side API routes for Google integrations:
+
+- **`GET /api/drive/folders?parentId=FOLDER_ID`** - Fetch subfolders from Google Drive
+- **`GET /api/drive/images?folderId=FOLDER_ID`** - Fetch images from a Drive folder
+- **`GET /api/sheets/characters?count=20&random=true`** - Fetch Loremaker characters
+- **`GET /api/instagram/oembed?url=INSTAGRAM_URL`** - Get Instagram embed data
+
+All endpoints use service account authentication (no OAuth required).
+
 ## 📁 Project Structure
 
 ```
 menelek-mothership/
 ├── pages/
+│   ├── api/                  # API routes
+│   │   ├── drive/           # Google Drive endpoints
+│   │   ├── sheets/          # Google Sheets endpoints
+│   │   └── instagram/       # Instagram oEmbed
 │   ├── _app.jsx              # App wrapper with providers
 │   ├── _document.jsx         # HTML document setup
 │   └── index.jsx             # Home page
 ├── components/
+│   ├── FaviconAnimator.jsx   # Animated favicon
+│   ├── InstagramEmbed.jsx    # Instagram embed component
 │   ├── camera/               # Camera HUD system
 │   │   ├── CameraHUD.jsx     # Main HUD display
+│   │   ├── CameraDials.jsx   # Interactive ISO/Aperture/Shutter dials
 │   │   ├── PowerButton.jsx   # Power control
-│   │   └── BootSequence.jsx  # Startup animation
+│   │   ├── BootSequence.jsx  # Startup animation
+│   │   └── InteractiveCameraEffects.jsx
 │   ├── navbar/
 │   │   └── IconNavbar.jsx    # Draggable icon navigation
 │   └── galleria/             # Galleria system
@@ -70,11 +94,14 @@ menelek-mothership/
 │       ├── GalleryView.jsx   # Gallery/album list
 │       ├── AlbumView.jsx     # Album items
 │       ├── SingleView.jsx    # Full-screen media
+│       ├── SlideshowMode.jsx # Slideshow with auto-advance
 │       └── NavigationArrows.jsx
 ├── context/
 │   ├── CameraContext.jsx     # Camera state management
 │   └── GalleriaContext.jsx   # Galleria navigation
 ├── lib/
+│   ├── googleAuth.js         # Google API authentication
+│   ├── realMediaData.js      # Real films and epic edits data
 │   ├── sampleMediaData.js    # Sample media content
 │   └── useMediaData.js       # Media data loader
 ├── styles/
@@ -102,13 +129,22 @@ npm start
 
 ### Environment Variables
 
-Create a `.env.local` file for production media sources:
+Create a `.env.local` file for production media sources. See [SETUP.md](./SETUP.md) for detailed configuration instructions.
 
 ```env
-NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY=your_api_key
-NEXT_PUBLIC_PHOTOGRAPHY_FOLDER_ID=your_folder_id
-NEXT_PUBLIC_AI_ALBUMS_FOLDER_ID=your_ai_folder_id
+# Service Account Credentials
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour private key here\n-----END PRIVATE KEY-----\n"
+
+# Google Drive Folder IDs
+PHOTOGRAPHY_ROOT_FOLDER_ID=your_folder_id
+AI_ALBUMS_ROOT_FOLDER_ID=your_ai_folder_id
+
+# Google Sheets ID
+LOREMAKER_SHEET_ID=your_sheet_id
 ```
+
+**📖 For complete Google API setup instructions, see [SETUP.md](./SETUP.md)**
 
 ## 🎨 Customization
 
