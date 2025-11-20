@@ -18,22 +18,31 @@ export default function GalleryView() {
   const [albums, setAlbums] = useState([]);
 
   useEffect(() => {
+    console.log('📦 GalleryView - currentCategory:', currentCategory);
+    console.log('📦 GalleryView - mediaData:', mediaData);
+
     if (currentCategory) {
       // Get albums/items for current category
       let items = [];
 
       if (currentCategory.id === 'photography') {
         items = mediaData.photography?.galleries || [];
+        console.log('📷 Photography galleries:', items);
       } else if (currentCategory.id === 'ai-albums') {
         items = mediaData['ai-albums']?.galleries || [];
+        console.log('🤖 AI Albums galleries:', items);
       } else if (currentCategory.id === 'films') {
         items = mediaData.films?.items || [];
+        console.log('🎬 Films items:', items);
       } else if (currentCategory.id === 'video-edits') {
         items = mediaData['video-edits']?.categories || [];
+        console.log('✂️ Video edits categories:', items);
       } else if (currentCategory.id === 'loremaker') {
         items = mediaData.loremaker?.characters || [];
+        console.log('📚 Loremaker characters:', items);
       }
 
+      console.log('✅ Total items found:', items.length);
       setAlbums(applySorting(items, sortMode));
     }
   }, [currentCategory, mediaData, sortMode, applySorting]);
@@ -66,6 +75,14 @@ export default function GalleryView() {
 
   return (
     <div className="h-full overflow-y-auto pb-32">
+      {/* Debug Panel */}
+      <div className="fixed bottom-24 right-6 z-[60] glass-strong p-4 rounded-lg text-xs font-mono max-w-xs">
+        <div className="text-accent font-bold mb-2">GALLERY DEBUG</div>
+        <div>Category: <span className="text-green-400">{currentCategory?.id || 'none'}</span></div>
+        <div>Albums Count: <span className="text-green-400">{albums.length}</span></div>
+        <div>Has mediaData: <span className="text-green-400">{mediaData ? 'yes' : 'no'}</span></div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
