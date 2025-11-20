@@ -50,9 +50,10 @@ const LENSES = [
 
 export const CameraProvider = ({ children }) => {
   // Power & Boot State
-  const [powerState, setPowerState] = useState('off'); // 'off' | 'booting' | 'on' | 'standby'
+  const [powerState, setPowerState] = useState('booting'); // Start in booting state
   const [hasBooted, setHasBooted] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(100);
+  const [showPowerOffScreen, setShowPowerOffScreen] = useState(false);
 
   // Camera Settings
   const [iso, setIso] = useState(400);
@@ -131,33 +132,85 @@ export const CameraProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Check for daily boot
+  // Check for daily boot and initial power state
   useEffect(() => {
     const lastBootDate = localStorage.getItem('lastBootDate');
+    const lastPowerOff = localStorage.getItem('lastPowerOffDate');
     const today = new Date().toDateString();
 
+    // Check if this is a new day
     if (lastBootDate !== today) {
       setHasBooted(false);
       localStorage.setItem('lastBootDate', today);
+      setPowerState('booting');
+      // Auto-boot after 3 seconds
+      setTimeout(() => {
+        setPowerState('on');
+        setHasBooted(true);
+        localStorage.setItem('hasBooted', 'true');
+      }, 3000);
     } else {
-      setHasBooted(true);
+      // Same day - check if we've already booted
+      const bootedToday = localStorage.getItem('hasBooted');
+      if (bootedToday === 'true') {
+        setHasBooted(true);
+        setPowerState('on');
+      } else {
+        // First boot today
+        setPowerState('booting');
+        setTimeout(() => {
+          setPowerState('on');
+          setHasBooted(true);
+          localStorage.setItem('hasBooted', 'true');
+        }, 3000);
+      }
+    }
+
+    // Check if power off screen should show (once per day)
+    if (lastPowerOff !== today) {
+      // Haven't shown power off screen today
+      setShowPowerOffScreen(false);
     }
   }, []);
 
   // Power Management Functions
   const powerOn = useCallback(() => {
-    if (!hasBooted) {
-      setPowerState('booting');
-      setTimeout(() => {
-        setPowerState('on');
-        setHasBooted(true);
-      }, 3000);
-    } else {
+    setPowerState('booting');
+    setTimeout(() => {
       setPowerState('on');
-    }
-  }, [hasBooted]);
+      setHasBooted(true);
+      localStorage.setItem('hasBooted', 'true');
+    }, 2000);
+  }, []);
 
   const powerOff = useCallback(() => {
+    const today = new Date().toDateString();
+    const lastPowerOff = localStorage.getItem('lastPowerOffDate');
+
+    // Save memory (camera state) before power off
+    localStorage.setItem('savedCameraState', JSON.stringify({
+      iso,
+      aperture,
+      shutterSpeed,
+      exposureComp,
+      whiteBalance,
+      flashMode,
+      currentLensId: currentLens.id,
+      hudVisibility,
+      cameraMode,
+    }));
+
+    // Show power off screen only once per day
+    if (lastPowerOff !== today) {
+      setShowPowerOffScreen(true);
+      localStorage.setItem('lastPowerOffDate', today);
+    } else {
+      setPowerState('off');
+    }
+  }, [iso, aperture, shutterSpeed, exposureComp, whiteBalance, flashMode, currentLens, hudVisibility, cameraMode]);
+
+  const dismissPowerOffScreen = useCallback(() => {
+    setShowPowerOffScreen(false);
     setPowerState('off');
   }, []);
 
@@ -213,8 +266,10 @@ export const CameraProvider = ({ children }) => {
     powerState,
     hasBooted,
     batteryLevel,
+    showPowerOffScreen,
     powerOn,
     powerOff,
+    dismissPowerOffScreen,
     setStandby,
 
     // Camera Settings

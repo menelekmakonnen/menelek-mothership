@@ -6,7 +6,8 @@ import { useMediaData } from '@/lib/useMediaData';
 import IconNavbar from '@/components/navbar/IconNavbar';
 import CameraHUD from '@/components/camera/CameraHUD';
 import PowerButton from '@/components/camera/PowerButton';
-import BootSequence from '@/components/camera/BootSequence';
+import BootScreen from '@/components/camera/BootScreen';
+import PowerOffScreen from '@/components/camera/PowerOffScreen';
 import InteractiveCameraEffects from '@/components/camera/InteractiveCameraEffects';
 import GalleriaView from '@/components/galleria/GalleriaView';
 import GalleryView from '@/components/galleria/GalleryView';
@@ -14,19 +15,27 @@ import AlbumView from '@/components/galleria/AlbumView';
 import SingleView from '@/components/galleria/SingleView';
 
 export default function Home() {
-  const { powerState } = useCameraContext();
+  const { powerState, showPowerOffScreen } = useCameraContext();
   const { viewLevel } = useGalleriaContext();
 
   // Load media data
-  useMediaData();
+  const { isLoadingAPI } = useMediaData();
+
+  // Log loading state for debugging
+  useEffect(() => {
+    console.log('Media data loading:', isLoadingAPI ? 'YES' : 'NO');
+  }, [isLoadingAPI]);
 
   return (
     <>
-      {/* Boot Sequence */}
-      {powerState === 'booting' && <BootSequence />}
+      {/* Power Off Screen (once per day) */}
+      {showPowerOffScreen && <PowerOffScreen />}
 
-      {/* Power Button */}
-      {powerState === 'off' && <PowerButton />}
+      {/* Boot Screen */}
+      {!showPowerOffScreen && powerState === 'booting' && <BootScreen />}
+
+      {/* Power Button (when off) */}
+      {!showPowerOffScreen && powerState === 'off' && <PowerButton />}
 
       {/* Main Content - Galleria IS the home page */}
       <AnimatePresence mode="wait">
