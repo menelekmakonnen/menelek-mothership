@@ -14,9 +14,9 @@ import { useGalleriaContext } from '@/context/GalleriaContext';
 
 const NAV_ITEMS = [
   { id: 'galleria', icon: Grid3x3, label: 'Galleria', action: 'openGalleria' },
-  { id: 'photography', icon: Camera, label: 'Photography', action: 'openGalleria' },
-  { id: 'films', icon: Film, label: 'Films', action: 'openGalleria' },
-  { id: 'ai', icon: Sparkles, label: 'AI Albums', action: 'openGalleria' },
+  { id: 'photography', icon: Camera, label: 'Photography', action: 'openCategory', categoryId: 'photography' },
+  { id: 'films', icon: Film, label: 'Films', action: 'openCategory', categoryId: 'films' },
+  { id: 'ai', icon: Sparkles, label: 'AI Albums', action: 'openCategory', categoryId: 'ai-albums' },
   { id: 'loremaker', icon: Palette, label: 'Loremaker', action: 'external' },
   { id: 'about', icon: User, label: 'About', action: 'scroll' },
   { id: 'blog', icon: BookOpen, label: 'Blog', action: 'scroll' },
@@ -28,7 +28,7 @@ export default function IconNavbar() {
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
   const dragRef = useRef(null);
-  const { openGalleria } = useGalleriaContext();
+  const { openGalleria, openCategory } = useGalleriaContext();
 
   const handleDoubleClick = () => {
     setPosition({ x: 0, y: 0 });
@@ -37,6 +37,8 @@ export default function IconNavbar() {
   const handleItemClick = (item) => {
     if (item.action === 'openGalleria') {
       openGalleria();
+    } else if (item.action === 'openCategory' && item.categoryId) {
+      openCategory(item.categoryId);
     } else if (item.action === 'external' && item.id === 'loremaker') {
       window.open('https://loremaker.cloud', '_blank');
     } else if (item.action === 'scroll') {
