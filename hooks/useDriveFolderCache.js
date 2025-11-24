@@ -33,9 +33,11 @@ export default function useDriveFolderCache() {
         return data;
       } catch (error) {
         console.error('Unable to load Google Drive folder', folderId, error);
-        errorRef.current[folderId] = error.message || 'Unable to load folder';
+        const fallback = { id: folderId, items: [], error: error.message || 'Unable to load folder' };
+        cacheRef.current[folderId] = fallback;
+        errorRef.current[folderId] = fallback.error;
         forceRender();
-        return null;
+        return fallback;
       } finally {
         delete loadingRef.current[folderId];
         forceRender();

@@ -1016,6 +1016,15 @@ export default function PhotographySection() {
                 <Loader2 className="h-8 w-8 animate-spin text-green-300" />
               </div>
             )}
+            {!albumFolders.length && !isLoading(MMM_MEDIA_ROOT) && getError(MMM_MEDIA_ROOT) && (
+              <div className="col-span-full rounded-3xl border border-rose-400/30 bg-rose-500/10 px-5 py-6 text-rose-100 shadow-[0_25px_80px_rgba(0,0,0,0.45)]">
+                <p className="mono text-[11px] uppercase tracking-[0.35em] text-rose-200/80">Gallery unavailable</p>
+                <p className="mt-2 text-sm leading-relaxed text-rose-50/80">
+                  We couldn’t reach the photography archive right now. Your library will appear here once the Google Drive feed responds.
+                  Try reloading the page or revisiting in a moment.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </div>
