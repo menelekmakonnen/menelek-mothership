@@ -122,7 +122,9 @@ export default function FullscreenLightbox({
       }
 
       if (restrictSectionSwitch || !showGalleriaNav) return;
-      navigateGalleriaSection(direction === 'prev' ? 'prev' : 'next', galleriaSectionId);
+      if (typeof navigateGalleriaSection === 'function') {
+        navigateGalleriaSection(direction === 'prev' ? 'prev' : 'next', galleriaSectionId);
+      }
     },
     [
       galleriaSectionId,

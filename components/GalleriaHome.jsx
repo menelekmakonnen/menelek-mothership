@@ -28,10 +28,12 @@ export default function GalleriaHome() {
 
   const cards = useMemo(() => {
     if (sections.length) {
-      return sections.map((section) => {
-        const meta = getGalleriaSectionDetail(section.id);
-        return { ...section, ...meta };
-      });
+      return sections
+        .filter((section) => section?.id)
+        .map((section) => {
+          const meta = getGalleriaSectionDetail(section.id);
+          return { ...meta, ...section };
+        });
     }
     return listAllGalleriaSections();
   }, [sections]);
@@ -43,6 +45,41 @@ export default function GalleriaHome() {
   }, [cards.length]);
 
   if (!isGalleriaHomeOpen) return null;
+
+  const hasCards = cards.length > 0;
+
+  if (!hasCards) {
+    return (
+      <FullscreenLightbox layerId="galleria-home" depth={15000} onClose={closeGalleriaHome} showGalleriaChrome={false}>
+        <div className="flex min-h-full flex-col items-center justify-center gap-6 bg-[rgba(4,6,12,0.92)] px-6 py-12 text-center text-white">
+          <GalleryHorizontalEnd className="h-10 w-10 text-white/60" />
+          <div>
+            <p className="mono text-[11px] uppercase tracking-[0.35em] text-white/50">Galleria</p>
+            <h2 className="mt-2 text-2xl font-semibold">No gallery entries available yet</h2>
+            <p className="mt-3 max-w-xl text-white/70">
+              The gallery catalog failed to load. Please try again in a moment or refresh the page to reload your media feeds.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => window?.location?.reload?.()}
+              className="rounded-full border border-white/25 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={closeGalleriaHome}
+              className="rounded-full bg-white/15 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/25"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </FullscreenLightbox>
+    );
+  }
 
   const handleOpen = (sectionId) => {
     const index = cards.findIndex((card) => card.id === sectionId);
