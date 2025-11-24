@@ -1,9 +1,13 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function BootSequence({ onComplete }) {
   const [stage, setStage] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const handleRefresh = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.location.reload();
+  }, []);
 
   useEffect(() => {
     const timeInterval = setInterval(() => {
@@ -107,8 +111,15 @@ export default function BootSequence({ onComplete }) {
           initial={{ width: 0 }}
           animate={{ width: '100%' }}
           transition={{ duration: 2.5, ease: 'linear' }}
-          className="mt-8 h-1 bg-gradient-to-r from-green-600 via-green-400 to-green-600 rounded-full mx-auto max-w-md"
+          className="mt-8 h-1 w-full max-w-xs sm:max-w-sm bg-gradient-to-r from-green-600 via-green-400 to-green-600 rounded-full mx-auto"
         />
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="mt-6 text-xs uppercase tracking-[0.4em] text-green-200/80 hover:text-green-100"
+        >
+          Refresh boot screen
+        </button>
       </div>
     </motion.div>
   );
