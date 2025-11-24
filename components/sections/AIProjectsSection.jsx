@@ -46,7 +46,7 @@ const projects = [
 
 export default function AIProjectsSection() {
   return (
-    <div className="w-full min-h-screen p-8 pt-32 pb-32">
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
       <div className="max-w-7xl mx-auto">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
@@ -60,7 +60,7 @@ export default function AIProjectsSection() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 mb-12"
+          className="text-xl text-[color:var(--text-secondary)] mb-12"
         >
           Innovation in artificial intelligence and education
         </motion.p>
@@ -87,7 +87,7 @@ export default function AIProjectsSection() {
               >
                 <CardWrapper
                   {...cardProps}
-                  className={`group relative overflow-hidden rounded-2xl p-8 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 transition-all block ${
+                  className={`group relative overflow-hidden rounded-2xl p-8 bg-[color:var(--bg-secondary)]/95 backdrop-blur border border-[color:var(--hud-border)]/40 transition-all block ${
                     project.available ? 'hover:border-green-500 cursor-pointer' : 'opacity-60'
                   }`}
                 >
@@ -111,9 +111,9 @@ export default function AIProjectsSection() {
                     <h3 className="text-3xl font-bold mb-4">{project.title}</h3>
 
                     {/* Description */}
-                    <p className="text-gray-400 mb-6 leading-relaxed">
-                      {project.description}
-                    </p>
+                <p className="text-[color:var(--text-secondary)] mb-6 leading-relaxed">
+                  {project.description}
+                </p>
 
                     {/* Features */}
                     <div className="flex flex-wrap gap-2 mb-4">

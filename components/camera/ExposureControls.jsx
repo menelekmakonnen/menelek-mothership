@@ -1,6 +1,6 @@
 import { useCameraContext } from '@/context/CameraContext';
 
-export default function ExposureControls() {
+export default function ExposureControls({ variant = 'panel' }) {
   const {
     iso,
     setIso,
@@ -17,10 +17,22 @@ export default function ExposureControls() {
     return `1/${speed}`;
   };
 
+  const containerClass =
+    variant === 'inline'
+      ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mono text-[11px]'
+      : 'space-y-4 mono text-xs';
+
+  const blockClass =
+    variant === 'inline'
+      ? 'rounded-2xl border border-white/12 bg-white/5 backdrop-blur-xl p-4 flex flex-col gap-3'
+      : 'space-y-2';
+
+  const sliderClass = variant === 'inline' ? 'camera-slider w-full accent-green-400' : 'camera-slider w-full';
+
   return (
-    <div className="space-y-4 mono text-xs">
+    <div className={containerClass}>
       {/* ISO Slider */}
-      <div className="space-y-2">
+      <div className={blockClass}>
         <div className="flex items-center justify-between">
           <label className="text-[10px] opacity-75 tracking-wider">ISO</label>
           <span className="font-bold">{iso}</span>
@@ -32,7 +44,7 @@ export default function ExposureControls() {
           step="100"
           value={iso}
           onChange={(e) => setIso(Number(e.target.value))}
-          className="camera-slider w-full"
+          className={sliderClass}
         />
         <div className="flex justify-between text-[9px] opacity-50">
           <span>100</span>
@@ -43,7 +55,7 @@ export default function ExposureControls() {
       </div>
 
       {/* Aperture Slider */}
-      <div className="space-y-2">
+      <div className={blockClass}>
         <div className="flex items-center justify-between">
           <label className="text-[10px] opacity-75 tracking-wider">APERTURE</label>
           <span className="font-bold">f/{aperture.toFixed(1)}</span>
@@ -55,7 +67,7 @@ export default function ExposureControls() {
           step="0.1"
           value={aperture}
           onChange={(e) => setAperture(Number(e.target.value))}
-          className="camera-slider w-full"
+          className={sliderClass}
         />
         <div className="flex justify-between text-[9px] opacity-50">
           <span>f/1.4</span>
@@ -66,7 +78,7 @@ export default function ExposureControls() {
       </div>
 
       {/* Shutter Speed Slider */}
-      <div className="space-y-2">
+      <div className={blockClass}>
         <div className="flex items-center justify-between">
           <label className="text-[10px] opacity-75 tracking-wider">SHUTTER SPEED</label>
           <span className="font-bold">{formatShutterSpeed(shutterSpeed)}</span>
@@ -78,7 +90,7 @@ export default function ExposureControls() {
           step="10"
           value={shutterSpeed}
           onChange={(e) => setShutterSpeed(Number(e.target.value))}
-          className="camera-slider w-full"
+          className={sliderClass}
         />
         <div className="flex justify-between text-[9px] opacity-50">
           <span>30"</span>
@@ -89,7 +101,7 @@ export default function ExposureControls() {
       </div>
 
       {/* Exposure Compensation */}
-      <div className="space-y-2">
+      <div className={blockClass}>
         <div className="flex items-center justify-between">
           <label className="text-[10px] opacity-75 tracking-wider">EXPOSURE COMP</label>
           <span className="font-bold">
@@ -103,7 +115,7 @@ export default function ExposureControls() {
           step="0.3"
           value={exposureComp}
           onChange={(e) => setExposureComp(Number(e.target.value))}
-          className="camera-slider w-full"
+          className={sliderClass}
         />
         <div className="flex justify-between text-[9px] opacity-50">
           <span>-3</span>

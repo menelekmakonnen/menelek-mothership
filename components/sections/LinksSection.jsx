@@ -1,104 +1,216 @@
 import { motion } from 'framer-motion';
-import { Linkedin, Instagram, Youtube, Music, Mail, Globe } from 'lucide-react';
-import IconBox from '@/components/ui/IconBox';
+import { Instagram, Youtube, Linkedin, Mail, Globe, ArrowUpRight } from 'lucide-react';
 
-const socialLinks = [
+const linkGroups = [
   {
-    name: 'LinkedIn',
-    icon: Linkedin,
-    url: 'https://linkedin.com/in/menelekmakonnen',
-    gradient: 'from-blue-600 to-blue-700',
-    description: 'Professional network',
+    id: 'personal-socials',
+    title: '🌍 Personal Socials',
+    description: 'Follow Menelek’s day-to-day voice, perspective, and authentic creative life.',
+    accent: {
+      panel: 'from-[#161b32]/85 via-[#202c4a]/78 to-[#03050a]/92',
+      halo: 'from-blue-200/30 via-indigo-200/12 to-transparent',
+    },
+    items: [
+      {
+        label: 'Instagram',
+        meta: '@menelek.makonnen',
+        description: 'Personal photography, filmmaking notes, and life moments.',
+        href: 'https://instagram.com/menelek.makonnen',
+        icon: Instagram,
+      },
+      {
+        label: 'YouTube',
+        meta: '@menelekmakonnen',
+        description: 'Films, essays, and behind-the-scenes drops.',
+        href: 'https://youtube.com/@menelekmakonnen',
+        icon: Youtube,
+      },
+      {
+        label: 'LinkedIn',
+        meta: 'menelekmakonnen',
+        description: 'Professional profile and collaborations.',
+        href: 'https://linkedin.com/in/menelekmakonnen',
+        icon: Linkedin,
+      },
+      {
+        label: 'Email',
+        meta: 'admin@menelekmakonnen.com',
+        description: 'Direct contact for speaking and inquiries.',
+        href: 'mailto:admin@menelekmakonnen.com',
+        icon: Mail,
+      },
+    ],
   },
   {
-    name: 'Instagram',
-    icon: Instagram,
-    url: 'https://instagram.com/menelekmakonnen',
-    gradient: 'from-pink-600 to-purple-600',
-    description: 'Visual stories',
+    id: 'professional-socials',
+    title: '🏢 Professional & Brand Pages',
+    description: 'The director’s studio ecosystem — production brands, education arms, and corporate presence.',
+    accent: {
+      panel: 'from-[#2e1a30]/85 via-[#48263f]/78 to-[#0a040c]/92',
+      halo: 'from-rose-200/30 via-amber-200/12 to-transparent',
+    },
+    items: [
+      {
+        label: 'Director YouTube',
+        meta: '@director_menelek',
+        description: 'Director-level reels and flagship edits.',
+        href: 'https://www.youtube.com/@director_menelek',
+        icon: Youtube,
+      },
+      {
+        label: 'Director Instagram',
+        meta: '@menelek.makonnen',
+        description: 'Set life, directing, and cinematic stills.',
+        href: 'https://www.instagram.com/menelek.makonnen/',
+        icon: Instagram,
+      },
+      {
+        label: 'Loremaker Instagram',
+        meta: '@lore.maker',
+        description: 'Immersive lore drops and world-building visuals.',
+        href: 'https://www.instagram.com/lore.maker',
+        icon: Instagram,
+      },
+      {
+        label: 'ICUNI Instagram',
+        meta: '@icuni_',
+        description: 'AI education and Starterclass community.',
+        href: 'https://www.instagram.com/icuni_',
+        icon: Instagram,
+      },
+      {
+        label: 'MMM Media Instagram',
+        meta: '@mm.m.media',
+        description: 'Commercial production house portfolio.',
+        href: 'https://www.instagram.com/mm.m.media/',
+        icon: Instagram,
+      },
+      {
+        label: 'AI Educator Instagram',
+        meta: '@mr.mikaelgabriel',
+        description: 'Corporate AI educator persona.',
+        href: 'https://www.instagram.com/mr.mikaelgabriel/',
+        icon: Instagram,
+      },
+      {
+        label: 'Corporate LinkedIn',
+        meta: 'Mikael Gabriel',
+        description: 'Business-facing updates and partnerships.',
+        href: 'https://www.linkedin.com/in/mikaelgabriel/',
+        icon: Linkedin,
+      },
+    ],
   },
   {
-    name: 'YouTube',
-    icon: Youtube,
-    url: 'https://youtube.com/@menelekmakonnen',
-    gradient: 'from-red-600 to-red-700',
-    description: 'Video content',
-  },
-  {
-    name: 'TikTok',
-    icon: Music,
-    url: 'https://tiktok.com/@menelekmakonnen',
-    gradient: 'from-cyan-600 to-pink-600',
-    description: 'Short-form content',
-  },
-  {
-    name: 'Website',
-    icon: Globe,
-    url: 'https://menelekmakonnen.com',
-    gradient: 'from-green-600 to-emerald-600',
-    description: 'Official site',
-  },
-  {
-    name: 'Email',
-    icon: Mail,
-    url: 'mailto:contact@menelekmakonnen.com',
-    gradient: 'from-orange-600 to-yellow-600',
-    description: 'Get in touch',
+    id: 'websites',
+    title: '🌐 Websites',
+    description: 'Flagship platforms and archived storytelling hubs.',
+    accent: {
+      panel: 'from-[#1b2234]/85 via-[#273553]/78 to-[#05060c]/92',
+      halo: 'from-indigo-200/30 via-slate-200/12 to-transparent',
+    },
+    items: [
+      {
+        label: 'Loremaker Universe',
+        meta: 'loremaker.cloud',
+        description: 'Home for the transmedia lore universe.',
+        href: 'https://loremaker.cloud',
+        icon: Globe,
+      },
+      {
+        label: 'Starterclass',
+        meta: 'starterclass.icuni.org',
+        description: 'AI Starterclass by ICUNI.',
+        href: 'https://starterclass.icuni.org',
+        icon: Globe,
+      },
+      {
+        label: 'Old Blog',
+        meta: 'wordpress.com/mikaelgabriel',
+        description: 'Legacy essays and archives.',
+        href: 'https://wordpress.com/mikaelgabriel',
+        icon: Globe,
+      },
+    ],
   },
 ];
 
+const isExternalLink = (href) => /^https?:/i.test(href);
+
 export default function LinksSection() {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-8 pt-32 pb-32">
-      <div className="max-w-6xl w-full">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl font-bold text-center mb-4"
-        >
+    <div className="w-full min-h-screen px-6 sm:px-8 lg:px-10 pt-32 pb-32">
+      <div className="mx-auto flex max-w-4xl flex-col items-center text-center gap-6">
+        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl font-bold">
           Connect With Me
         </motion.h1>
-
         <motion.p
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-gray-400 text-center mb-16"
+          className="text-xl text-[color:var(--text-secondary)] max-w-2xl"
         >
-          Follow my journey across platforms
+          A curated directory of the socials, studios, and platforms where I build stories, teach, and collaborate.
         </motion.p>
+      </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {socialLinks.map((link, index) => {
-            const Icon = link.icon;
-            return (
-              <motion.a
-                key={link.name}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
-                className="group relative overflow-hidden rounded-2xl p-8 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 hover:border-green-500 transition-all hover:scale-105"
-                whileHover={{ y: -8 }}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${link.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
+      <div className="mx-auto mt-14 flex max-w-3xl flex-col gap-12">
+        {linkGroups.map((group, groupIndex) => (
+          <motion.section
+            key={group.id}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 * groupIndex }}
+            className="relative overflow-hidden rounded-4xl border border-white/10 bg-[rgba(12,14,22,0.85)] p-6 sm:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
+          >
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${group.accent.panel} opacity-70`} />
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${group.accent.halo}`} />
+            <div className="relative z-10 space-y-6">
+              <div className="text-left space-y-2">
+                <p className="mono text-[11px] uppercase tracking-[0.5em] text-white/70">{group.title}</p>
+                <h2 className="text-2xl font-semibold text-white/90">{group.description}</h2>
+              </div>
 
-                <div className="relative z-10 flex flex-col items-center text-center">
-                  <IconBox icon={Icon} gradient={link.gradient} size="lg" className="mb-4" />
-
-                  <h3 className="text-2xl font-bold mb-2">{link.name}</h3>
-                  <p className="text-gray-400">{link.description}</p>
-
-                  <div className="mt-4 text-sm text-green-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Visit →
-                  </div>
-                </div>
-              </motion.a>
-            );
-          })}
-        </div>
+              <div className="grid gap-4">
+                {group.items.map((item, itemIndex) => {
+                  const external = isExternalLink(item.href);
+                  const Icon = item.icon || Globe;
+                  return (
+                    <motion.a
+                      key={item.label}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: itemIndex * 0.05 }}
+                      href={item.href}
+                      target={external ? '_blank' : undefined}
+                      rel={external ? 'noopener noreferrer' : undefined}
+                      className="group flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-5 py-4 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-white/40 hover:bg-white/10"
+                    >
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-[rgba(10,12,18,0.55)] shadow-[0_12px_30px_rgba(0,0,0,0.45)] transition-colors group-hover:border-white/40">
+                        <Icon className="h-5 w-5 text-white/85" />
+                      </div>
+                      <div className="flex-1 text-left space-y-2">
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-semibold text-white/95">{item.label}</p>
+                            {item.meta && (
+                              <p className="mono text-[10px] uppercase tracking-[0.4em] text-white/60">{item.meta}</p>
+                            )}
+                          </div>
+                          <ArrowUpRight className="h-4 w-4 text-white/60 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                        </div>
+                        {item.description && (
+                          <p className="text-sm text-white/75 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
+                    </motion.a>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.section>
+        ))}
       </div>
     </div>
   );
