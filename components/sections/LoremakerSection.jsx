@@ -359,6 +359,7 @@ export default function LoremakerSection() {
             ))}
           </div>
         </div>
+      </button>
 
         {loading && (
           <div className="flex h-48 items-center justify-center rounded-3xl border border-white/10 bg-black/40">
