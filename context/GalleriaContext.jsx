@@ -83,6 +83,18 @@ export const GalleriaProvider = ({ children }) => {
     setCurrentItem(null);
   }, []);
 
+  const openCategory = useCallback((categoryId) => {
+    const category = MEDIA_CATEGORIES.find(cat => cat.id === categoryId);
+    if (!category) return;
+
+    setIsGalleriaOpen(true);
+    setViewLevel('gallery');
+    setCurrentCategory(category);
+    setCurrentGallery(null);
+    setCurrentAlbum(null);
+    setCurrentItem(null);
+  }, []);
+
   const closeGalleria = useCallback(() => {
     setIsGalleriaOpen(false);
     setViewLevel('galleria');
@@ -282,6 +294,7 @@ export const GalleriaProvider = ({ children }) => {
 
     // Actions
     openGalleria,
+    openCategory,
     closeGalleria,
     enterGallery,
     enterAlbum,
