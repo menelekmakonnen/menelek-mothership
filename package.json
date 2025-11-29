@@ -1,22 +1,25 @@
 {
-  "name": "menelek-makonnen",
-  "version": "1.0.0",
+  "name": "menelek-mothership",
+  "version": "2.0.0",
+  "description": "Luxury portfolio website for Menelek Makonnen - Filmmaker, Creative Director, Photographer, and Worldbuilder",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.2.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "framer-motion": "^10.12.16",
-    "lucide-react": "^0.275.0"
+    "framer-motion": "11.0.0",
+    "googleapis": "^166.0.0",
+    "lucide-react": "0.344.0",
+    "next": "14.2.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.3",
-    "postcss": "^8.4.24",
-    "autoprefixer": "^10.4.14"
+    "autoprefixer": "10.4.14",
+    "postcss": "8.4.24",
+    "tailwindcss": "3.4.3"
   }
 }
