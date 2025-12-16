@@ -47,16 +47,16 @@ export default function InstagramEmbed({ url, className = '' }) {
     // Fallback: Show link to Instagram
     return (
       <div className={`flex flex-col items-center justify-center bg-white/5 rounded-lg p-8 ${className}`}>
-        <div className="text-center">
+        <div className="text-center max-w-full">
           <div className="text-white/60 text-sm mb-4">Instagram content</div>
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-black rounded-lg hover:bg-accent-dim transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-black rounded-lg hover:bg-accent-dim transition-colors max-w-full"
           >
-            <span>View on Instagram</span>
-            <ExternalLink size={16} />
+            <span className="text-truncate">View on Instagram</span>
+            <ExternalLink size={16} className="flex-shrink-0" />
           </a>
         </div>
       </div>

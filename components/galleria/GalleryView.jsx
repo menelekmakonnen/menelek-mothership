@@ -123,7 +123,7 @@ export default function GalleryView() {
 
                 {/* Overlay Text */}
                 <div className="gallery-overlay-text">
-                  <h3 className="font-bold text-lg mb-1">{item.name || item.title}</h3>
+                  <h3 className="font-bold text-lg mb-1 text-truncate-2">{item.name || item.title}</h3>
                   {item.itemCount && (
                     <p className="text-sm opacity-75">{item.itemCount} items</p>
                   )}

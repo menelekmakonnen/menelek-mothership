@@ -50,8 +50,8 @@ export default function AlbumView() {
             >
               <ArrowLeft size={20} className="text-hud-text" />
             </button>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold">{currentAlbum?.name}</h2>
+            <div className="max-w-2xl">
+              <h2 className="text-3xl md:text-4xl font-bold text-break">{currentAlbum?.name}</h2>
               <p className="text-sm text-secondary mt-1">{items.length} items</p>
             </div>
           </div>
