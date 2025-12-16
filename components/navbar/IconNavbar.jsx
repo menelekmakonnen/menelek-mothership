@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import {
   Camera,
@@ -9,6 +10,7 @@ import {
   BookOpen,
   Mail,
   User,
+  FileJson,
 } from 'lucide-react';
 import { useGalleriaContext } from '@/context/GalleriaContext';
 
@@ -18,12 +20,14 @@ const NAV_ITEMS = [
   { id: 'films', icon: Film, label: 'Films', action: 'openGalleria' },
   { id: 'ai', icon: Sparkles, label: 'AI Albums', action: 'openGalleria' },
   { id: 'loremaker', icon: Palette, label: 'Loremaker', action: 'external' },
+  { id: 'json-viewer', icon: FileJson, label: 'JSON Viewer', action: 'page' },
   { id: 'about', icon: User, label: 'About', action: 'scroll' },
   { id: 'blog', icon: BookOpen, label: 'Blog', action: 'scroll' },
   { id: 'contact', icon: Mail, label: 'Contact', action: 'scroll' },
 ];
 
 export default function IconNavbar() {
+  const router = useRouter();
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
@@ -39,6 +43,8 @@ export default function IconNavbar() {
       openGalleria();
     } else if (item.action === 'external' && item.id === 'loremaker') {
       window.open('https://loremaker.cloud', '_blank');
+    } else if (item.action === 'page') {
+      router.push(`/${item.id}`);
     } else if (item.action === 'scroll') {
       // Scroll to section (placeholder for future implementation)
       console.log(`Scroll to ${item.id}`);
